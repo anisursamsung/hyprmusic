@@ -1,29 +1,45 @@
 # HyprMusic
 
-Hyprland specific music player front end for Media Player Daemon (mpd) in Linux. Uses Hyprtoolkit API and C++.
+A dedicated Hyprland frontend for the Media Player Daemon (MPD) on Linux, built with C++ and the Hyprtoolkit API.
+
 ---
 
-## 🎵 Key Features & Tabs
+## Key Features and Interface
 
 ### 1. Queue Tab
-- **Current Playback**: View all tracks currently in MPD playback queue.
-- **Track Controls**: Play, pause, remove, or jump to any track.
-- **Search Filter**: Instantly search across queue track titles, artists, and albums.
-- **Queue Actions**: Add items from Que to playlist, remove item from Que.
-- **Add item to Que**: Add item to que e.g. A stream link, from database, from playlist.
-- **Streaming**: Add stream link directly to que.
+* **Current Playback:** Monitor all tracks currently in the MPD playback queue.
+* **Track Controls:** Play, pause, remove, or jump directly to any specific track.
+* **Search Filter:** Instantly filter the queue by track title, artist, or album.
+* **Queue Management:** Seamlessly add items from the queue to a playlist, or remove them entirely.
+* **Versatile Additions:** Add items to the queue from various sources, including your database, existing playlists, or direct stream links.
 
 ### 2. Database Tab
-- Lists all the tracks in the database which in MPD language means all the tracks in the Music Directory that is pointed in mpd.conf file. Default is ~/Music.
-- Items from database can be added to Que or any Playlist.
+* **Library Overview:** View all tracks stored in your database. This reflects all files within the music directory specified in your `mpd.conf` file (defaults to `~/Music`).
+* **Seamless Integration:** Quickly append any item from the database to your active queue or a saved playlist.
+
 ### 3. Playlists Tab
-- **Playlist Management**: View all saved MPD playlists in your library.
-- **Creation & Removal**: Create new empty playlists or delete existing ones.
-- **Track Inspection**: Expand any playlist to inspect track lists and load them into your current queue.
+* **Playlist Management:** Access and view all saved MPD playlists within your library.
+* **Creation and Deletion:** Generate new empty playlists or delete existing ones.
+* **Track Inspection:** Expand individual playlists to review their contents and easily load them into the current playback queue.
 
 ### 4. YT-DLP Online Search Tab
-- View and edit the settings you have configured in ~/.config/mpd.conf
-## ⌨️ Playback & Control Bar
+* **Configuration Access:** View and modify the MPD settings configured within your `~/.config/mpd.conf` file.
 
-- **Bottom Bar**: Contains track title, artist, elapsed/total time, interactive seek bar, play/pause toggle, previous/next controls, and volume slider.
-- **MPD Backend**: Playback continues smoothly in the background even if the UI is closed.
+---
+
+## Playback and Control Bar
+
+* **Persistent Control Bar:** The bottom bar provides quick access to essential track information and controls. It includes the current track title and artist, elapsed and total playback time, an interactive seek bar, a play/pause toggle, previous/next track controls, and a volume slider.
+* **Background Execution:** Powered by the MPD backend, audio playback continues uninterrupted in the background even if the graphical user interface is closed.
+
+---
+
+## Screenshots
+
+![HyprMusic Interface 1](screenshots/hyprmusic1.png)
+![HyprMusic Interface 2](screenshots/hyprmusic2.png)
+![HyprMusic Interface 3](screenshots/hyprmusic3.png)
+![HyprMusic Interface 4](screenshots/hyprmusic4.png)
+![HyprMusic Interface 5](screenshots/hyprmusic5.png)
+![HyprMusic Interface 6](screenshots/hyprmusic6.png)
+![HyprMusic Interface 7](screenshots/hyprmusic7.png)
