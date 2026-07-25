@@ -1,0 +1,3 @@
+/home/anisur/hyprland_apps/hyprmusic/build/CMakeFiles/hyprmusic.dir
+/home/anisur/hyprland_apps/hyprmusic/build/CMakeFiles/edit_cache.dir
+/home/anisur/hyprland_apps/hyprmusic/build/CMakeFiles/rebuild_cache.dir
