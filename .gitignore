@@ -1,0 +1,8 @@
+# Build artifacts
+build/
+
+# Compiled binary
+hyprmusic
+
+# CMake user files
+CMakeUserPresets.json
