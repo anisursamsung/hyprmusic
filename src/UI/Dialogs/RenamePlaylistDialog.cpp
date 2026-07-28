@@ -1,0 +1,95 @@
+#include "RenamePlaylistDialog.hpp"
+#include "../Components/UIFactory.hpp"
+#include <hyprtoolkit/element/ColumnLayout.hpp>
+#include <hyprtoolkit/element/Rectangle.hpp>
+#include <hyprtoolkit/element/RowLayout.hpp>
+#include <hyprtoolkit/element/Text.hpp>
+#include <hyprtoolkit/element/Textbox.hpp>
+#include <algorithm>
+
+namespace UI::Dialogs {
+
+using namespace Hyprtoolkit;
+using namespace Hyprutils::Memory;
+
+void showRenamePlaylistDialog(const RenamePlaylistContext &ctx) {
+  if (!ctx.parentWindow)
+    return;
+
+  auto palette = ctx.palette;
+  std::string fontFamily = ctx.fontFamily;
+  auto renameInputText = std::make_shared<std::string>(ctx.oldName);
+
+  auto windowSize = ctx.parentWindow->pixelSize();
+  double popupWidth = 340.0;
+  double popupHeight = 170.0;
+  double posX = std::max(0.0, (windowSize.x - popupWidth) / 2.0);
+  double posY = std::max(0.0, (windowSize.y - popupHeight) / 2.0);
+
+  auto popupWindow =
+      CWindowBuilder::begin()
+          ->type(HT_WINDOW_POPUP)
+          ->parent(ctx.parentWindow)
+          ->pos(Hyprutils::Math::Vector2D(posX, posY))
+          ->preferredSize(Hyprutils::Math::Vector2D(popupWidth, popupHeight))
+          ->commence();
+
+  if (!popupWindow)
+    return;
+
+  auto root = Components::UIFactory::createCard(palette, 10);
+  popupWindow->m_rootElement = root;
+
+  auto cardLayout =
+      CColumnLayoutBuilder::begin()
+          ->gap(12)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+          ->commence();
+  cardLayout->setMargin(15);
+
+  auto headerText = Components::UIFactory::createHeader("✏️ Rename Playlist", palette, fontFamily);
+  cardLayout->addChild(headerText);
+
+  auto nameInput = Components::UIFactory::createSearchInput(
+      "Playlist name...", ctx.oldName,
+      [renameInputText](const std::string &text) { *renameInputText = text; },
+      palette, fontFamily);
+  cardLayout->addChild(nameInput);
+
+  auto btnRow =
+      CRowLayoutBuilder::begin()
+          ->gap(20)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+          ->commence();
+
+  auto cancelBtn = Components::UIFactory::createActionButton(
+      "Cancel", [popupWindow] { if (popupWindow) popupWindow->close(); }, palette, fontFamily, false);
+  btnRow->addChild(cancelBtn);
+
+  auto okBtn = Components::UIFactory::createActionButton(
+      "Ok",
+      [ctx, popupWindow, renameInputText] {
+        std::string newName = *renameInputText;
+        if (!newName.empty() && newName != ctx.oldName) {
+          ctx.runMpdCommand([oldName = ctx.oldName, newName](struct mpd_connection *conn) {
+            mpd_run_rename(conn, oldName.c_str(), newName.c_str());
+          });
+          if (ctx.onRenamed) {
+            ctx.onRenamed(ctx.oldName, newName);
+          }
+        }
+        if (popupWindow)
+          popupWindow->close();
+      },
+      palette, fontFamily, true);
+  btnRow->addChild(okBtn);
+
+  cardLayout->addChild(btnRow);
+  root->addChild(cardLayout);
+
+  popupWindow->open();
+}
+
+} // namespace UI::Dialogs

@@ -1,0 +1,526 @@
+#include "YtDlpView.hpp"
+#include "../../Utils/ClipboardUtils.hpp"
+#include "../../Utils/FormatUtils.hpp"
+#include "../../Utils/StreamUtils.hpp"
+#include <hyprtoolkit/element/Button.hpp>
+#include <hyprtoolkit/element/RowLayout.hpp>
+#include <hyprtoolkit/element/ScrollArea.hpp>
+#include <hyprtoolkit/element/Textbox.hpp>
+#include <iostream>
+#include <thread>
+
+namespace UI::Views {
+
+YtDlpView::YtDlpView(const YtDlpViewContext &ctx) : m_ctx(ctx) {}
+
+void YtDlpView::triggerSearch() {
+  if (m_searchTitle.empty()) {
+    if (m_ctx.showNotification)
+      m_ctx.showNotification("Please enter a YouTube search term or URL");
+    return;
+  }
+
+  m_searching = true;
+  m_ytdlpNeedRebuild = true;
+
+  if (m_ctx.updateStatus)
+    m_ctx.updateStatus();
+
+  std::string query = m_searchTitle;
+  std::string countStr = m_resultCount;
+  int count = 5;
+  try {
+    count = std::stoi(countStr);
+  } catch (...) {
+    count = 5;
+  }
+
+  if (m_ctx.ytDlpService) {
+    m_ctx.ytDlpService->triggerSearch(
+        query, count,
+        [this](const std::vector<Services::YtDlpResult> &results, bool isPlaylist,
+               const std::string &plTitle, const std::string &plId) {
+          if (m_ctx.backend) {
+            m_ctx.backend->addTimer(
+                std::chrono::milliseconds(1),
+                [this, results, isPlaylist, plTitle, plId](CAtomicSharedPointer<CTimer>, void *) {
+                  m_searching = false;
+                  m_results = results;
+                  m_isPlaylist = isPlaylist;
+                  m_playlistTitle = plTitle;
+                  m_playlistId = plId;
+                  m_ytdlpNeedRebuild = true;
+
+                  if (m_ctx.showNotification) {
+                    if (results.empty()) {
+                      m_ctx.showNotification("No YouTube results found");
+                    } else {
+                      m_ctx.showNotification("Found " + std::to_string(results.size()) +
+                                             " YouTube tracks");
+                    }
+                  }
+
+                  if (m_ctx.updateStatus)
+                    m_ctx.updateStatus();
+                },
+                nullptr);
+          }
+        });
+  }
+}
+
+void YtDlpView::loadYoutubePlaylist(
+    const std::vector<Services::YtDlpResult> &tracks,
+    const std::string &saveToPlaylistName, bool startPlaying) {
+  if (tracks.empty())
+    return;
+
+  std::string displayPlName = saveToPlaylistName;
+  if (!saveToPlaylistName.empty()) {
+    displayPlName = Utils::sanitizePlaylistName(saveToPlaylistName);
+  }
+
+  std::thread([this, tracks, startPlaying, displayPlName]() {
+    m_ctx.backend->addTimer(
+        std::chrono::milliseconds(1),
+        [this, displayPlName, tracks](CAtomicSharedPointer<CTimer>, void *) {
+          if (m_ctx.showNotification) {
+            if (!displayPlName.empty()) {
+              m_ctx.showNotification("⏳ Saving YouTube playlist '" + displayPlName + "'...");
+            } else {
+              m_ctx.showNotification("⏳ Resolving YouTube playlist (" +
+                                      std::to_string(tracks.size()) + " tracks)...");
+            }
+          }
+        },
+        nullptr);
+
+    if (startPlaying && displayPlName.empty()) {
+      m_ctx.runMpdCommand([](struct mpd_connection *conn) { mpd_run_clear(conn); });
+    }
+
+    for (size_t i = 0; i < tracks.size(); ++i) {
+      const auto &t = tracks[i];
+      std::string realUrl = extractDirectStreamUrl(t.url);
+      if (realUrl.empty())
+        continue;
+
+      std::string resTitle = t.title;
+      std::string resUploader = t.uploader;
+
+      if (m_ctx.ytDlpService) {
+        m_ctx.ytDlpService->setUrlTitle(realUrl, resTitle, resUploader);
+      }
+
+      if (!displayPlName.empty()) {
+        m_ctx.runMpdCommand([displayPlName, realUrl](struct mpd_connection *conn) {
+          mpd_run_playlist_add(conn, displayPlName.c_str(), realUrl.c_str());
+        });
+      } else {
+        m_ctx.runMpdCommand([realUrl](struct mpd_connection *conn) {
+          mpd_run_add(conn, realUrl.c_str());
+        });
+      }
+
+      if (startPlaying && i == 0 && displayPlName.empty()) {
+        m_ctx.runMpdCommand([](struct mpd_connection *conn) { mpd_run_play(conn); });
+      }
+    }
+
+    m_ctx.backend->addTimer(
+        std::chrono::milliseconds(1),
+        [this, displayPlName, startPlaying](CAtomicSharedPointer<CTimer>, void *) {
+          if (m_ctx.showNotification) {
+            if (!displayPlName.empty()) {
+              m_ctx.showNotification("✅ Playlist '" + displayPlName + "' saved!");
+            } else {
+              m_ctx.showNotification("✅ YouTube playlist added to Queue!");
+            }
+          }
+          if (m_ctx.updateStatus)
+            m_ctx.updateStatus();
+        },
+        nullptr);
+  }).detach();
+}
+
+void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
+                          struct mpd_connection *conn) {
+  (void)conn;
+  m_tabContentWrapper = wrapper;
+  if (!m_tabContentWrapper)
+    return;
+
+  m_tabContentWrapper->clearChildren();
+
+  auto palette = m_ctx.palette;
+  std::string fontFamily = m_ctx.fontFamily;
+
+  auto tabMainLayout =
+      CColumnLayoutBuilder::begin()
+          ->gap(10)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+          ->commence();
+  m_tabContentWrapper->addChild(tabMainLayout);
+
+  // Top Search Card Header
+  auto searchCard =
+      CRectangleBuilder::begin()
+          ->color([palette] {
+            return palette ? palette->m_colors.alternateBase
+                           : CHyprColor(0.18, 0.18, 0.18, 1.0);
+          })
+          ->rounding(palette ? palette->m_vars.smallRounding : 8)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 50.0F}))
+          ->commence();
+
+  auto searchRow =
+      CRowLayoutBuilder::begin()
+          ->gap(10)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+          ->commence();
+  searchRow->setMargin(8);
+
+  auto titleInput =
+      CTextboxBuilder::begin()
+          ->placeholder("🔍 Search YouTube or paste video/playlist URL...")
+          ->defaultText(std::string(m_searchTitle))
+          ->onTextEdited([this](CSharedPointer<CTextboxElement>, const std::string &text) {
+            m_searchTitle = text;
+          })
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 34.0F}))
+          ->commence();
+  titleInput->setGrow(true);
+  searchRow->addChild(titleInput);
+
+  auto pasteBtn = CButtonBuilder::begin()
+                      ->label("📋")
+                      ->alignText(HT_FONT_ALIGN_CENTER)
+                      ->fontFamily(std::string(fontFamily))
+                      ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                      ->onMainClick([this, titleInput](CSharedPointer<CButtonElement>) {
+                        std::string pasted = Utils::readFromClipboard();
+                        if (!pasted.empty()) {
+                          titleInput->rebuild()->defaultText(std::string(pasted))->commence();
+                          m_searchTitle = pasted;
+                        }
+                      })
+                      ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                          CDynamicSize::HT_SIZE_ABSOLUTE,
+                                          {34.0F, 34.0F}))
+                      ->commence();
+  pasteBtn->setGrow(false);
+  searchRow->addChild(pasteBtn);
+
+  auto countLabel = CTextBuilder::begin()
+                        ->text(std::string("Count:"))
+                        ->color([palette] {
+                          return palette ? palette->m_colors.text
+                                         : CHyprColor(0.8, 0.8, 0.8, 1.0);
+                        })
+                        ->fontFamily(std::string(fontFamily))
+                        ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                        ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+                                            CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+                        ->commence();
+  countLabel->setGrow(false);
+  searchRow->addChild(countLabel);
+
+  auto countInput =
+      CTextboxBuilder::begin()
+          ->placeholder("5")
+          ->defaultText(std::string(m_resultCount))
+          ->onTextEdited([this](CSharedPointer<CTextboxElement>, const std::string &text) {
+            m_resultCount = text;
+          })
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {55.0F, 34.0F}))
+          ->commence();
+  countInput->setGrow(false);
+  searchRow->addChild(countInput);
+
+  auto submitBtn = CButtonBuilder::begin()
+                       ->label("🔍 Search")
+                       ->alignText(HT_FONT_ALIGN_CENTER)
+                       ->fontFamily(std::string(fontFamily))
+                       ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                       ->onMainClick([this](CSharedPointer<CButtonElement>) { triggerSearch(); })
+                       ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                           CDynamicSize::HT_SIZE_ABSOLUTE, {105.0F, 34.0F}))
+                       ->commence();
+  submitBtn->setGrow(false);
+  searchRow->addChild(submitBtn);
+
+  searchCard->addChild(searchRow);
+  tabMainLayout->addChild(searchCard);
+
+  auto scrollArea =
+      CScrollAreaBuilder::begin()
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.90F}))
+          ->scrollY(true)
+          ->commence();
+
+  auto tabContentLayout =
+      CColumnLayoutBuilder::begin()
+          ->gap(8)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+          ->commence();
+  tabContentLayout->setMargin(5);
+  scrollArea->addChild(tabContentLayout);
+  tabMainLayout->addChild(scrollArea);
+
+  if (m_searching) {
+    auto searchingText =
+        CTextBuilder::begin()
+            ->text(std::string("⏳ Searching YouTube with yt-dlp..."))
+            ->color([palette] {
+              return palette ? palette->m_colors.accent
+                             : CHyprColor(0.2, 0.8, 0.4, 1.0);
+            })
+            ->fontFamily(std::string(fontFamily))
+            ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+                                CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+            ->commence();
+    tabContentLayout->addChild(searchingText);
+  } else {
+    if (m_results.empty()) {
+      auto emptyText =
+          CTextBuilder::begin()
+              ->text(std::string("No search results. Enter a title or URL above, then click Search."))
+              ->color([palette] {
+                return palette ? palette->m_colors.text
+                               : CHyprColor(0.7, 0.7, 0.7, 1.0);
+              })
+              ->fontFamily(std::string(fontFamily))
+              ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+              ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+                                  CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+              ->commence();
+      tabContentLayout->addChild(emptyText);
+    } else {
+      int idx = 1;
+      for (const auto &res : m_results) {
+        std::string itemTitle = res.title;
+        std::string itemUploader = res.uploader;
+        std::string itemDuration = res.duration;
+        std::string itemUrl = res.url;
+
+        auto itemBox =
+            CRectangleBuilder::begin()
+                ->color([palette] {
+                  return palette ? palette->m_colors.base
+                                 : CHyprColor(0.15, 0.15, 0.15, 1.0);
+                })
+                ->rounding(palette ? palette->m_vars.smallRounding : 6)
+                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                    CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 48.0F}))
+                ->commence();
+
+        auto itemRow =
+            CRowLayoutBuilder::begin()
+                ->gap(10)
+                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+                ->commence();
+        itemRow->setMargin(6);
+
+        std::string labelText = std::to_string(idx++) + ". " + itemTitle;
+        if (!itemUploader.empty()) {
+          labelText += " - " + itemUploader;
+        }
+        if (!itemDuration.empty()) {
+          labelText += " (" + itemDuration + ")";
+        }
+
+        auto songText =
+            CTextBuilder::begin()
+                ->text(std::string(labelText))
+                ->color([palette] {
+                  return palette ? palette->m_colors.text
+                                 : CHyprColor(1, 1, 1, 1);
+                })
+                ->fontFamily(std::string(fontFamily))
+                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+                ->align(HT_FONT_ALIGN_LEFT)
+                ->noEllipsize(false)
+                ->commence();
+
+        auto textContainer =
+            CRowLayoutBuilder::begin()
+                ->gap(0)
+                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+                ->commence();
+        textContainer->setGrow(true);
+        textContainer->addChild(songText);
+        itemRow->addChild(textContainer);
+
+        auto playBtn =
+            CTextBuilder::begin()
+                ->text(std::string("▶ Play"))
+                ->color([palette] {
+                  return palette ? palette->m_colors.accent
+                                 : CHyprColor(0.2, 0.8, 0.4, 1.0);
+                })
+                ->fontFamily(std::string(fontFamily))
+                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                ->interactable(true)
+                ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+                                    CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 28.0F}))
+                ->commence();
+        playBtn->setReceivesMouse(true);
+        playBtn->setMouseButton(
+            [this, itemUrl, itemTitle, itemUploader](Input::eMouseButton button, bool down) {
+              if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+                if (m_ctx.showNotification)
+                  m_ctx.showNotification("⏳ Resolving stream link with yt-dlp...");
+
+                std::thread([this, itemUrl, itemTitle, itemUploader]() {
+                  std::string realUrl = extractDirectStreamUrl(itemUrl);
+                  if (realUrl.empty())
+                    realUrl = itemUrl;
+
+                  if (m_ctx.ytDlpService) {
+                    m_ctx.ytDlpService->setUrlTitle(realUrl, itemTitle, itemUploader);
+                    m_ctx.ytDlpService->setUrlTitle(itemUrl, itemTitle, itemUploader);
+                  }
+
+                  if (m_ctx.backend) {
+                    m_ctx.backend->addTimer(
+                        std::chrono::milliseconds(1),
+                        [this, realUrl](CAtomicSharedPointer<CTimer>, void *) {
+                          if (m_ctx.playSongFromUri)
+                            m_ctx.playSongFromUri(realUrl);
+                        },
+                        nullptr);
+                  }
+                }).detach();
+              }
+            });
+        playBtn->setGrow(false);
+        itemRow->addChild(playBtn);
+
+        auto copyBtn =
+            CTextBuilder::begin()
+                ->text(std::string("📋 Copy Link"))
+                ->color([palette] {
+                  return palette ? palette->m_colors.text
+                                 : CHyprColor(0.8, 0.8, 0.8, 1.0);
+                })
+                ->fontFamily(std::string(fontFamily))
+                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                ->interactable(true)
+                ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+                                    CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 28.0F}))
+                ->commence();
+        copyBtn->setReceivesMouse(true);
+        copyBtn->setMouseButton(
+            [this, itemUrl, itemTitle, itemUploader](Input::eMouseButton button, bool down) {
+              if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+                if (m_ctx.showNotification)
+                  m_ctx.showNotification("⏳ Extracting stream link with yt-dlp...");
+
+                std::thread([this, itemUrl, itemTitle, itemUploader]() {
+                  std::string directUrl = extractDirectStreamUrl(itemUrl);
+                  if (directUrl.empty())
+                    directUrl = itemUrl;
+
+                  if (m_ctx.ytDlpService) {
+                    m_ctx.ytDlpService->setUrlTitle(directUrl, itemTitle, itemUploader);
+                    m_ctx.ytDlpService->setUrlTitle(itemUrl, itemTitle, itemUploader);
+                  }
+
+                  bool success = Utils::copyToClipboard(directUrl);
+
+                  if (m_ctx.backend) {
+                    m_ctx.backend->addTimer(
+                        std::chrono::milliseconds(1),
+                        [this, success](CAtomicSharedPointer<CTimer>, void *) {
+                          if (m_ctx.showNotification) {
+                            if (success) {
+                              m_ctx.showNotification("📋 Copied direct stream link to clipboard!");
+                            } else {
+                              m_ctx.showNotification("❌ Failed to copy stream link");
+                            }
+                          }
+                        },
+                        nullptr);
+                  }
+                }).detach();
+              }
+            });
+        copyBtn->setGrow(false);
+        itemRow->addChild(copyBtn);
+
+        std::vector<std::string> ytdlpOptions = {
+            "Actions", "➕ Add to Queue", "📁 Add to Playlist"};
+        auto actionMenu =
+            CComboboxBuilder::begin()
+                ->items(std::move(ytdlpOptions))
+                ->currentItem(0)
+                ->onChanged([this, itemUrl, itemTitle, itemUploader](CSharedPointer<CComboboxElement> combo, size_t idx) {
+                  if (idx == 1) { // Add to Queue
+                    if (m_ctx.showNotification)
+                      m_ctx.showNotification("⏳ Resolving stream link with yt-dlp...");
+
+                    std::thread([this, itemUrl, itemTitle, itemUploader]() {
+                      std::string realUrl = extractDirectStreamUrl(itemUrl);
+                      if (realUrl.empty())
+                        realUrl = itemUrl;
+
+                      if (m_ctx.ytDlpService) {
+                        m_ctx.ytDlpService->setUrlTitle(realUrl, itemTitle, itemUploader);
+                        m_ctx.ytDlpService->setUrlTitle(itemUrl, itemTitle, itemUploader);
+                      }
+
+                      if (m_ctx.backend) {
+                        m_ctx.backend->addTimer(
+                            std::chrono::milliseconds(1),
+                            [this, realUrl](CAtomicSharedPointer<CTimer>, void *) {
+                              if (m_ctx.addSongToQueue)
+                                m_ctx.addSongToQueue(realUrl);
+                            },
+                            nullptr);
+                      }
+                    }).detach();
+                  } else if (idx == 2) { // Add to Playlist
+                    if (m_ctx.ytDlpService) {
+                      m_ctx.ytDlpService->setUrlTitle(itemUrl, itemTitle, itemUploader);
+                    }
+                    m_ctx.backend->addTimer(
+                        std::chrono::milliseconds(1),
+                        [this, itemUrl](CAtomicSharedPointer<CTimer>, void *) {
+                          if (m_ctx.showPlaylistSelectionDialog)
+                            m_ctx.showPlaylistSelectionDialog(itemUrl);
+                        },
+                        nullptr);
+                  }
+                  if (combo && idx != 0) {
+                    combo->setCurrent(0);
+                  }
+                })
+                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                    CDynamicSize::HT_SIZE_ABSOLUTE, {95.0F, 28.0F}))
+                ->commence();
+        actionMenu->setGrow(false);
+        itemRow->addChild(actionMenu);
+
+        itemBox->addChild(itemRow);
+        tabContentLayout->addChild(itemBox);
+      }
+    }
+  }
+
+  m_tabContentWrapper->forceReposition();
+}
+
+} // namespace UI::Views

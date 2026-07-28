@@ -1,5 +1,6 @@
 #include "AddItemDialog.hpp"
 #include "../../MPDClient.hpp"
+#include "../../Utils/ClipboardUtils.hpp"
 #include "../../Utils/StreamUtils.hpp"
 
 #include <hyprtoolkit/element/Button.hpp>
@@ -106,7 +107,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
             })
             ->fontFamily(std::string(fontFamily))
             ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
-            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                 CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
             ->commence();
     headerText->setGrow(true);
@@ -143,7 +144,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
               })
               ->fontFamily(std::string(fontFamily))
               ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
-              ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+              ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                   CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
               ->commence();
       titleText->setGrow(true);
@@ -205,7 +206,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
     root->forceReposition();
   };
 
-  *showAddStream = [root, cardLayout, palette, fontFamily, ctx, showMainOptions]() {
+  *showAddStream = [root, cardLayout, palette, fontFamily, ctx, showMainOptions, popupWindow]() {
     cardLayout->clearChildren();
 
     auto headerRow =
@@ -287,6 +288,25 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
             ->commence();
     urlInput->setGrow(true);
     inputRow->addChild(urlInput);
+
+    auto pasteBtn = CButtonBuilder::begin()
+                        ->label("📋")
+                        ->alignText(HT_FONT_ALIGN_CENTER)
+                        ->fontFamily(std::string(fontFamily))
+                        ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                        ->onMainClick([urlInput, urlInputPtr](CSharedPointer<CButtonElement>) {
+                          std::string pasted = Utils::readFromClipboard();
+                          if (!pasted.empty()) {
+                            urlInput->rebuild()->defaultText(std::string(pasted))->commence();
+                            *urlInputPtr = pasted;
+                          }
+                        })
+                        ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                            CDynamicSize::HT_SIZE_ABSOLUTE,
+                                            {36.0F, 36.0F}))
+                        ->commence();
+    pasteBtn->setGrow(false);
+    inputRow->addChild(pasteBtn);
 
     auto addBtn = CTextBuilder::begin()
                       ->text("➕")

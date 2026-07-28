@@ -16,14 +16,23 @@ A dedicated Hyprland frontend for the Media Player Daemon (MPD) on Linux, built 
 ### 2. Database Tab
 * **Library Overview:** View all tracks stored in your database. This reflects all files within the music directory specified in your `mpd.conf` file (defaults to `~/Music`).
 * **Seamless Integration:** Quickly append any item from the database to your active queue or a saved playlist.
+* **Database Rescan:** Trigger database updates or full rescans from the interface.
 
 ### 3. Playlists Tab
 * **Playlist Management:** Access and view all saved MPD playlists within your library.
-* **Creation and Deletion:** Generate new empty playlists or delete existing ones.
-* **Track Inspection:** Expand individual playlists to review their contents and easily load them into the current playback queue.
+* **Creation, Renaming & Deletion:** Generate new empty playlists, rename playlists, or delete existing ones.
+* **Track Inspection:** Expand individual playlists to review their contents, move tracks between playlists, and load them into the active playback queue.
 
 ### 4. YT-DLP Online Search Tab
-* **Configuration Access:** View and modify the MPD settings configured within your `~/.config/mpd.conf` file.
+* **Online Search:** Search YouTube audio tracks online using `yt-dlp`.
+* **Direct Streaming:** Stream YouTube audio directly into MPD or import entire YouTube playlists.
+* **Playlist Saving:** Save YouTube stream URLs into local MPD playlists.
+
+### 5. Settings Tab
+* **Configuration Access:** View and modify MPD settings (directories, network bind/port, auto-update, PipeWire Pulse audio output, FIFO visualizer) configured within `~/.config/mpd/mpd.conf`.
+
+### 6. Help Tab
+* **Built-in Documentation:** Access user guide and feature overview directly in the app.
 
 ---
 

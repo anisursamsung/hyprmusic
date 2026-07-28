@@ -15,16 +15,30 @@ add_compile_options(-O3 -Wall -Wextra)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(DEPS REQUIRED IMPORTED_TARGET hyprtoolkit pixman-1 libdrm)
 pkg_check_modules(HYPRUTILS REQUIRED IMPORTED_TARGET hyprutils)
-
-# FIX 1: Added IMPORTED_TARGET so it behaves exactly like the ones above
 pkg_check_modules(MPDCLIENT REQUIRED IMPORTED_TARGET libmpdclient)
 
 add_executable(hyprmusic 
     src/main.cpp
     src/MPDClient.cpp
-    src/Utils/StreamUtils.cpp
+    src/Core/HyprMusicApp.cpp
+    src/Services/MPDManager.cpp
+    src/Services/SettingsManager.cpp
+    src/Services/YtDlpService.cpp
     src/UI/Components/NotificationManager.cpp
+    src/UI/Components/PlaybackBar.cpp
+    src/UI/Components/TabBar.cpp
+    src/UI/Components/UIFactory.cpp
     src/UI/Dialogs/AddItemDialog.cpp
+    src/UI/Dialogs/CreatePlaylistDialog.cpp
+    src/UI/Dialogs/PlaylistSelectionDialog.cpp
+    src/UI/Dialogs/RenamePlaylistDialog.cpp
+    src/UI/Views/DatabaseView.cpp
+    src/UI/Views/HelpView.cpp
+    src/UI/Views/PlaylistsView.cpp
+    src/UI/Views/QueueView.cpp
+    src/UI/Views/SettingsView.cpp
+    src/UI/Views/YtDlpView.cpp
+    src/Utils/StreamUtils.cpp
 )
 
 target_link_libraries(hyprmusic 
