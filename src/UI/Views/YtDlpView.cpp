@@ -367,7 +367,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
         auto playBtn =
             CTextBuilder::begin()
-                ->text(std::string("▶ Play"))
+                ->text(std::string("▶"))
                 ->color([palette] {
                   return palette ? palette->m_colors.accent
                                  : CHyprColor(0.2, 0.8, 0.4, 1.0);
@@ -412,7 +412,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
         auto copyBtn =
             CTextBuilder::begin()
-                ->text(std::string("📋 Copy Link"))
+                ->text(std::string("🔗"))
                 ->color([palette] {
                   return palette ? palette->m_colors.text
                                  : CHyprColor(0.8, 0.8, 0.8, 1.0);
