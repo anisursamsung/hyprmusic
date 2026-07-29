@@ -227,6 +227,14 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn, int activeSongId
                                             CDynamicSize::HT_SIZE_ABSOLUTE,
                                             {1.0F, 40.0F}))
                         ->commence();
+    songItem->setReceivesMouse(true);
+    songItem->setMouseButton(
+        [this, songId](Input::eMouseButton button, bool down) {
+          if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+            if (m_ctx.playMpdSongId)
+              m_ctx.playMpdSongId(songId);
+          }
+        });
 
     auto rowLayout =
         CRowLayoutBuilder::begin()
