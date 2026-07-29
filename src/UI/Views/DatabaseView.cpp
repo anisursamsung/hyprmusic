@@ -195,7 +195,7 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                 CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
             ->commence();
-    m_dbContentLayout->setMargin(5);
+    m_dbContentLayout->setMargin(10);
 
     scrollArea->addChild(m_dbContentLayout);
     tabMainLayout->addChild(scrollArea);

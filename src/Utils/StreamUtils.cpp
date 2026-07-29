@@ -18,6 +18,17 @@ std::string getUserHomeDir() {
   return "";
 }
 
+std::string expandTilde(const std::string &path) {
+  if (path.empty())
+    return path;
+  if (path == "~")
+    return getUserHomeDir();
+  if (path.rfind("~/", 0) == 0) {
+    return getUserHomeDir() + path.substr(1);
+  }
+  return path;
+}
+
 std::string escapeShellArg(const std::string &arg) {
   std::string escaped;
   for (char c : arg) {

@@ -1,8 +1,9 @@
 #include "YtDlpService.hpp"
 #include "../Utils/StreamUtils.hpp"
-#include <thread>
 #include <cstdio>
+#include <filesystem>
 #include <iostream>
+#include <thread>
 
 namespace Services {
 
@@ -87,6 +88,73 @@ void YtDlpService::triggerSearch(
     std::string plTitle = detectedPlTitle.empty() ? "Imported YouTube Playlist"
                                                   : detectedPlTitle;
     callback(results, isPlaylistUrl, plTitle, detectedPlId);
+  }).detach();
+}
+
+void YtDlpService::downloadTrack(
+    const std::string &url, const std::string &title, const std::string &destDir,
+    CSharedPointer<IBackend> backend,
+    std::function<void(const std::string &msg)> showNotification,
+    std::function<void(const std::function<void(struct mpd_connection *)> &)> runMpdCommand) {
+  if (url.empty())
+    return;
+
+  std::string dir = expandTilde(destDir);
+  if (dir.empty()) {
+    dir = getUserHomeDir() + "/Music";
+  }
+
+  if (backend) {
+    backend->addTimer(
+        std::chrono::milliseconds(1),
+        [showNotification, title](CAtomicSharedPointer<CTimer>, void *) {
+          if (showNotification) {
+            std::string displayTitle = title.empty() ? "track" : "'" + title + "'";
+            showNotification("⏳ Download started: " + displayTitle);
+          }
+        },
+        nullptr);
+  }
+
+  std::thread([url, title, dir, backend, showNotification, runMpdCommand]() {
+    try {
+      std::filesystem::create_directories(dir);
+    } catch (...) {
+    }
+
+    std::string escapedUrl = escapeShellArg(url);
+    std::string escapedDir = escapeShellArg(dir);
+
+    std::string outputTemplate = escapedDir + "/%(title)s [%(id)s].%(ext)s";
+    std::string cmd = "yt-dlp -x --audio-format mp3 --audio-quality 0 --embed-thumbnail --embed-metadata --restrict-filenames -o \"" + outputTemplate + "\" \"" +
+                      escapedUrl + "\" >/dev/null 2>&1";
+
+    int result = std::system(cmd.c_str());
+
+    if (backend) {
+      backend->addTimer(
+          std::chrono::milliseconds(1),
+          [result, showNotification, runMpdCommand, title](CAtomicSharedPointer<CTimer>, void *) {
+            std::string displayTitle = title.empty() ? "track" : "'" + title + "'";
+            if (result == 0) {
+              if (showNotification) {
+                showNotification("✅ Download completed: " + displayTitle);
+              }
+              if (runMpdCommand) {
+                runMpdCommand([](struct mpd_connection *conn) {
+                  if (conn) {
+                    mpd_run_update(conn, nullptr);
+                  }
+                });
+              }
+            } else {
+              if (showNotification) {
+                showNotification("❌ Download failed: " + displayTitle);
+              }
+            }
+          },
+          nullptr);
+    }
   }).detach();
 }
 

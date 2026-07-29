@@ -31,6 +31,7 @@ add_executable(hyprmusic
     src/UI/Dialogs/ActionMenuDialog.cpp
     src/UI/Dialogs/AddItemDialog.cpp
     src/UI/Dialogs/CreatePlaylistDialog.cpp
+    src/UI/Dialogs/DownloadProgressDialog.cpp
     src/UI/Dialogs/PlaylistSelectionDialog.cpp
     src/UI/Dialogs/RenamePlaylistDialog.cpp
     src/UI/Views/DatabaseView.cpp

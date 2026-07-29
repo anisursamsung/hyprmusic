@@ -41,6 +41,7 @@ private:
   void switchViewMode(eViewMode mode);
   void updateStatus();
   void showNotification(const std::string &msg);
+  std::string getMusicDirectory() const;
 
   // Dialog helpers
   void showRenameDialog(const std::string &oldName);

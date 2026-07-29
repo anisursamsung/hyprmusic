@@ -33,6 +33,7 @@ struct YtDlpViewContext {
   std::function<void(const std::string &songUri)> showPlaylistSelectionDialog;
   std::function<void(const std::string &msg)> showNotification;
   std::function<void()> updateStatus;
+  std::function<std::string()> getMusicDirectory;
 };
 
 class YtDlpView {

@@ -3,6 +3,7 @@
 #include "../UI/Dialogs/CreatePlaylistDialog.hpp"
 #include "../UI/Dialogs/PlaylistSelectionDialog.hpp"
 #include "../UI/Dialogs/RenamePlaylistDialog.hpp"
+#include "../Utils/StreamUtils.hpp"
 #include <xkbcommon/xkbcommon-keysyms.h>
 #include <cstring>
 #include <iostream>
@@ -237,7 +238,8 @@ void HyprMusicApp::createUI() {
         showPlaylistSelectionDialog(uri);
       },
       .showNotification = [this](const std::string &msg) { showNotification(msg); },
-      .updateStatus = [this] { updateStatus(); }};
+      .updateStatus = [this] { updateStatus(); },
+      .getMusicDirectory = [this] { return getMusicDirectory(); }};
   m_ytDlpView = std::make_unique<UI::Views::YtDlpView>(ytCtx);
 
   UI::Views::SettingsViewContext sCtx{
@@ -566,6 +568,14 @@ void HyprMusicApp::setupTimer() {
         setupTimer();
       },
       nullptr);
+}
+
+std::string HyprMusicApp::getMusicDirectory() const {
+  auto it = m_mpdSettings.find("music_directory");
+  if (it != m_mpdSettings.end() && !it->second.empty()) {
+    return expandTilde(it->second);
+  }
+  return getUserHomeDir() + "/Music";
 }
 
 } // namespace Core
