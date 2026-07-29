@@ -1,5 +1,6 @@
 #include "PlaylistsView.hpp"
 #include "../Components/UIFactory.hpp"
+#include "../Dialogs/ActionMenuDialog.hpp"
 #include <hyprtoolkit/element/Button.hpp>
 #include <hyprtoolkit/element/ScrollArea.hpp>
 #include <hyprtoolkit/element/Textbox.hpp>
@@ -167,62 +168,68 @@ void PlaylistsView::layoutPlaylists() {
             }
           });
 
-      std::vector<std::string> options = {"", "▶ Play", "➕ Add to Queue",
-                                          "✏️ Rename", "🗑️ Delete"};
-      auto actionMenu =
-          CComboboxBuilder::begin()
-              ->items(std::move(options))
-              ->currentItem(0)
-              ->onChanged([this, plName](CSharedPointer<CComboboxElement> combo,
-                                         size_t idx) {
-                if (idx == 1) { // ▶ Play
-                  m_ctx.runMpdCommand([plName](struct mpd_connection *conn) {
-                    mpd_run_clear(conn);
-                    mpd_run_load(conn, plName.c_str());
-                    mpd_run_play(conn);
-                  });
-                  if (m_ctx.showNotification)
-                    m_ctx.showNotification("Playing " + plName);
-                  if (m_ctx.updateStatus)
-                    m_ctx.updateStatus();
-                } else if (idx == 2) { // ➕ Add to Queue
-                  addPlaylistToQueue(plName);
-                } else if (idx == 3) { // ✏️ Rename
-                  if (m_ctx.showRenameDialog)
-                    m_ctx.showRenameDialog(plName);
-                } else if (idx == 4) { // 🗑️ Delete
-                  m_ctx.runMpdCommand([plName](struct mpd_connection *conn) {
-                    mpd_run_playlist_clear(conn, plName.c_str());
-                    mpd_run_rm(conn, plName.c_str());
-                  });
-                  if (m_selectedPlaylist == plName) {
-                    m_selectedPlaylist = "";
-                    m_detailedView = false;
-                  }
-                  if (m_ctx.showNotification)
-                    m_ctx.showNotification("Deleted " + plName);
-                  m_ctx.backend->addTimer(
-                      std::chrono::milliseconds(100),
-                      [this](CAtomicSharedPointer<CTimer>, void *) {
-                        m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
-                          rebuildUI(m_tabContentWrapper, conn);
-                        });
-                      },
-                      nullptr);
-                }
-                if (combo && idx != 0 && idx != 4) {
-                  combo->setCurrent(0);
-                }
+      auto actionBtn =
+          CButtonBuilder::begin()
+              ->label("⋮")
+              ->alignText(HT_FONT_ALIGN_CENTER)
+              ->fontFamily(std::string(fontFamily))
+              ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+              ->onMainClick([this, plName](CSharedPointer<CButtonElement>) {
+                Dialogs::showActionMenuDialog({
+                    .options = {"▶ Play", "➕ Add to Queue", "✏️ Rename", "🗑️ Delete"},
+                    .onSelect =
+                        [this, plName](size_t idx, const std::string &) {
+                          if (idx == 0) { // ▶ Play
+                            m_ctx.runMpdCommand([plName](struct mpd_connection *conn) {
+                              mpd_run_clear(conn);
+                              mpd_run_load(conn, plName.c_str());
+                              mpd_run_play(conn);
+                            });
+                            if (m_ctx.showNotification)
+                              m_ctx.showNotification("Playing " + plName);
+                            if (m_ctx.updateStatus)
+                              m_ctx.updateStatus();
+                          } else if (idx == 1) { // ➕ Add to Queue
+                            addPlaylistToQueue(plName);
+                          } else if (idx == 2) { // ✏️ Rename
+                            if (m_ctx.showRenameDialog)
+                              m_ctx.showRenameDialog(plName);
+                          } else if (idx == 3) { // 🗑️ Delete
+                            m_ctx.runMpdCommand([plName](struct mpd_connection *conn) {
+                              mpd_run_playlist_clear(conn, plName.c_str());
+                              mpd_run_rm(conn, plName.c_str());
+                            });
+                            if (m_selectedPlaylist == plName) {
+                              m_selectedPlaylist = "";
+                              m_detailedView = false;
+                            }
+                            if (m_ctx.showNotification)
+                              m_ctx.showNotification("Deleted " + plName);
+                            m_ctx.backend->addTimer(
+                                std::chrono::milliseconds(100),
+                                [this](CAtomicSharedPointer<CTimer>, void *) {
+                                  m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
+                                    rebuildUI(m_tabContentWrapper, conn);
+                                  });
+                                },
+                                nullptr);
+                          }
+                        },
+                    .parentWindow = m_ctx.window,
+                    .backend = m_ctx.backend,
+                    .palette = m_ctx.palette,
+                    .fontFamily = m_ctx.fontFamily});
               })
               ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                   CDynamicSize::HT_SIZE_ABSOLUTE,
-                                  {40.0F, 24.0F}))
+                                  {28.0F, 24.0F}))
               ->commence();
 
-      actionMenu->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-      actionMenu->setPositionFlag(IElement::HT_POSITION_FLAG_RIGHT, true);
-      actionMenu->setPositionFlag(IElement::HT_POSITION_FLAG_TOP, true);
-      card->addChild(actionMenu);
+      actionBtn->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+      actionBtn->setPositionFlag(IElement::HT_POSITION_FLAG_RIGHT, true);
+      actionBtn->setPositionFlag(IElement::HT_POSITION_FLAG_TOP, true);
+      actionBtn->setAbsolutePosition(Hyprutils::Math::Vector2D(-8.0, 8.0));
+      card->addChild(actionBtn);
 
       currentRow->addChild(card);
     }
@@ -442,49 +449,57 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
       playTrackBtn->setGrow(false);
       rowLayout->addChild(playTrackBtn);
 
-      std::vector<std::string> plSongOptions = {
-          "Actions", "➕ Add to Queue", "↔ Move to Playlist", "🗑️ Remove"};
       int currentPos = songPos;
-      auto songActionMenu =
-          CComboboxBuilder::begin()
-              ->items(std::move(plSongOptions))
-              ->currentItem(0)
-              ->onChanged([this, plName, currentPos,
-                           songUriStr](CSharedPointer<CComboboxElement> combo,
-                                       size_t idx) {
-                if (idx == 1) { // ➕ Add to Queue
-                  if (!songUriStr.empty() && m_ctx.addSongToQueue) {
-                    m_ctx.addSongToQueue(songUriStr);
-                  }
-                } else if (idx == 2) { // ↔ Move to Playlist
-                  if (!songUriStr.empty() && m_ctx.showPlaylistSelectionDialog) {
-                    m_ctx.showPlaylistSelectionDialog(songUriStr, currentPos);
-                  }
-                } else if (idx == 3) { // 🗑️ Remove
-                  m_ctx.runMpdCommand([plName, currentPos](struct mpd_connection *conn) {
-                    mpd_run_playlist_delete(conn, plName.c_str(), currentPos);
-                  });
-                  if (m_ctx.showNotification)
-                    m_ctx.showNotification("Removed from " + plName);
-                  m_ctx.backend->addTimer(
-                      std::chrono::milliseconds(100),
-                      [this](CAtomicSharedPointer<CTimer>, void *) {
-                        m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
-                          rebuildRightItems(conn);
-                        });
-                      },
-                      nullptr);
-                }
-                if (combo && idx != 0 && idx != 3) {
-                  combo->setCurrent(0);
-                }
+      auto actionBtn =
+          CButtonBuilder::begin()
+              ->label("⋮")
+              ->alignText(HT_FONT_ALIGN_CENTER)
+              ->fontFamily(std::string(fontFamily))
+              ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+              ->onMainClick([this, plName, currentPos, songUriStr](CSharedPointer<CButtonElement>) {
+                Dialogs::showActionMenuDialog({
+                    .options = {"➕ Add to Queue", "📋 Copy to Playlist", "↔ Move to Playlist", "🗑️ Remove"},
+                    .onSelect =
+                        [this, plName, currentPos, songUriStr](size_t idx, const std::string &) {
+                          if (idx == 0) { // ➕ Add to Queue
+                            if (!songUriStr.empty() && m_ctx.addSongToQueue) {
+                              m_ctx.addSongToQueue(songUriStr);
+                            }
+                          } else if (idx == 1) { // 📋 Copy to Playlist
+                            if (!songUriStr.empty() && m_ctx.showPlaylistSelectionDialog) {
+                              m_ctx.showPlaylistSelectionDialog(songUriStr, -1);
+                            }
+                          } else if (idx == 2) { // ↔ Move to Playlist
+                            if (!songUriStr.empty() && m_ctx.showPlaylistSelectionDialog) {
+                              m_ctx.showPlaylistSelectionDialog(songUriStr, currentPos);
+                            }
+                          } else if (idx == 3) { // 🗑️ Remove
+                            m_ctx.runMpdCommand([plName, currentPos](struct mpd_connection *conn) {
+                              mpd_run_playlist_delete(conn, plName.c_str(), currentPos);
+                            });
+                            if (m_ctx.showNotification)
+                              m_ctx.showNotification("Removed from " + plName);
+                            m_ctx.backend->addTimer(
+                                std::chrono::milliseconds(100),
+                                [this](CAtomicSharedPointer<CTimer>, void *) {
+                                  m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
+                                    rebuildRightItems(conn);
+                                  });
+                                },
+                                nullptr);
+                          }
+                        },
+                    .parentWindow = m_ctx.window,
+                    .backend = m_ctx.backend,
+                    .palette = m_ctx.palette,
+                    .fontFamily = m_ctx.fontFamily});
               })
               ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                   CDynamicSize::HT_SIZE_ABSOLUTE,
-                                  {95.0F, 28.0F}))
+                                  {28.0F, 28.0F}))
               ->commence();
-      songActionMenu->setGrow(false);
-      rowLayout->addChild(songActionMenu);
+      actionBtn->setGrow(false);
+      rowLayout->addChild(actionBtn);
 
       songItem->addChild(rowLayout);
       m_rightItemsLayout->addChild(songItem);
@@ -669,57 +684,62 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
     plTitle->setGrow(true);
     plTitleRow->addChild(plTitle);
 
-    std::vector<std::string> options = {"Actions", "▶ Play", "➕ Add to Queue",
-                                        "✏️ Rename", "🗑️ Delete"};
-    auto actionMenu =
-        CComboboxBuilder::begin()
-            ->items(std::move(options))
-            ->currentItem(0)
-            ->onChanged([this, plName](CSharedPointer<CComboboxElement> combo,
-                                       size_t idx) {
-              if (idx == 1) { // ▶ Play
-                m_ctx.runMpdCommand([plName](struct mpd_connection *conn) {
-                  mpd_run_clear(conn);
-                  mpd_run_load(conn, plName.c_str());
-                  mpd_run_play(conn);
-                });
-                if (m_ctx.showNotification)
-                  m_ctx.showNotification("Playing " + plName);
-                if (m_ctx.updateStatus)
-                  m_ctx.updateStatus();
-              } else if (idx == 2) { // ➕ Add to Queue
-                addPlaylistToQueue(plName);
-              } else if (idx == 3) { // ✏️ Rename
-                if (m_ctx.showRenameDialog)
-                  m_ctx.showRenameDialog(plName);
-              } else if (idx == 4) { // 🗑️ Delete
-                m_ctx.runMpdCommand([plName](struct mpd_connection *conn) {
-                  mpd_run_playlist_clear(conn, plName.c_str());
-                  mpd_run_rm(conn, plName.c_str());
-                });
-                m_selectedPlaylist = "";
-                m_detailedView = false;
-                if (m_ctx.showNotification)
-                  m_ctx.showNotification("Deleted " + plName);
-                m_ctx.backend->addTimer(
-                    std::chrono::milliseconds(100),
-                    [this](CAtomicSharedPointer<CTimer>, void *) {
-                      m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
-                        rebuildUI(m_tabContentWrapper, conn);
-                      });
-                    },
-                    nullptr);
-              }
-              if (combo && idx != 0) {
-                combo->setCurrent(0);
-              }
+    auto actionBtn =
+        CButtonBuilder::begin()
+            ->label("⋮")
+            ->alignText(HT_FONT_ALIGN_CENTER)
+            ->fontFamily(std::string(fontFamily))
+            ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+            ->onMainClick([this, plName](CSharedPointer<CButtonElement>) {
+              Dialogs::showActionMenuDialog({
+                  .options = {"▶ Play", "➕ Add to Queue", "✏️ Rename", "🗑️ Delete"},
+                  .onSelect =
+                      [this, plName](size_t idx, const std::string &) {
+                        if (idx == 0) { // ▶ Play
+                          m_ctx.runMpdCommand([plName](struct mpd_connection *conn) {
+                            mpd_run_clear(conn);
+                            mpd_run_load(conn, plName.c_str());
+                            mpd_run_play(conn);
+                          });
+                          if (m_ctx.showNotification)
+                            m_ctx.showNotification("Playing " + plName);
+                          if (m_ctx.updateStatus)
+                            m_ctx.updateStatus();
+                        } else if (idx == 1) { // ➕ Add to Queue
+                          addPlaylistToQueue(plName);
+                        } else if (idx == 2) { // ✏️ Rename
+                          if (m_ctx.showRenameDialog)
+                            m_ctx.showRenameDialog(plName);
+                        } else if (idx == 3) { // 🗑️ Delete
+                          m_ctx.runMpdCommand([plName](struct mpd_connection *conn) {
+                            mpd_run_playlist_clear(conn, plName.c_str());
+                            mpd_run_rm(conn, plName.c_str());
+                          });
+                          m_selectedPlaylist = "";
+                          m_detailedView = false;
+                          if (m_ctx.showNotification)
+                            m_ctx.showNotification("Deleted " + plName);
+                          m_ctx.backend->addTimer(
+                              std::chrono::milliseconds(100),
+                              [this](CAtomicSharedPointer<CTimer>, void *) {
+                                m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
+                                  rebuildUI(m_tabContentWrapper, conn);
+                                });
+                              },
+                              nullptr);
+                        }
+                      },
+                  .parentWindow = m_ctx.window,
+                  .backend = m_ctx.backend,
+                  .palette = m_ctx.palette,
+                  .fontFamily = m_ctx.fontFamily});
             })
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                 CDynamicSize::HT_SIZE_ABSOLUTE,
-                                {110.0F, 32.0F}))
+                                {28.0F, 28.0F}))
             ->commence();
-    actionMenu->setGrow(false);
-    plTitleRow->addChild(actionMenu);
+    actionBtn->setGrow(false);
+    plTitleRow->addChild(actionBtn);
 
     auto addTrackBtn =
         CButtonBuilder::begin()

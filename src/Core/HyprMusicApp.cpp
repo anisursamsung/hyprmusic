@@ -257,7 +257,11 @@ void HyprMusicApp::createUI() {
   m_settingsView = std::make_unique<UI::Views::SettingsView>(sCtx);
 
   UI::Views::HelpViewContext hCtx{
-      .window = m_window, .backend = m_backend, .palette = palette, .fontFamily = fontFamily};
+      .window = m_window,
+      .backend = m_backend,
+      .palette = palette,
+      .fontFamily = fontFamily,
+      .showNotification = [this](const std::string &msg) { showNotification(msg); }};
   m_helpView = std::make_unique<UI::Views::HelpView>(hCtx);
 
   m_tabBar->updateActiveTab(m_viewMode);

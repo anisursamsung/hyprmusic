@@ -1,4 +1,5 @@
 #include "HelpView.hpp"
+#include <hyprtoolkit/element/Line.hpp>
 #include <hyprtoolkit/element/ScrollArea.hpp>
 #include <fstream>
 #include <vector>
@@ -39,11 +40,11 @@ void HelpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper) {
 
   m_helpContentLayout =
       CColumnLayoutBuilder::begin()
-          ->gap(12)
+          ->gap(8)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
           ->commence();
-  m_helpContentLayout->setMargin(5);
+  m_helpContentLayout->setMargin(10);
   scrollArea->addChild(m_helpContentLayout);
 
   std::string helpFilePath = "HELP.md";
@@ -78,36 +79,12 @@ void HelpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper) {
         "- Interactive bottom bar with track details, seek slider, play/pause, and volume."};
   }
 
-  CSharedPointer<CColumnLayoutElement> currentCardLayout = nullptr;
-
-  auto finalizeCard = [this, palette](CSharedPointer<CColumnLayoutElement> cardLayout) {
-    if (!cardLayout)
-      return;
-    auto cardBg =
-        CRectangleBuilder::begin()
-            ->color([palette] {
-              return palette ? palette->m_colors.base
-                             : CHyprColor(0.15, 0.15, 0.15, 1.0);
-            })
-            ->rounding(palette ? palette->m_vars.smallRounding : 5)
-            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
-            ->commence();
-    cardBg->addChild(cardLayout);
-    m_helpContentLayout->addChild(cardBg);
-  };
-
   for (const auto &rawLine : lines) {
     std::string line = rawLine;
     if (!line.empty() && line.back() == '\r')
       line.pop_back();
 
     if (line.rfind("# ", 0) == 0) {
-      if (currentCardLayout) {
-        finalizeCard(currentCardLayout);
-        currentCardLayout = nullptr;
-      }
-
       auto titleTxt =
           CTextBuilder::begin()
               ->text(std::string(line.substr(2)))
@@ -123,11 +100,6 @@ void HelpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper) {
               ->commence();
       m_helpContentLayout->addChild(titleTxt);
     } else if (line.rfind("## ", 0) == 0) {
-      if (currentCardLayout) {
-        finalizeCard(currentCardLayout);
-        currentCardLayout = nullptr;
-      }
-
       auto titleTxt =
           CTextBuilder::begin()
               ->text(std::string(line.substr(3)))
@@ -143,20 +115,7 @@ void HelpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper) {
               ->commence();
       m_helpContentLayout->addChild(titleTxt);
     } else if (line.rfind("### ", 0) == 0) {
-      if (currentCardLayout) {
-        finalizeCard(currentCardLayout);
-        currentCardLayout = nullptr;
-      }
-
-      currentCardLayout =
-          CColumnLayoutBuilder::begin()
-              ->gap(8)
-              ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                  CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
-              ->commence();
-      currentCardLayout->setMargin(12);
-
-      auto h3Txt =
+      auto titleTxt =
           CTextBuilder::begin()
               ->text(std::string(line.substr(4)))
               ->color([palette] {
@@ -169,8 +128,20 @@ void HelpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper) {
               ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                   CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
               ->commence();
-      currentCardLayout->addChild(h3Txt);
-    } else if (!line.empty() && line != "---") {
+      m_helpContentLayout->addChild(titleTxt);
+    } else if (line == "---") {
+      auto lineDivider =
+          CLineBuilder::begin()
+              ->color([palette] {
+                return palette ? palette->m_colors.alternateBase
+                               : CHyprColor(0.3, 0.3, 0.3, 0.5);
+              })
+              ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                  CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 2.0F}))
+              ->commence();
+      lineDivider->setGrow(false);
+      m_helpContentLayout->addChild(lineDivider);
+    } else if (!line.empty()) {
       auto bodyTxt =
           CTextBuilder::begin()
               ->text(std::string(line))
@@ -185,16 +156,8 @@ void HelpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper) {
               ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                   CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
               ->commence();
-      if (currentCardLayout) {
-        currentCardLayout->addChild(bodyTxt);
-      } else {
-        m_helpContentLayout->addChild(bodyTxt);
-      }
+      m_helpContentLayout->addChild(bodyTxt);
     }
-  }
-
-  if (currentCardLayout) {
-    finalizeCard(currentCardLayout);
   }
 
   m_tabContentWrapper->forceReposition();

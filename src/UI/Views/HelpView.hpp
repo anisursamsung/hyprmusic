@@ -19,6 +19,7 @@ struct HelpViewContext {
   CSharedPointer<IBackend> backend;
   CSharedPointer<CPalette> palette;
   std::string fontFamily;
+  std::function<void(const std::string &)> showNotification;
 };
 
 class HelpView {

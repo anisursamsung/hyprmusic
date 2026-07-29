@@ -28,6 +28,7 @@ add_executable(hyprmusic
     src/UI/Components/PlaybackBar.cpp
     src/UI/Components/TabBar.cpp
     src/UI/Components/UIFactory.cpp
+    src/UI/Dialogs/ActionMenuDialog.cpp
     src/UI/Dialogs/AddItemDialog.cpp
     src/UI/Dialogs/CreatePlaylistDialog.cpp
     src/UI/Dialogs/PlaylistSelectionDialog.cpp

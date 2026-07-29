@@ -1,4 +1,5 @@
 #include "QueueView.hpp"
+#include "../Dialogs/ActionMenuDialog.hpp"
 #include <hyprtoolkit/element/Button.hpp>
 #include <hyprtoolkit/element/RowLayout.hpp>
 #include <hyprtoolkit/element/ScrollArea.hpp>
@@ -286,41 +287,39 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn, int activeSongId
     textContainer->addChild(songText);
     rowLayout->addChild(textContainer);
 
-    std::vector<std::string> songOptions = {"Actions", "🗑️ Remove",
-                                            "📁 Add to Playlist"};
     std::string songUriStr = uri ? uri : "";
-    auto songActionMenu =
-        CComboboxBuilder::begin()
-            ->items(std::move(songOptions))
-            ->currentItem(0)
-            ->onChanged([this, songId,
-                         songUriStr](CSharedPointer<CComboboxElement> combo,
-                                     size_t idx) {
-              if (idx == 1) { // 🗑️ Remove
-                m_ctx.backend->addTimer(
-                    std::chrono::milliseconds(1),
-                    [this, songId](CAtomicSharedPointer<CTimer>, void *) {
-                      if (m_ctx.removeSongFromQueue)
-                        m_ctx.removeSongFromQueue(songId);
-                    },
-                    nullptr);
-              } else if (idx == 2) { // 📁 Add to Playlist
-                m_ctx.backend->addTimer(
-                    std::chrono::milliseconds(1),
-                    [this, songUriStr](CAtomicSharedPointer<CTimer>, void *) {
-                      if (!songUriStr.empty() && m_ctx.showPlaylistSelectionDialog) {
-                        m_ctx.showPlaylistSelectionDialog(songUriStr);
-                      }
-                    },
-                    nullptr);
-              }
+    std::string songTitleStr = displayTitle;
+    auto actionBtn =
+        CButtonBuilder::begin()
+            ->label("⋮")
+            ->alignText(HT_FONT_ALIGN_CENTER)
+            ->fontFamily(std::string(fontFamily))
+            ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+            ->onMainClick([this, songId, songUriStr, songTitleStr](CSharedPointer<CButtonElement>) {
+              Dialogs::showActionMenuDialog({
+                  .options = {"🗑️ Remove from Queue", "📁 Add to Playlist"},
+                  .onSelect =
+                      [this, songId, songUriStr](size_t idx, const std::string &) {
+                        if (idx == 0) { // 🗑️ Remove
+                          if (m_ctx.removeSongFromQueue)
+                            m_ctx.removeSongFromQueue(songId);
+                        } else if (idx == 1) { // 📁 Add to Playlist
+                          if (!songUriStr.empty() && m_ctx.showPlaylistSelectionDialog) {
+                            m_ctx.showPlaylistSelectionDialog(songUriStr);
+                          }
+                        }
+                      },
+                  .parentWindow = m_ctx.window,
+                  .backend = m_ctx.backend,
+                  .palette = m_ctx.palette,
+                  .fontFamily = m_ctx.fontFamily});
             })
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                 CDynamicSize::HT_SIZE_ABSOLUTE,
-                                {95.0F, 28.0F}))
+                                {28.0F, 28.0F}))
             ->commence();
-    songActionMenu->setGrow(false);
-    rowLayout->addChild(songActionMenu);
+    actionBtn->setGrow(false);
+    rowLayout->addChild(actionBtn);
 
     songItem->addChild(rowLayout);
     m_queueContentLayout->addChild(songItem);

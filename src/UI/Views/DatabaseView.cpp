@@ -1,4 +1,6 @@
 #include "DatabaseView.hpp"
+#include "../Dialogs/ActionMenuDialog.hpp"
+#include <hyprtoolkit/element/Button.hpp>
 #include <hyprtoolkit/element/RowLayout.hpp>
 #include <hyprtoolkit/element/ScrollArea.hpp>
 #include <hyprtoolkit/element/Textbox.hpp>
@@ -301,36 +303,37 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
         playTrackBtn->setGrow(false);
         rowLayout->addChild(playTrackBtn);
 
-        std::vector<std::string> dbSongOptions = {
-            "Actions", "➕ Add to Queue", "📁 Add to Playlist"};
-        auto songActionMenu =
-            CComboboxBuilder::begin()
-                ->items(std::move(dbSongOptions))
-                ->currentItem(0)
-                ->onChanged([this, songUri](CSharedPointer<CComboboxElement> combo,
-                                            size_t idx) {
-                  if (idx == 1) { // ➕ Add to Queue
-                    m_ctx.backend->addTimer(
-                        std::chrono::milliseconds(1),
-                        [this, songUri](CAtomicSharedPointer<CTimer>, void *) {
-                          if (m_ctx.addSongToQueue)
-                            m_ctx.addSongToQueue(songUri);
-                        },
-                        nullptr);
-                  } else if (idx == 2) { // 📁 Add to Playlist
-                    if (!songUri.empty() && m_ctx.showPlaylistSelectionDialog) {
-                      m_ctx.showPlaylistSelectionDialog(songUri);
-                    }
-                    if (combo)
-                      combo->setCurrent(0);
-                  }
+        auto actionBtn =
+            CButtonBuilder::begin()
+                ->label("⋮")
+                ->alignText(HT_FONT_ALIGN_CENTER)
+                ->fontFamily(std::string(fontFamily))
+                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                ->onMainClick([this, songUri](CSharedPointer<CButtonElement>) {
+                  Dialogs::showActionMenuDialog({
+                      .options = {"➕ Add to Queue", "📁 Add to Playlist"},
+                      .onSelect =
+                          [this, songUri](size_t idx, const std::string &) {
+                            if (idx == 0) { // ➕ Add to Queue
+                              if (m_ctx.addSongToQueue)
+                                m_ctx.addSongToQueue(songUri);
+                            } else if (idx == 1) { // 📁 Add to Playlist
+                              if (!songUri.empty() && m_ctx.showPlaylistSelectionDialog) {
+                                m_ctx.showPlaylistSelectionDialog(songUri);
+                              }
+                            }
+                          },
+                      .parentWindow = m_ctx.window,
+                      .backend = m_ctx.backend,
+                      .palette = m_ctx.palette,
+                      .fontFamily = m_ctx.fontFamily});
                 })
                 ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                     CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {95.0F, 28.0F}))
+                                    {28.0F, 28.0F}))
                 ->commence();
-        songActionMenu->setGrow(false);
-        rowLayout->addChild(songActionMenu);
+        actionBtn->setGrow(false);
+        rowLayout->addChild(actionBtn);
 
         songItem->addChild(rowLayout);
         m_dbContentLayout->addChild(songItem);
