@@ -326,7 +326,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
         auto itemRow =
             CRowLayoutBuilder::begin()
-                ->gap(10)
+                ->gap(16)
                 ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                     CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
                 ->commence();
@@ -374,9 +374,10 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                 })
                 ->fontFamily(std::string(fontFamily))
                 ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                ->align(HT_FONT_ALIGN_CENTER)
                 ->interactable(true)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 28.0F}))
+                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                    CDynamicSize::HT_SIZE_ABSOLUTE, {28.0F, 28.0F}))
                 ->commence();
         playBtn->setReceivesMouse(true);
         playBtn->setMouseButton(
@@ -419,9 +420,10 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                 })
                 ->fontFamily(std::string(fontFamily))
                 ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                ->align(HT_FONT_ALIGN_CENTER)
                 ->interactable(true)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 28.0F}))
+                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                    CDynamicSize::HT_SIZE_ABSOLUTE, {28.0F, 28.0F}))
                 ->commence();
         copyBtn->setReceivesMouse(true);
         copyBtn->setMouseButton(
