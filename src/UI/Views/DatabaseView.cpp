@@ -73,40 +73,100 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
     searchBar->setGrow(true);
     topSearchRow->addChild(searchBar);
 
-    std::vector<std::string> refreshOptions = {"Update", "Rescan"};
-    auto refreshCombo =
-        CComboboxBuilder::begin()
-            ->items(std::move(refreshOptions))
-            ->currentItem(0)
-            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                CDynamicSize::HT_SIZE_ABSOLUTE, {110.0F, 32.0F}))
-            ->onChanged([this](CSharedPointer<CComboboxElement> combo, size_t idx) {
-              if (idx == 1) { // Update
-                m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
-                  if (conn) {
-                    mpd_run_update(conn, nullptr);
-                    populateDatabaseSongs(conn);
-                  }
-                });
-                if (m_ctx.showNotification)
-                  m_ctx.showNotification("🔄 MPD Update Triggered");
-              } else if (idx == 2) { // Rescan
-                m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
-                  if (conn) {
-                    mpd_run_rescan(conn, nullptr);
-                    populateDatabaseSongs(conn);
-                  }
-                });
-                if (m_ctx.showNotification)
-                  m_ctx.showNotification("🔍 Full Database Rescan Triggered");
-              }
-              if (combo && idx != 0) {
-                combo->setCurrent(0);
-              }
+    auto dbActionsBtn =
+        CButtonBuilder::begin()
+            ->label("⋮")
+            ->alignText(HT_FONT_ALIGN_CENTER)
+            ->fontFamily(std::string(fontFamily))
+            ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+            ->onMainClick([this](CSharedPointer<CButtonElement>) {
+              Dialogs::showActionMenuDialog({
+                  .options = {"➕ Add All to Queue", "📁 Add All to Playlist",
+                              "🔄 Update Database", "🔍 Rescan Database"},
+                  .onSelect =
+                      [this](size_t idx, const std::string &) {
+                        if (idx == 0) { // ➕ Add All to Queue
+                          m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
+                            if (!conn)
+                              return;
+
+                            std::unordered_set<std::string> queueUris;
+                            if (mpd_send_list_queue_meta(conn)) {
+                              struct mpd_song *s;
+                              while ((s = mpd_recv_song(conn)) != NULL) {
+                                const char *u = mpd_song_get_uri(s);
+                                if (u)
+                                  queueUris.insert(std::string(u));
+                                mpd_song_free(s);
+                              }
+                              mpd_response_finish(conn);
+                            }
+
+                            auto dbUris = collectMatchingSongUris(conn);
+                            int addedCount = 0;
+                            for (const auto &uri : dbUris) {
+                              if (queueUris.find(uri) == queueUris.end()) {
+                                mpd_run_add(conn, uri.c_str());
+                                queueUris.insert(uri);
+                                addedCount++;
+                              }
+                            }
+
+                            populateDatabaseSongs(conn);
+
+                            if (m_ctx.showNotification) {
+                              if (addedCount > 0)
+                                m_ctx.showNotification("➕ Added " + std::to_string(addedCount) +
+                                                       " item(s) to Queue");
+                              else
+                                m_ctx.showNotification("All items are already in Queue");
+                            }
+                          });
+                        } else if (idx == 1) { // 📁 Add All to Playlist
+                          m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
+                            if (!conn)
+                              return;
+                            auto dbUris = collectMatchingSongUris(conn);
+                            if (dbUris.empty()) {
+                              if (m_ctx.showNotification)
+                                m_ctx.showNotification("No songs match current search/filter");
+                              return;
+                            }
+                            if (m_ctx.showPlaylistBatchSelectionDialog) {
+                              m_ctx.showPlaylistBatchSelectionDialog(dbUris);
+                            }
+                          });
+                        } else if (idx == 2) { // 🔄 Update Database
+                          m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
+                            if (conn) {
+                              mpd_run_update(conn, nullptr);
+                              populateDatabaseSongs(conn);
+                            }
+                          });
+                          if (m_ctx.showNotification)
+                            m_ctx.showNotification("🔄 MPD Update Triggered");
+                        } else if (idx == 3) { // 🔍 Rescan Database
+                          m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
+                            if (conn) {
+                              mpd_run_rescan(conn, nullptr);
+                              populateDatabaseSongs(conn);
+                            }
+                          });
+                          if (m_ctx.showNotification)
+                            m_ctx.showNotification("🔍 Full Database Rescan Triggered");
+                        }
+                      },
+                  .parentWindow = m_ctx.window,
+                  .backend = m_ctx.backend,
+                  .palette = m_ctx.palette,
+                  .fontFamily = m_ctx.fontFamily});
             })
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                CDynamicSize::HT_SIZE_ABSOLUTE,
+                                {32.0F, 32.0F}))
             ->commence();
-    refreshCombo->setGrow(false);
-    topSearchRow->addChild(refreshCombo);
+    dbActionsBtn->setGrow(false);
+    topSearchRow->addChild(dbActionsBtn);
 
     topControlsCol->addChild(topSearchRow);
     tabMainLayout->addChild(topControlsCol);
@@ -363,6 +423,48 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
   m_dbContentLayout->forceReposition();
   if (m_tabContentWrapper)
     m_tabContentWrapper->forceReposition();
+}
+
+std::vector<std::string> DatabaseView::collectMatchingSongUris(struct mpd_connection *conn) {
+  std::vector<std::string> uris;
+  if (!conn || !mpd_send_list_all_meta(conn, NULL)) {
+    return uris;
+  }
+
+  struct mpd_entity *entity;
+  while ((entity = mpd_recv_entity(conn)) != NULL) {
+    if (mpd_entity_get_type(entity) == MPD_ENTITY_TYPE_SONG) {
+      const struct mpd_song *s = mpd_entity_get_song(entity);
+      const char *uri = mpd_song_get_uri(s);
+      if (uri) {
+        std::string songUri(uri);
+        const char *artist = mpd_song_get_tag(s, MPD_TAG_ARTIST, 0);
+        const char *title = mpd_song_get_tag(s, MPD_TAG_TITLE, 0);
+        std::string displayTitle;
+        if (title) {
+          std::string artistStr = artist ? artist : "Unknown Artist";
+          displayTitle = std::string(title) + " - " + artistStr;
+        } else {
+          displayTitle = songUri;
+        }
+
+        if (!m_searchQuery.empty()) {
+          std::string query = m_searchQuery;
+          std::string titleLower = displayTitle;
+          std::transform(titleLower.begin(), titleLower.end(), titleLower.begin(), ::tolower);
+          std::transform(query.begin(), query.end(), query.begin(), ::tolower);
+          if (titleLower.find(query) == std::string::npos) {
+            mpd_entity_free(entity);
+            continue;
+          }
+        }
+        uris.push_back(songUri);
+      }
+    }
+    mpd_entity_free(entity);
+  }
+  mpd_response_finish(conn);
+  return uris;
 }
 
 } // namespace UI::Views

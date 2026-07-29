@@ -96,6 +96,46 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
     addItemBtn->setGrow(false);
     topSearchRow->addChild(addItemBtn);
 
+    auto queueActionsBtn =
+        CButtonBuilder::begin()
+            ->label("⋮")
+            ->alignText(HT_FONT_ALIGN_CENTER)
+            ->fontFamily(std::string(fontFamily))
+            ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+            ->onMainClick([this](CSharedPointer<CButtonElement>) {
+              Dialogs::showActionMenuDialog({
+                  .options = {"▶ Play All", "🔀 Shuffle Queue", "🗑️ Clear Queue"},
+                  .onSelect =
+                      [this](size_t idx, const std::string &) {
+                        if (idx == 0) { // ▶ Play All
+                          m_ctx.runMpdCommand([](struct mpd_connection *conn) {
+                            if (conn)
+                              mpd_run_play_pos(conn, 0);
+                          });
+                        } else if (idx == 1) { // 🔀 Shuffle Queue
+                          m_ctx.runMpdCommand([](struct mpd_connection *conn) {
+                            if (conn)
+                              mpd_run_shuffle(conn);
+                          });
+                        } else if (idx == 2) { // 🗑️ Clear Queue
+                          m_ctx.runMpdCommand([](struct mpd_connection *conn) {
+                            if (conn)
+                              mpd_run_clear(conn);
+                          });
+                        }
+                      },
+                  .parentWindow = m_ctx.window,
+                  .backend = m_ctx.backend,
+                  .palette = m_ctx.palette,
+                  .fontFamily = m_ctx.fontFamily});
+            })
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                CDynamicSize::HT_SIZE_ABSOLUTE,
+                                {32.0F, 32.0F}))
+            ->commence();
+    queueActionsBtn->setGrow(false);
+    topSearchRow->addChild(queueActionsBtn);
+
     topControlsCol->addChild(topSearchRow);
     tabMainLayout->addChild(topControlsCol);
 

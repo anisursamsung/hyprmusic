@@ -46,6 +46,7 @@ private:
   void showRenameDialog(const std::string &oldName);
   void showCreatePlaylistDialog();
   void showPlaylistSelectionDialog(const std::string &songUri, int moveFromSongPos = -1);
+  void showPlaylistBatchSelectionDialog(const std::vector<std::string> &songUris);
   void showQueueAddItemDialog();
   void showPlaylistAddItemDialog(const std::string &playlistName);
 

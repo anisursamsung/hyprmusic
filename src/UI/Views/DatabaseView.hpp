@@ -10,6 +10,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace UI::Views {
 
@@ -26,6 +27,7 @@ struct DatabaseViewContext {
   std::function<void(const std::string &uri)> playSongFromUri;
   std::function<void(const std::string &uri)> addSongToQueue;
   std::function<void(const std::string &uri)> showPlaylistSelectionDialog;
+  std::function<void(const std::vector<std::string> &uris)> showPlaylistBatchSelectionDialog;
   std::function<void(const std::string &msg)> showNotification;
 };
 
@@ -35,6 +37,7 @@ public:
 
   void rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd_connection *conn);
   void populateDatabaseSongs(struct mpd_connection *conn);
+  std::vector<std::string> collectMatchingSongUris(struct mpd_connection *conn);
   void resetLayout() { m_dbContentLayout = nullptr; }
 
 private:

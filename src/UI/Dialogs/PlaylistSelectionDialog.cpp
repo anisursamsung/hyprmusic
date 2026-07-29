@@ -8,6 +8,7 @@
 #include <hyprtoolkit/element/Text.hpp>
 #include <algorithm>
 #include <thread>
+#include <unordered_set>
 
 namespace UI::Dialogs {
 
@@ -146,56 +147,67 @@ void showPlaylistSelectionDialog(const PlaylistSelectionContext &ctx) {
           }
         };
 
-        std::thread([ctx, plName, songUri, moveFromSongPos, currentPl, safeNotify]() {
-          std::string finalUri = songUri;
-          if (songUri.rfind("http://", 0) == 0 ||
-              songUri.rfind("https://", 0) == 0) {
-            if (songUri.find("youtube.com") != std::string::npos ||
-                songUri.find("youtu.be") != std::string::npos) {
-              safeNotify("⏳ Resolving YouTube stream...");
-
-              std::string resTitle = "Stream Track";
-              std::string resUploader = "";
-              std::string realUrl = extractDirectStreamUrl(songUri);
-              if (!realUrl.empty()) {
-                finalUri = realUrl;
-                if (ctx.ytDlpService) {
-                  ctx.ytDlpService->setUrlTitle(realUrl, resTitle, resUploader);
-                }
-              } else {
-                safeNotify("❌ Failed to resolve stream");
-                return;
-              }
-            }
+        std::thread([ctx, plName, moveFromSongPos, currentPl, safeNotify]() {
+          std::vector<std::string> urisToProcess;
+          if (!ctx.songUris.empty()) {
+            urisToProcess = ctx.songUris;
+          } else if (!ctx.songUri.empty()) {
+            urisToProcess = {ctx.songUri};
           }
 
-          ctx.runMpdCommand([ctx, plName, finalUri, moveFromSongPos, currentPl,
+          if (urisToProcess.empty())
+            return;
+
+          ctx.runMpdCommand([ctx, plName, urisToProcess, moveFromSongPos, currentPl,
                              safeNotify](struct mpd_connection *conn) {
-            bool alreadyInPlaylist = false;
-            if (conn && mpd_send_list_playlist_meta(conn, plName.c_str())) {
+            if (!conn)
+              return;
+
+            std::unordered_set<std::string> existingPlaylistUris;
+            if (mpd_send_list_playlist_meta(conn, plName.c_str())) {
               struct mpd_song *s;
               while ((s = mpd_recv_song(conn)) != NULL) {
                 const char *pUri = mpd_song_get_uri(s);
-                if (pUri && std::string(pUri) == finalUri) {
-                  alreadyInPlaylist = true;
+                if (pUri) {
+                  existingPlaylistUris.insert(std::string(pUri));
                 }
                 mpd_song_free(s);
               }
               mpd_response_finish(conn);
             }
 
-            if (alreadyInPlaylist) {
-              safeNotify("Already added to " + plName);
-            } else {
-              mpd_run_playlist_add(conn, plName.c_str(), finalUri.c_str());
-              if (moveFromSongPos >= 0 && !currentPl.empty()) {
-                mpd_run_playlist_delete(conn, currentPl.c_str(),
-                                        moveFromSongPos);
+            int addedCount = 0;
+            for (const auto &rawUri : urisToProcess) {
+              std::string finalUri = rawUri;
+              if (rawUri.rfind("http://", 0) == 0 || rawUri.rfind("https://", 0) == 0) {
+                if (rawUri.find("youtube.com") != std::string::npos ||
+                    rawUri.find("youtu.be") != std::string::npos) {
+                  std::string realUrl = extractDirectStreamUrl(rawUri);
+                  if (!realUrl.empty())
+                    finalUri = realUrl;
+                }
               }
-              safeNotify("Added to " + plName);
-              if (ctx.onPlaylistUpdated)
-                ctx.onPlaylistUpdated();
+
+              if (existingPlaylistUris.find(finalUri) == existingPlaylistUris.end()) {
+                if (mpd_run_playlist_add(conn, plName.c_str(), finalUri.c_str())) {
+                  existingPlaylistUris.insert(finalUri);
+                  addedCount++;
+                }
+              }
             }
+
+            if (moveFromSongPos >= 0 && !currentPl.empty() && urisToProcess.size() == 1) {
+              mpd_run_playlist_delete(conn, currentPl.c_str(), moveFromSongPos);
+            }
+
+            if (addedCount > 0) {
+              safeNotify("Added " + std::to_string(addedCount) + " item(s) to " + plName);
+            } else {
+              safeNotify("All items are already in " + plName);
+            }
+
+            if (ctx.onPlaylistUpdated)
+              ctx.onPlaylistUpdated();
           });
         }).detach();
 

@@ -11,20 +11,21 @@
 namespace UI::Dialogs {
 
 struct PlaylistSelectionContext {
-  std::string songUri;
+  std::string songUri = "";
+  std::vector<std::string> songUris = {};
   int moveFromSongPos = -1;
-  std::string currentSelectedPlaylist;
+  std::string currentSelectedPlaylist = "";
 
-  Hyprutils::Memory::CSharedPointer<Hyprtoolkit::IWindow> parentWindow;
-  Hyprutils::Memory::CSharedPointer<Hyprtoolkit::IBackend> backend;
-  Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CPalette> palette;
-  std::string fontFamily;
+  Hyprutils::Memory::CSharedPointer<Hyprtoolkit::IWindow> parentWindow = nullptr;
+  Hyprutils::Memory::CSharedPointer<Hyprtoolkit::IBackend> backend = nullptr;
+  Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CPalette> palette = nullptr;
+  std::string fontFamily = "";
 
   Services::YtDlpService *ytDlpService = nullptr;
 
-  std::function<void(const std::function<void(struct mpd_connection *)> &)> runMpdCommand;
-  std::function<void(const std::string &msg)> showNotification;
-  std::function<void()> onPlaylistUpdated;
+  std::function<void(const std::function<void(struct mpd_connection *)> &)> runMpdCommand = nullptr;
+  std::function<void(const std::string &msg)> showNotification = nullptr;
+  std::function<void()> onPlaylistUpdated = nullptr;
 };
 
 void showPlaylistSelectionDialog(const PlaylistSelectionContext &ctx);
