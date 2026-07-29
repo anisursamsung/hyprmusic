@@ -32,8 +32,7 @@ private:
   Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CPalette> m_palette;
   std::string m_fontFamily;
 
-  Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CRectangleElement> m_notificationBox;
-  Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CTextElement> m_notificationText;
+  Hyprutils::Memory::CSharedPointer<Hyprtoolkit::IWindow> m_activeNotificationWindow;
 };
 
 } // namespace UI::Components
