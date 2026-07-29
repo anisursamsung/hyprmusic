@@ -81,11 +81,36 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
             ->onMainClick([this](CSharedPointer<CButtonElement>) {
               Dialogs::showActionMenuDialog({
-                  .options = {"➕ Add All to Queue", "📁 Add All to Playlist",
+                  .options = {"▶ Play All", "➕ Add All to Queue",
                               "🔄 Update Database", "🔍 Rescan Database"},
                   .onSelect =
                       [this](size_t idx, const std::string &) {
-                        if (idx == 0) { // ➕ Add All to Queue
+                        if (idx == 0) { // ▶ Play All
+                          m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
+                            if (!conn)
+                              return;
+
+                            auto dbUris = collectMatchingSongUris(conn);
+                            if (dbUris.empty()) {
+                              if (m_ctx.showNotification)
+                                m_ctx.showNotification("No songs match current search/filter");
+                              return;
+                            }
+
+                            mpd_run_clear(conn);
+                            for (const auto &uri : dbUris) {
+                              mpd_run_add(conn, uri.c_str());
+                            }
+                            mpd_run_play_pos(conn, 0);
+
+                            populateDatabaseSongs(conn);
+
+                            if (m_ctx.showNotification) {
+                              m_ctx.showNotification("▶ Playing " + std::to_string(dbUris.size()) +
+                                                     " track(s)");
+                            }
+                          });
+                        } else if (idx == 1) { // ➕ Add All to Queue
                           m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
                             if (!conn)
                               return;
@@ -120,20 +145,6 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                                                        " item(s) to Queue");
                               else
                                 m_ctx.showNotification("All items are already in Queue");
-                            }
-                          });
-                        } else if (idx == 1) { // 📁 Add All to Playlist
-                          m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
-                            if (!conn)
-                              return;
-                            auto dbUris = collectMatchingSongUris(conn);
-                            if (dbUris.empty()) {
-                              if (m_ctx.showNotification)
-                                m_ctx.showNotification("No songs match current search/filter");
-                              return;
-                            }
-                            if (m_ctx.showPlaylistBatchSelectionDialog) {
-                              m_ctx.showPlaylistBatchSelectionDialog(dbUris);
                             }
                           });
                         } else if (idx == 2) { // 🔄 Update Database

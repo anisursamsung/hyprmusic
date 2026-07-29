@@ -27,7 +27,6 @@ struct DatabaseViewContext {
   std::function<void(const std::string &uri)> playSongFromUri;
   std::function<void(const std::string &uri)> addSongToQueue;
   std::function<void(const std::string &uri)> showPlaylistSelectionDialog;
-  std::function<void(const std::vector<std::string> &uris)> showPlaylistBatchSelectionDialog;
   std::function<void(const std::string &msg)> showNotification;
 };
 

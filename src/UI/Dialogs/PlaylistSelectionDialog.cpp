@@ -69,20 +69,19 @@ void showPlaylistSelectionDialog(const PlaylistSelectionContext &ctx) {
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();
-  cardLayout->setMargin(12);
+  cardLayout->setMargin(15);
 
   auto headerText = Components::UIFactory::createHeader(
-      (ctx.moveFromSongPos >= 0) ? "📁 Move to Playlist" : "📁 Add to Playlist",
+      (ctx.moveFromSongPos >= 0) ? "Move to Playlist" : "Add to Playlist",
       palette, fontFamily);
   cardLayout->addChild(headerText);
 
   auto scrollArea =
       CScrollAreaBuilder::begin()
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 1.0F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.78F}))
           ->scrollY(true)
           ->commence();
-  scrollArea->setGrow(true);
 
   auto listLayout =
       CColumnLayoutBuilder::begin()
@@ -90,30 +89,46 @@ void showPlaylistSelectionDialog(const PlaylistSelectionContext &ctx) {
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
           ->commence();
+  listLayout->setMargin(4);
 
   for (const auto &plName : playlists) {
     auto plItem = CRectangleBuilder::begin()
                       ->color([palette] {
-                        return palette ? palette->m_colors.alternateBase
-                                       : CHyprColor(0.2, 0.2, 0.2, 1.0);
+                        return palette ? palette->m_colors.base
+                                       : CHyprColor(0.15, 0.15, 0.15, 1.0);
                       })
-                      ->rounding(6)
+                      ->rounding(palette ? palette->m_vars.smallRounding : 5)
                       ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                           CDynamicSize::HT_SIZE_ABSOLUTE,
                                           {1.0F, 36.0F}))
                       ->commence();
 
-    auto plRow =
-        CRowLayoutBuilder::begin()
-            ->gap(8)
-            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-            ->commence();
+    auto plRow = CRowLayoutBuilder::begin()
+                     ->gap(8)
+                     ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                         CDynamicSize::HT_SIZE_PERCENT,
+                                         {1.0F, 1.0F}))
+                     ->commence();
     plRow->setMargin(6);
+
+    auto iconText = CTextBuilder::begin()
+                        ->text("📁")
+                        ->color([palette] {
+                          return palette ? palette->m_colors.accent
+                                         : CHyprColor(0.2, 0.8, 0.4, 1.0);
+                        })
+                        ->fontFamily(std::string(fontFamily))
+                        ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                        ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                            CDynamicSize::HT_SIZE_ABSOLUTE,
+                                            {20.0F, 20.0F}))
+                        ->commence();
+    iconText->setGrow(false);
+    plRow->addChild(iconText);
 
     auto itemText =
         CTextBuilder::begin()
-            ->text(std::string("📁 " + plName))
+            ->text(std::string(plName))
             ->color([palette] {
               return palette ? palette->m_colors.text
                              : CHyprColor(1, 1, 1, 1);
@@ -147,67 +162,56 @@ void showPlaylistSelectionDialog(const PlaylistSelectionContext &ctx) {
           }
         };
 
-        std::thread([ctx, plName, moveFromSongPos, currentPl, safeNotify]() {
-          std::vector<std::string> urisToProcess;
-          if (!ctx.songUris.empty()) {
-            urisToProcess = ctx.songUris;
-          } else if (!ctx.songUri.empty()) {
-            urisToProcess = {ctx.songUri};
+        std::thread([ctx, plName, songUri, moveFromSongPos, currentPl, safeNotify]() {
+          std::string finalUri = songUri;
+          if (songUri.rfind("http://", 0) == 0 ||
+              songUri.rfind("https://", 0) == 0) {
+            if (songUri.find("youtube.com") != std::string::npos ||
+                songUri.find("youtu.be") != std::string::npos) {
+              safeNotify("⏳ Resolving YouTube stream...");
+
+              std::string resTitle = "Stream Track";
+              std::string resUploader = "";
+              std::string realUrl = extractDirectStreamUrl(songUri);
+              if (!realUrl.empty()) {
+                finalUri = realUrl;
+                if (ctx.ytDlpService) {
+                  ctx.ytDlpService->setUrlTitle(realUrl, resTitle, resUploader);
+                }
+              } else {
+                safeNotify("❌ Failed to resolve stream");
+                return;
+              }
+            }
           }
 
-          if (urisToProcess.empty())
-            return;
-
-          ctx.runMpdCommand([ctx, plName, urisToProcess, moveFromSongPos, currentPl,
+          ctx.runMpdCommand([ctx, plName, finalUri, moveFromSongPos, currentPl,
                              safeNotify](struct mpd_connection *conn) {
-            if (!conn)
-              return;
-
-            std::unordered_set<std::string> existingPlaylistUris;
-            if (mpd_send_list_playlist_meta(conn, plName.c_str())) {
+            bool alreadyInPlaylist = false;
+            if (conn && mpd_send_list_playlist_meta(conn, plName.c_str())) {
               struct mpd_song *s;
               while ((s = mpd_recv_song(conn)) != NULL) {
                 const char *pUri = mpd_song_get_uri(s);
-                if (pUri) {
-                  existingPlaylistUris.insert(std::string(pUri));
+                if (pUri && std::string(pUri) == finalUri) {
+                  alreadyInPlaylist = true;
                 }
                 mpd_song_free(s);
               }
               mpd_response_finish(conn);
             }
 
-            int addedCount = 0;
-            for (const auto &rawUri : urisToProcess) {
-              std::string finalUri = rawUri;
-              if (rawUri.rfind("http://", 0) == 0 || rawUri.rfind("https://", 0) == 0) {
-                if (rawUri.find("youtube.com") != std::string::npos ||
-                    rawUri.find("youtu.be") != std::string::npos) {
-                  std::string realUrl = extractDirectStreamUrl(rawUri);
-                  if (!realUrl.empty())
-                    finalUri = realUrl;
-                }
-              }
-
-              if (existingPlaylistUris.find(finalUri) == existingPlaylistUris.end()) {
-                if (mpd_run_playlist_add(conn, plName.c_str(), finalUri.c_str())) {
-                  existingPlaylistUris.insert(finalUri);
-                  addedCount++;
-                }
-              }
-            }
-
-            if (moveFromSongPos >= 0 && !currentPl.empty() && urisToProcess.size() == 1) {
-              mpd_run_playlist_delete(conn, currentPl.c_str(), moveFromSongPos);
-            }
-
-            if (addedCount > 0) {
-              safeNotify("Added " + std::to_string(addedCount) + " item(s) to " + plName);
+            if (alreadyInPlaylist) {
+              safeNotify("Already added to " + plName);
             } else {
-              safeNotify("All items are already in " + plName);
+              mpd_run_playlist_add(conn, plName.c_str(), finalUri.c_str());
+              if (moveFromSongPos >= 0 && !currentPl.empty()) {
+                mpd_run_playlist_delete(conn, currentPl.c_str(),
+                                        moveFromSongPos);
+              }
+              safeNotify("Added to " + plName);
+              if (ctx.onPlaylistUpdated)
+                ctx.onPlaylistUpdated();
             }
-
-            if (ctx.onPlaylistUpdated)
-              ctx.onPlaylistUpdated();
           });
         }).detach();
 
@@ -232,11 +236,15 @@ void showPlaylistSelectionDialog(const PlaylistSelectionContext &ctx) {
   auto cancelRow =
       CRowLayoutBuilder::begin()
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 30.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 32.0F}))
           ->commence();
 
   auto cancelBtn = Components::UIFactory::createActionButton(
-      "Cancel", [popupWindow] { if (popupWindow) popupWindow->close(); },
+      "Close",
+      [popupWindow] {
+        if (popupWindow)
+          popupWindow->close();
+      },
       palette, fontFamily, false);
   cancelRow->addChild(cancelBtn);
   cardLayout->addChild(cancelRow);

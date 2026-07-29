@@ -182,9 +182,6 @@ void HyprMusicApp::createUI() {
       .showPlaylistSelectionDialog = [this](const std::string &uri) {
         showPlaylistSelectionDialog(uri);
       },
-      .showPlaylistBatchSelectionDialog = [this](const std::vector<std::string> &uris) {
-        showPlaylistBatchSelectionDialog(uris);
-      },
       .showNotification = [this](const std::string &msg) { showNotification(msg); }};
   m_dbView = std::make_unique<UI::Views::DatabaseView>(dbCtx);
 
@@ -358,34 +355,6 @@ void HyprMusicApp::showPlaylistSelectionDialog(const std::string &songUri,
       .songUri = songUri,
       .moveFromSongPos = moveFromSongPos,
       .currentSelectedPlaylist = m_playlistsView->getSelectedPlaylist(),
-      .parentWindow = m_window,
-      .backend = m_backend,
-      .palette = m_palette,
-      .fontFamily = m_fontFamily,
-      .ytDlpService = &m_ytDlpService,
-      .runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
-        Services::MPDManager::runMpdCommand(cmd);
-      },
-      .showNotification = [this](const std::string &msg) { showNotification(msg); },
-      .onPlaylistUpdated = [this] {
-        m_backend->addTimer(
-            std::chrono::milliseconds(100),
-            [this](CAtomicSharedPointer<CTimer>, void *) {
-              updateStatus();
-              if (m_viewMode == eViewMode::VIEW_PLAYLISTS) {
-                Services::MPDManager::runMpdCommand([this](struct mpd_connection *conn) {
-                  m_playlistsView->rebuildRightItems(conn);
-                });
-              }
-            },
-            nullptr);
-      }};
-  UI::Dialogs::showPlaylistSelectionDialog(ctx);
-}
-
-void HyprMusicApp::showPlaylistBatchSelectionDialog(const std::vector<std::string> &songUris) {
-  UI::Dialogs::PlaylistSelectionContext ctx{
-      .songUris = songUris,
       .parentWindow = m_window,
       .backend = m_backend,
       .palette = m_palette,

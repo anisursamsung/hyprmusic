@@ -12,7 +12,6 @@ namespace UI::Dialogs {
 
 struct PlaylistSelectionContext {
   std::string songUri = "";
-  std::vector<std::string> songUris = {};
   int moveFromSongPos = -1;
   std::string currentSelectedPlaylist = "";
 
