@@ -30,7 +30,7 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto tabMainLayout =
         CColumnLayoutBuilder::begin()
-            ->gap(10)
+            ->gap(4)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                 CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
             ->commence();
@@ -38,11 +38,11 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto topControlsCol =
         CColumnLayoutBuilder::begin()
-            ->gap(8)
+            ->gap(4)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                 CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
             ->commence();
-    topControlsCol->setMargin(10);
+    topControlsCol->setMargin(5);
 
     auto topSearchRow =
         CRowLayoutBuilder::begin()
@@ -195,7 +195,7 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                 CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
             ->commence();
-    m_dbContentLayout->setMargin(10);
+    m_dbContentLayout->setMargin(5);
 
     scrollArea->addChild(m_dbContentLayout);
     tabMainLayout->addChild(scrollArea);

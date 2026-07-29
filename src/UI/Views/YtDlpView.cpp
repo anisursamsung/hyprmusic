@@ -160,40 +160,39 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
   auto tabMainLayout =
       CColumnLayoutBuilder::begin()
-          ->gap(10)
+          ->gap(4)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();
   m_tabContentWrapper->addChild(tabMainLayout);
 
-  // Top Search Control Header
   auto topControlsCol =
       CColumnLayoutBuilder::begin()
-          ->gap(8)
+          ->gap(4)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
           ->commence();
-  topControlsCol->setMargin(10);
+  topControlsCol->setMargin(5);
 
-  auto searchRow =
+  auto topSearchRow =
       CRowLayoutBuilder::begin()
-          ->gap(12)
+          ->gap(8)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 35.0F}))
           ->commence();
 
   auto titleInput =
       CTextboxBuilder::begin()
-          ->placeholder("🔍 Search YouTube or paste video/playlist URL...")
+          ->placeholder("Search YouTube")
           ->defaultText(std::string(m_searchTitle))
           ->onTextEdited([this](CSharedPointer<CTextboxElement>, const std::string &text) {
             m_searchTitle = text;
           })
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 34.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 32.0F}))
           ->commence();
   titleInput->setGrow(true);
-  searchRow->addChild(titleInput);
+  topSearchRow->addChild(titleInput);
 
   auto pasteBtn = CButtonBuilder::begin()
                       ->label("📋")
@@ -209,10 +208,10 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                       })
                       ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                           CDynamicSize::HT_SIZE_ABSOLUTE,
-                                          {34.0F, 34.0F}))
+                                          {32.0F, 32.0F}))
                       ->commence();
   pasteBtn->setGrow(false);
-  searchRow->addChild(pasteBtn);
+  topSearchRow->addChild(pasteBtn);
 
   auto countLabel = CTextBuilder::begin()
                         ->text(std::string("Count:"))
@@ -226,7 +225,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                                             CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
                         ->commence();
   countLabel->setGrow(false);
-  searchRow->addChild(countLabel);
+  topSearchRow->addChild(countLabel);
 
   auto countInput =
       CTextboxBuilder::begin()
@@ -236,10 +235,10 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             m_resultCount = text;
           })
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {55.0F, 34.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {45.0F, 32.0F}))
           ->commence();
   countInput->setGrow(false);
-  searchRow->addChild(countInput);
+  topSearchRow->addChild(countInput);
 
   auto submitBtn = CButtonBuilder::begin()
                        ->label("🔍 Search")
@@ -248,12 +247,12 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                        ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
                        ->onMainClick([this](CSharedPointer<CButtonElement>) { triggerSearch(); })
                        ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                           CDynamicSize::HT_SIZE_ABSOLUTE, {105.0F, 34.0F}))
+                                           CDynamicSize::HT_SIZE_ABSOLUTE, {95.0F, 32.0F}))
                        ->commence();
   submitBtn->setGrow(false);
-  searchRow->addChild(submitBtn);
+  topSearchRow->addChild(submitBtn);
 
-  topControlsCol->addChild(searchRow);
+  topControlsCol->addChild(topSearchRow);
   tabMainLayout->addChild(topControlsCol);
 
   auto scrollArea =
@@ -265,11 +264,11 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
   auto tabContentLayout =
       CColumnLayoutBuilder::begin()
-          ->gap(8)
+          ->gap(4)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
           ->commence();
-  tabContentLayout->setMargin(10);
+  tabContentLayout->setMargin(4);
   scrollArea->addChild(tabContentLayout);
   tabMainLayout->addChild(scrollArea);
 
