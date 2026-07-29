@@ -1,4 +1,5 @@
 #include "YtDlpView.hpp"
+#include "../Dialogs/ActionMenuDialog.hpp"
 #include "../../Utils/ClipboardUtils.hpp"
 #include "../../Utils/FormatUtils.hpp"
 #include "../../Utils/StreamUtils.hpp"
@@ -461,58 +462,66 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
         copyBtn->setGrow(false);
         itemRow->addChild(copyBtn);
 
-        std::vector<std::string> ytdlpOptions = {
-            "Actions", "➕ Add to Queue", "📁 Add to Playlist"};
-        auto actionMenu =
-            CComboboxBuilder::begin()
-                ->items(std::move(ytdlpOptions))
-                ->currentItem(0)
-                ->onChanged([this, itemUrl, itemTitle, itemUploader](CSharedPointer<CComboboxElement> combo, size_t idx) {
-                  if (idx == 1) { // Add to Queue
-                    if (m_ctx.showNotification)
-                      m_ctx.showNotification("⏳ Resolving stream link with yt-dlp...");
+        auto actionBtn =
+            CButtonBuilder::begin()
+                ->label("⋮")
+                ->alignText(HT_FONT_ALIGN_CENTER)
+                ->fontFamily(std::string(fontFamily))
+                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                ->onMainClick([this, itemUrl, itemTitle, itemUploader](CSharedPointer<CButtonElement>) {
+                  Dialogs::showActionMenuDialog({
+                      .options = {"➕ Add to Queue", "📁 Add to Playlist"},
+                      .onSelect =
+                          [this, itemUrl, itemTitle, itemUploader](size_t idx, const std::string &) {
+                            if (idx == 0) { // Add to Queue
+                              if (m_ctx.showNotification)
+                                m_ctx.showNotification("⏳ Resolving stream link with yt-dlp...");
 
-                    std::thread([this, itemUrl, itemTitle, itemUploader]() {
-                      std::string realUrl = extractDirectStreamUrl(itemUrl);
-                      if (realUrl.empty())
-                        realUrl = itemUrl;
+                              std::thread([this, itemUrl, itemTitle, itemUploader]() {
+                                std::string realUrl = extractDirectStreamUrl(itemUrl);
+                                if (realUrl.empty())
+                                  realUrl = itemUrl;
 
-                      if (m_ctx.ytDlpService) {
-                        m_ctx.ytDlpService->setUrlTitle(realUrl, itemTitle, itemUploader);
-                        m_ctx.ytDlpService->setUrlTitle(itemUrl, itemTitle, itemUploader);
-                      }
+                                if (m_ctx.ytDlpService) {
+                                  m_ctx.ytDlpService->setUrlTitle(realUrl, itemTitle, itemUploader);
+                                  m_ctx.ytDlpService->setUrlTitle(itemUrl, itemTitle, itemUploader);
+                                }
 
-                      if (m_ctx.backend) {
-                        m_ctx.backend->addTimer(
-                            std::chrono::milliseconds(1),
-                            [this, realUrl](CAtomicSharedPointer<CTimer>, void *) {
-                              if (m_ctx.addSongToQueue)
-                                m_ctx.addSongToQueue(realUrl);
-                            },
-                            nullptr);
-                      }
-                    }).detach();
-                  } else if (idx == 2) { // Add to Playlist
-                    if (m_ctx.ytDlpService) {
-                      m_ctx.ytDlpService->setUrlTitle(itemUrl, itemTitle, itemUploader);
-                    }
-                    m_ctx.backend->addTimer(
-                        std::chrono::milliseconds(1),
-                        [this, itemUrl](CAtomicSharedPointer<CTimer>, void *) {
-                          if (m_ctx.showPlaylistSelectionDialog)
-                            m_ctx.showPlaylistSelectionDialog(itemUrl);
-                        },
-                        nullptr);
-                  }
-                  if (combo && idx != 0) {
-                    combo->setCurrent(0);
-                  }
+                                if (m_ctx.backend) {
+                                  m_ctx.backend->addTimer(
+                                      std::chrono::milliseconds(1),
+                                      [this, realUrl](CAtomicSharedPointer<CTimer>, void *) {
+                                        if (m_ctx.addSongToQueue)
+                                          m_ctx.addSongToQueue(realUrl);
+                                      },
+                                      nullptr);
+                                }
+                              }).detach();
+                            } else if (idx == 1) { // Add to Playlist
+                              if (m_ctx.ytDlpService) {
+                                m_ctx.ytDlpService->setUrlTitle(itemUrl, itemTitle, itemUploader);
+                              }
+                              if (m_ctx.backend) {
+                                m_ctx.backend->addTimer(
+                                    std::chrono::milliseconds(1),
+                                    [this, itemUrl](CAtomicSharedPointer<CTimer>, void *) {
+                                      if (m_ctx.showPlaylistSelectionDialog)
+                                        m_ctx.showPlaylistSelectionDialog(itemUrl);
+                                    },
+                                    nullptr);
+                              }
+                            }
+                          },
+                      .parentWindow = m_ctx.window,
+                      .backend = m_ctx.backend,
+                      .palette = m_ctx.palette,
+                      .fontFamily = m_ctx.fontFamily});
                 })
                 ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE, {95.0F, 28.0F}))
+                                    CDynamicSize::HT_SIZE_ABSOLUTE, {28.0F, 28.0F}))
                 ->commence();
-        actionMenu->setGrow(false);
-        itemRow->addChild(actionMenu);
+        actionBtn->setGrow(false);
+        itemRow->addChild(actionBtn);
 
         itemBox->addChild(itemRow);
         tabContentLayout->addChild(itemBox);
