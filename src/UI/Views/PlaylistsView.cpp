@@ -651,7 +651,7 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto backBtn =
         CButtonBuilder::begin()
-            ->label("◀ Back to Playlists")
+            ->label("◀ Back")
             ->alignText(HT_FONT_ALIGN_CENTER)
             ->fontFamily(std::string(fontFamily))
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
