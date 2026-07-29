@@ -684,6 +684,22 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
     plTitle->setGrow(true);
     plTitleRow->addChild(plTitle);
 
+    auto addTrackBtn =
+        CButtonBuilder::begin()
+            ->label("➕ Add Item")
+            ->alignText(HT_FONT_ALIGN_CENTER)
+            ->fontFamily(std::string(fontFamily))
+            ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+            ->onMainClick([this, plName](CSharedPointer<CButtonElement>) {
+              if (m_ctx.showPlaylistAddItemDialog)
+                m_ctx.showPlaylistAddItemDialog(plName);
+            })
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 32.0F}))
+            ->commence();
+    addTrackBtn->setGrow(false);
+    plTitleRow->addChild(addTrackBtn);
+
     auto actionBtn =
         CButtonBuilder::begin()
             ->label("⋮")
@@ -736,26 +752,10 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             })
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                 CDynamicSize::HT_SIZE_ABSOLUTE,
-                                {28.0F, 28.0F}))
+                                {32.0F, 32.0F}))
             ->commence();
     actionBtn->setGrow(false);
     plTitleRow->addChild(actionBtn);
-
-    auto addTrackBtn =
-        CButtonBuilder::begin()
-            ->label("➕ Add Item")
-            ->alignText(HT_FONT_ALIGN_CENTER)
-            ->fontFamily(std::string(fontFamily))
-            ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-            ->onMainClick([this, plName](CSharedPointer<CButtonElement>) {
-              if (m_ctx.showPlaylistAddItemDialog)
-                m_ctx.showPlaylistAddItemDialog(plName);
-            })
-            ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 32.0F}))
-            ->commence();
-    addTrackBtn->setGrow(false);
-    plTitleRow->addChild(addTrackBtn);
 
     topHeaderCol->addChild(plTitleRow);
     tabMainLayout->addChild(topHeaderCol);
