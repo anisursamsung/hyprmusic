@@ -13,6 +13,6 @@ namespace Utils {
  */
 std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &songUri, int targetWidth = 450, int targetHeight = 350, int cornerRadius = 0);
 std::string getDefaultArtworkPath();
-std::string generateBlurredArtwork(const std::string &inputPath, int width = 800, int height = 600, int blurSigma = 24);
+std::string getBackgroundImagePath();
 
 } // namespace Utils

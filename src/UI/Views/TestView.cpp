@@ -80,20 +80,15 @@ static CSharedPointer<IElement> buildCardElement(CSharedPointer<CPalette> palett
   return card;
 }
 
-static CSharedPointer<IElement> buildBackgroundElement(CSharedPointer<CPalette> palette,
-                                                       const std::string &artPath) {
-  std::string artPathStr = artPath;
-  if (artPathStr.empty()) {
-    artPathStr = Utils::getDefaultArtworkPath();
+static CSharedPointer<IElement> buildBackgroundElement(CSharedPointer<CPalette> palette) {
+  std::string bgPath = Utils::getBackgroundImagePath();
+  if (bgPath.empty()) {
+    bgPath = Utils::getDefaultArtworkPath();
   }
 
-  std::string blurredPath = Utils::generateBlurredArtwork(artPathStr);
-  if (blurredPath.empty())
-    blurredPath = artPathStr;
-
-  if (!blurredPath.empty()) {
+  if (!bgPath.empty()) {
     auto img = CImageBuilder::begin()
-                   ->path(std::string(blurredPath))
+                   ->path(std::string(bgPath))
                    ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                        CDynamicSize::HT_SIZE_PERCENT,
                                        {1.0F, 1.0F}))
@@ -208,7 +203,7 @@ void TestView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd_c
 
   m_lastSongUri = currentUri;
   std::string artPath = Utils::resolveTrackArtwork(conn, currentUri);
-  m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette, artPath);
+  m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette);
   m_coverCardElement = buildCardElement(m_ctx.palette, m_ctx.backend, artPath);
   m_menuBtn = buildMenuButton(m_ctx.palette, m_ctx.backend, m_ctx.fontFamily);
 
@@ -226,7 +221,7 @@ void TestView::updateTrackInfo(const std::string & /*trackText*/, bool /*hasActi
       std::string artPath = Utils::resolveTrackArtwork(conn, songUri);
       if (m_tabContentWrapper) {
         m_tabContentWrapper->clearChildren();
-        m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette, artPath);
+        m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette);
         m_coverCardElement = buildCardElement(m_ctx.palette, m_ctx.backend, artPath);
         m_menuBtn = buildMenuButton(m_ctx.palette, m_ctx.backend, m_ctx.fontFamily);
         m_tabContentWrapper->addChild(m_coverCardElementBackground);
