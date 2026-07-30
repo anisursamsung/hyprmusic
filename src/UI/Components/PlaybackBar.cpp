@@ -31,7 +31,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
           ->commence();
   playbackSection->addChild(playbackLayout);
 
-  // 1. Song info section (90% width, 30% height of PlaybackSection)
+  // 1. Song info section (100% width, 30% height of PlaybackSection)
   auto songInfoSection =
       CRectangleBuilder::begin()
           ->color([palette] {
@@ -39,21 +39,20 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                            : CHyprColor(0.15, 0.15, 0.15, 1.0);
           })
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {0.90F, 0.30F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.30F}))
           ->commence();
-  songInfoSection->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-  songInfoSection->setPositionFlag(IElement::HT_POSITION_FLAG_HCENTER, true);
 
   CenteredTextLabelContext txtCtx{
       .text = "Track 1 - Unknown Artist",
       .palette = palette,
       .fontFamily = fontFamily,
       .fontSize = CFontSize(CFontSize::HT_FONT_TEXT),
-      .color = [palette] {
-        return palette ? palette->m_colors.accent
-                       : CHyprColor(0.2, 0.8, 0.4, 1.0);
-      }
-  };
+      .color =
+          [palette] {
+            return palette ? palette->m_colors.accent
+                           : CHyprColor(0.2, 0.8, 0.4, 1.0);
+          },
+      .widthPercent = 0.90f};
   m_nowPlayingLabel = std::make_unique<CenteredTextLabel>(txtCtx);
   auto labelElem = m_nowPlayingLabel->build();
   labelElem->setPositionMode(IElement::HT_POSITION_ABSOLUTE);

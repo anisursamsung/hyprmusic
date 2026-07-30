@@ -10,7 +10,7 @@ CSharedPointer<CColumnLayoutElement> CenteredTextLabel::build() {
       CColumnLayoutBuilder::begin()
           ->gap(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+                              CDynamicSize::HT_SIZE_AUTO, {m_ctx.widthPercent, 1.0F}))
           ->commence();
   m_container->setMargin(m_ctx.margin);
 
