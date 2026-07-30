@@ -19,4 +19,10 @@ inline std::string sanitizePlaylistName(const std::string &name) {
   return clean;
 }
 
+inline std::string truncateText(const std::string &str, size_t maxLen = 65) {
+  if (str.length() <= maxLen)
+    return str;
+  return str.substr(0, maxLen - 3) + "...";
+}
+
 } // namespace Utils

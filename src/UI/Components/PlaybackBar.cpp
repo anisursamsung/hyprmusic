@@ -22,43 +22,18 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                               CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 42.0F}))
           ->commence();
 
-  auto nowPlayingContainer =
-      CRowLayoutBuilder::begin()
-          ->gap(0)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {0.5F, 1.0F}))
-          ->commence();
-  nowPlayingContainer->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-  nowPlayingContainer->setPositionFlag(IElement::HT_POSITION_FLAG_HCENTER, true);
-  nowPlayingContainer->setPositionFlag(IElement::HT_POSITION_FLAG_VCENTER, true);
-
-  auto textWrapper =
-      CRowLayoutBuilder::begin()
-          ->gap(0)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-          ->commence();
-  textWrapper->setGrow(true);
-
-  m_nowPlayingText =
-      CTextBuilder::begin()
-          ->text(std::string("Track 1 - Unknown Artist"))
-          ->color([palette] {
-            return palette ? palette->m_colors.accent
-                           : CHyprColor(0.2, 0.8, 0.4, 1.0);
-          })
-          ->fontFamily(std::string(fontFamily))
-          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-          ->align(HT_FONT_ALIGN_CENTER)
-          ->noEllipsize(false)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-          ->commence();
-
-  textWrapper->addChild(m_nowPlayingText);
-  nowPlayingContainer->addChild(textWrapper);
-
-  songInfoSection->addChild(nowPlayingContainer);
+  CenteredTextLabelContext txtCtx{
+      .text = "Track 1 - Unknown Artist",
+      .palette = palette,
+      .fontFamily = fontFamily,
+      .fontSize = CFontSize(CFontSize::HT_FONT_TEXT),
+      .color = [palette] {
+        return palette ? palette->m_colors.accent
+                       : CHyprColor(0.2, 0.8, 0.4, 1.0);
+      }
+  };
+  m_nowPlayingLabel = std::make_unique<CenteredTextLabel>(txtCtx);
+  songInfoSection->addChild(m_nowPlayingLabel->build());
   parentColumn->addChild(songInfoSection);
 
   // 2. Seek bar section
@@ -420,17 +395,10 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
 void PlaybackBar::updateTrackInfo(const std::string &trackText,
                                   bool hasActiveTrack, unsigned elapsed,
                                   unsigned total) {
-  if (m_nowPlayingText) {
+  if (m_nowPlayingLabel) {
     std::string textToDisplay =
         hasActiveTrack ? trackText : "No currently playing songs";
-    m_nowPlayingText->rebuild()
-        ->text(std::string(textToDisplay))
-        ->align(HT_FONT_ALIGN_CENTER)
-        ->noEllipsize(false)
-        ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                            CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-        ->commence();
+    m_nowPlayingLabel->updateText(textToDisplay);
   }
 
   if (m_timeText) {

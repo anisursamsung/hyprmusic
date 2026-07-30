@@ -1,4 +1,5 @@
 #pragma once
+#include "CenteredTextLabel.hpp"
 #include <hyprtoolkit/core/Backend.hpp>
 #include <hyprtoolkit/element/ColumnLayout.hpp>
 #include <hyprtoolkit/element/Image.hpp>
@@ -44,7 +45,7 @@ public:
 private:
   PlaybackBarContext m_ctx;
 
-  CSharedPointer<CTextElement> m_nowPlayingText;
+  std::unique_ptr<CenteredTextLabel> m_nowPlayingLabel;
   CSharedPointer<CTextElement> m_timeText;
   CSharedPointer<CSliderElement> m_seekBar;
   bool m_isUpdatingSeekBar = false;
