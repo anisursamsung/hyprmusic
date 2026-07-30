@@ -16,7 +16,7 @@ struct CenteredTextLabelContext {
   std::string fontFamily;
   CFontSize fontSize = CFontSize(CFontSize::HT_FONT_TEXT);
   colorFn color = nullptr;
-  float margin = 8.0f;
+  float margin = 0.0f;
 };
 
 class CenteredTextLabel {

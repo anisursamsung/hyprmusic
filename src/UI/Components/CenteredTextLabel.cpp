@@ -10,7 +10,7 @@ CSharedPointer<CColumnLayoutElement> CenteredTextLabel::build() {
       CColumnLayoutBuilder::begin()
           ->gap(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
           ->commence();
   m_container->setMargin(m_ctx.margin);
 
@@ -31,12 +31,9 @@ CSharedPointer<CColumnLayoutElement> CenteredTextLabel::build() {
           ->fontSize(CFontSize(m_ctx.fontSize))
           ->align(HT_FONT_ALIGN_CENTER)
           ->noEllipsize(false)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
           ->commence();
-  m_textElement->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-  m_textElement->setPositionFlag(IElement::HT_POSITION_FLAG_HCENTER, true);
-  m_textElement->setPositionFlag(IElement::HT_POSITION_FLAG_VCENTER, true);
 
   m_container->addChild(m_textElement);
   return m_container;
@@ -50,7 +47,7 @@ void CenteredTextLabel::updateText(const std::string &newText) {
         ->align(HT_FONT_ALIGN_CENTER)
         ->noEllipsize(false)
         ->fontSize(CFontSize(m_ctx.fontSize))
-        ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                             CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
         ->commence();
   }
