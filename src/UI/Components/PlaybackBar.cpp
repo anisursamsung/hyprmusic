@@ -31,7 +31,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
           ->commence();
   playbackSection->addChild(playbackLayout);
 
-  // 1. Song info section (30% of PlaybackSection)
+  // 1. Song info section (90% width, 30% height of PlaybackSection)
   auto songInfoSection =
       CRectangleBuilder::begin()
           ->color([palette] {
@@ -39,8 +39,10 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                            : CHyprColor(0.15, 0.15, 0.15, 1.0);
           })
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.30F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {0.90F, 0.30F}))
           ->commence();
+  songInfoSection->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  songInfoSection->setPositionFlag(IElement::HT_POSITION_FLAG_HCENTER, true);
 
   CenteredTextLabelContext txtCtx{
       .text = "Track 1 - Unknown Artist",
