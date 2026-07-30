@@ -379,6 +379,15 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
                                   CDynamicSize::HT_SIZE_ABSOLUTE,
                                   {1.0F, 40.0F}))
               ->commence();
+      songItem->setReceivesMouse(true);
+      songItem->setMouseButton(
+          [this, songUriStr](Input::eMouseButton button, bool down) {
+            if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+              if (!songUriStr.empty() && m_ctx.playSongFromUri) {
+                m_ctx.playSongFromUri(songUriStr);
+              }
+            }
+          });
 
       auto rowLayout = CRowLayoutBuilder::begin()
                            ->gap(10)
@@ -389,66 +398,6 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
       rowLayout->setMargin(6);
 
       std::string indexStr = std::to_string(songPos + 1) + ". ";
-      auto songText = CTextBuilder::begin()
-                          ->text(std::string(indexStr + displayTitle))
-                          ->color([palette, inQueue] {
-                            if (inQueue) {
-                              return palette
-                                         ? palette->m_colors.accent
-                                         : CHyprColor(0.2, 0.8, 0.4, 1.0);
-                            }
-                            return palette ? palette->m_colors.text
-                                           : CHyprColor(1, 1, 1, 1);
-                          })
-                          ->fontFamily(std::string(fontFamily))
-                          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                              CDynamicSize::HT_SIZE_PERCENT,
-                                              {1.0F, 1.0F}))
-                          ->align(HT_FONT_ALIGN_LEFT)
-                          ->noEllipsize(false)
-                          ->commence();
-
-      auto textContainer =
-          CRowLayoutBuilder::begin()
-              ->gap(0)
-              ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                  CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-              ->commence();
-      textContainer->setGrow(true);
-      textContainer->addChild(songText);
-      rowLayout->addChild(textContainer);
-
-      auto playTrackBtn =
-          CTextBuilder::begin()
-              ->text(std::string("▶"))
-              ->color([palette, inQueue] {
-                if (inQueue) {
-                  return palette ? palette->m_colors.accent
-                                 : CHyprColor(0.2, 0.8, 0.4, 1.0);
-                }
-                return palette ? palette->m_colors.text
-                               : CHyprColor(1, 1, 1, 1);
-              })
-              ->fontFamily(std::string(fontFamily))
-              ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-              ->interactable(true)
-              ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-                                  CDynamicSize::HT_SIZE_ABSOLUTE,
-                                  {1.0F, 28.0F}))
-              ->commence();
-      playTrackBtn->setReceivesMouse(true);
-      playTrackBtn->setMouseButton(
-          [this, songUriStr](Input::eMouseButton button, bool down) {
-            if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-              if (!songUriStr.empty() && m_ctx.playSongFromUri) {
-                m_ctx.playSongFromUri(songUriStr);
-              }
-            }
-          });
-      playTrackBtn->setGrow(false);
-      rowLayout->addChild(playTrackBtn);
-
       int currentPos = songPos;
       auto actionBtn =
           CButtonBuilder::begin()
@@ -458,22 +407,26 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
               ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
               ->onMainClick([this, plName, currentPos, songUriStr](CSharedPointer<CButtonElement>) {
                 Dialogs::showActionMenuDialog({
-                    .options = {"➕ Add to Queue", "📋 Copy to Playlist", "↔ Move to Playlist", "🗑️ Remove"},
+                    .options = {"▶ Play", "➕ Add to Queue", "📋 Copy to Playlist", "↔ Move to Playlist", "🗑️ Remove"},
                     .onSelect =
                         [this, plName, currentPos, songUriStr](size_t idx, const std::string &) {
-                          if (idx == 0) { // ➕ Add to Queue
+                          if (idx == 0) { // ▶ Play
+                            if (!songUriStr.empty() && m_ctx.playSongFromUri) {
+                              m_ctx.playSongFromUri(songUriStr);
+                            }
+                          } else if (idx == 1) { // ➕ Add to Queue
                             if (!songUriStr.empty() && m_ctx.addSongToQueue) {
                               m_ctx.addSongToQueue(songUriStr);
                             }
-                          } else if (idx == 1) { // 📋 Copy to Playlist
+                          } else if (idx == 2) { // 📋 Copy to Playlist
                             if (!songUriStr.empty() && m_ctx.showPlaylistSelectionDialog) {
                               m_ctx.showPlaylistSelectionDialog(songUriStr, -1);
                             }
-                          } else if (idx == 2) { // ↔ Move to Playlist
+                          } else if (idx == 3) { // ↔ Move to Playlist
                             if (!songUriStr.empty() && m_ctx.showPlaylistSelectionDialog) {
                               m_ctx.showPlaylistSelectionDialog(songUriStr, currentPos);
                             }
-                          } else if (idx == 3) { // 🗑️ Remove
+                          } else if (idx == 4) { // 🗑️ Remove
                             m_ctx.runMpdCommand([plName, currentPos](struct mpd_connection *conn) {
                               mpd_run_playlist_delete(conn, plName.c_str(), currentPos);
                             });
@@ -500,6 +453,46 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
               ->commence();
       actionBtn->setGrow(false);
       rowLayout->addChild(actionBtn);
+
+      auto songText = CTextBuilder::begin()
+                          ->text(std::string(indexStr + displayTitle))
+                          ->color([palette, inQueue] {
+                            if (inQueue) {
+                              return palette
+                                         ? palette->m_colors.accent
+                                         : CHyprColor(0.2, 0.8, 0.4, 1.0);
+                            }
+                            return palette ? palette->m_colors.text
+                                           : CHyprColor(1, 1, 1, 1);
+                          })
+                          ->fontFamily(std::string(fontFamily))
+                          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                              CDynamicSize::HT_SIZE_PERCENT,
+                                              {1.0F, 1.0F}))
+                          ->align(HT_FONT_ALIGN_LEFT)
+                          ->noEllipsize(false)
+                          ->interactable(true)
+                          ->commence();
+      songText->setReceivesMouse(true);
+      songText->setMouseButton(
+          [this, songUriStr](Input::eMouseButton button, bool down) {
+            if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+              if (!songUriStr.empty() && m_ctx.playSongFromUri) {
+                m_ctx.playSongFromUri(songUriStr);
+              }
+            }
+          });
+
+      auto textContainer =
+          CRowLayoutBuilder::begin()
+              ->gap(0)
+              ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                  CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+              ->commence();
+      textContainer->setGrow(true);
+      textContainer->addChild(songText);
+      rowLayout->addChild(textContainer);
 
       songItem->addChild(rowLayout);
       m_rightItemsLayout->addChild(songItem);
@@ -568,6 +561,15 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                                 CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 35.0F}))
             ->commence();
 
+    auto leftSpacer =
+        CRectangleBuilder::begin()
+            ->color([] { return CHyprColor(0, 0, 0, 0); })
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                CDynamicSize::HT_SIZE_PERCENT, {20.0F, 1.0F}))
+            ->commence();
+    leftSpacer->setGrow(false);
+    topSearchRow->addChild(leftSpacer);
+
     auto searchBar =
         CTextboxBuilder::begin()
             ->placeholder("Search playlists...")
@@ -605,6 +607,15 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             ->commence();
     createPlBtn->setGrow(false);
     topSearchRow->addChild(createPlBtn);
+
+    auto rightSpacer =
+        CRectangleBuilder::begin()
+            ->color([] { return CHyprColor(0, 0, 0, 0); })
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                CDynamicSize::HT_SIZE_PERCENT, {20.0F, 1.0F}))
+            ->commence();
+    rightSpacer->setGrow(false);
+    topSearchRow->addChild(rightSpacer);
 
     topControlsCol->addChild(topSearchRow);
     tabMainLayout->addChild(topControlsCol);

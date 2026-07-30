@@ -51,6 +51,15 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                                 CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 35.0F}))
             ->commence();
 
+    auto leftSpacer =
+        CRectangleBuilder::begin()
+            ->color([] { return CHyprColor(0, 0, 0, 0); })
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                CDynamicSize::HT_SIZE_PERCENT, {20.0F, 1.0F}))
+            ->commence();
+    leftSpacer->setGrow(false);
+    topSearchRow->addChild(leftSpacer);
+
     auto searchBar =
         CTextboxBuilder::begin()
             ->placeholder("Search...")
@@ -179,6 +188,15 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
     dbActionsBtn->setGrow(false);
     topSearchRow->addChild(dbActionsBtn);
 
+    auto rightSpacer =
+        CRectangleBuilder::begin()
+            ->color([] { return CHyprColor(0, 0, 0, 0); })
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                CDynamicSize::HT_SIZE_PERCENT, {20.0F, 1.0F}))
+            ->commence();
+    rightSpacer->setGrow(false);
+    topSearchRow->addChild(rightSpacer);
+
     topControlsCol->addChild(topSearchRow);
     tabMainLayout->addChild(topControlsCol);
 
@@ -305,6 +323,15 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
                                     CDynamicSize::HT_SIZE_ABSOLUTE,
                                     {1.0F, 40.0F}))
                 ->commence();
+        songItem->setReceivesMouse(true);
+        songItem->setMouseButton(
+            [this, songUri](Input::eMouseButton button, bool down) {
+              if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+                if (!songUri.empty() && m_ctx.playSongFromUri) {
+                  m_ctx.playSongFromUri(songUri);
+                }
+              }
+            });
 
         auto rowLayout = CRowLayoutBuilder::begin()
                              ->gap(10)
@@ -313,6 +340,42 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
                                                  {1.0F, 1.0F}))
                              ->commence();
         rowLayout->setMargin(6);
+
+        auto actionBtn =
+            CButtonBuilder::begin()
+                ->label("⋮")
+                ->alignText(HT_FONT_ALIGN_CENTER)
+                ->fontFamily(std::string(fontFamily))
+                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                ->onMainClick([this, songUri](CSharedPointer<CButtonElement>) {
+                  Dialogs::showActionMenuDialog({
+                      .options = {"▶ Play", "➕ Add to Queue", "📁 Add to Playlist"},
+                      .onSelect =
+                          [this, songUri](size_t idx, const std::string &) {
+                            if (idx == 0) { // ▶ Play
+                              if (!songUri.empty() && m_ctx.playSongFromUri) {
+                                m_ctx.playSongFromUri(songUri);
+                              }
+                            } else if (idx == 1) { // ➕ Add to Queue
+                              if (m_ctx.addSongToQueue)
+                                m_ctx.addSongToQueue(songUri);
+                            } else if (idx == 2) { // 📁 Add to Playlist
+                              if (!songUri.empty() && m_ctx.showPlaylistSelectionDialog) {
+                                m_ctx.showPlaylistSelectionDialog(songUri);
+                              }
+                            }
+                          },
+                      .parentWindow = m_ctx.window,
+                      .backend = m_ctx.backend,
+                      .palette = m_ctx.palette,
+                      .fontFamily = m_ctx.fontFamily});
+                })
+                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                    CDynamicSize::HT_SIZE_ABSOLUTE,
+                                    {28.0F, 28.0F}))
+                ->commence();
+        actionBtn->setGrow(false);
+        rowLayout->addChild(actionBtn);
 
         auto songText = CTextBuilder::begin()
                             ->text(std::string(indexStr + displayTitle))
@@ -332,7 +395,17 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
                                                 {1.0F, 1.0F}))
                             ->align(HT_FONT_ALIGN_LEFT)
                             ->noEllipsize(false)
+                            ->interactable(true)
                             ->commence();
+        songText->setReceivesMouse(true);
+        songText->setMouseButton(
+            [this, songUri](Input::eMouseButton button, bool down) {
+              if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+                if (!songUri.empty() && m_ctx.playSongFromUri) {
+                  m_ctx.playSongFromUri(songUri);
+                }
+              }
+            });
 
         auto textContainer =
             CRowLayoutBuilder::begin()
@@ -344,67 +417,6 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
         textContainer->setGrow(true);
         textContainer->addChild(songText);
         rowLayout->addChild(textContainer);
-
-        auto playTrackBtn =
-            CTextBuilder::begin()
-                ->text(std::string("▶"))
-                ->color([palette, inQueue] {
-                  if (inQueue) {
-                    return palette ? palette->m_colors.accent
-                                   : CHyprColor(0.2, 0.8, 0.4, 1.0);
-                  }
-                  return palette ? palette->m_colors.text
-                                 : CHyprColor(1, 1, 1, 1);
-                })
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->interactable(true)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {1.0F, 28.0F}))
-                ->commence();
-        playTrackBtn->setReceivesMouse(true);
-        playTrackBtn->setMouseButton([this, songUri](Input::eMouseButton button, bool down) {
-          if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-            if (!songUri.empty() && m_ctx.playSongFromUri) {
-              m_ctx.playSongFromUri(songUri);
-            }
-          }
-        });
-        playTrackBtn->setGrow(false);
-        rowLayout->addChild(playTrackBtn);
-
-        auto actionBtn =
-            CButtonBuilder::begin()
-                ->label("⋮")
-                ->alignText(HT_FONT_ALIGN_CENTER)
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->onMainClick([this, songUri](CSharedPointer<CButtonElement>) {
-                  Dialogs::showActionMenuDialog({
-                      .options = {"➕ Add to Queue", "📁 Add to Playlist"},
-                      .onSelect =
-                          [this, songUri](size_t idx, const std::string &) {
-                            if (idx == 0) { // ➕ Add to Queue
-                              if (m_ctx.addSongToQueue)
-                                m_ctx.addSongToQueue(songUri);
-                            } else if (idx == 1) { // 📁 Add to Playlist
-                              if (!songUri.empty() && m_ctx.showPlaylistSelectionDialog) {
-                                m_ctx.showPlaylistSelectionDialog(songUri);
-                              }
-                            }
-                          },
-                      .parentWindow = m_ctx.window,
-                      .backend = m_ctx.backend,
-                      .palette = m_ctx.palette,
-                      .fontFamily = m_ctx.fontFamily});
-                })
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {28.0F, 28.0F}))
-                ->commence();
-        actionBtn->setGrow(false);
-        rowLayout->addChild(actionBtn);
 
         songItem->addChild(rowLayout);
         m_dbContentLayout->addChild(songItem);

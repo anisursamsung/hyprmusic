@@ -52,6 +52,15 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                                 CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 35.0F}))
             ->commence();
 
+    auto leftSpacer =
+        CRectangleBuilder::begin()
+            ->color([] { return CHyprColor(0, 0, 0, 0); })
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                CDynamicSize::HT_SIZE_PERCENT, {20.0F, 1.0F}))
+            ->commence();
+    leftSpacer->setGrow(false);
+    topSearchRow->addChild(leftSpacer);
+
     auto searchBar =
         CTextboxBuilder::begin()
             ->placeholder("Search...")
@@ -118,9 +127,11 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                               mpd_run_shuffle(conn);
                           });
                         } else if (idx == 2) { // 🗑️ Clear Queue
-                          m_ctx.runMpdCommand([](struct mpd_connection *conn) {
-                            if (conn)
-                              mpd_run_clear(conn);
+                          m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
+                            if (!conn)
+                              return;
+                            mpd_run_clear(conn);
+                            populateQueueSongs(conn, -1);
                           });
                         }
                       },
@@ -129,12 +140,20 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                   .palette = m_ctx.palette,
                   .fontFamily = m_ctx.fontFamily});
             })
-            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                CDynamicSize::HT_SIZE_ABSOLUTE,
-                                {32.0F, 32.0F}))
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {32.0F, 32.0F}))
             ->commence();
     queueActionsBtn->setGrow(false);
     topSearchRow->addChild(queueActionsBtn);
+
+    auto rightSpacer =
+        CRectangleBuilder::begin()
+            ->color([] { return CHyprColor(0, 0, 0, 0); })
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                CDynamicSize::HT_SIZE_PERCENT, {20.0F, 1.0F}))
+            ->commence();
+    rightSpacer->setGrow(false);
+    topSearchRow->addChild(rightSpacer);
 
     topControlsCol->addChild(topSearchRow);
     tabMainLayout->addChild(topControlsCol);
@@ -317,16 +336,6 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn, int activeSongId
         });
     m_queueSongTexts[songId] = songText;
 
-    auto textContainer =
-        CRowLayoutBuilder::begin()
-            ->gap(0)
-            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-            ->commence();
-    textContainer->setGrow(true);
-    textContainer->addChild(songText);
-    rowLayout->addChild(textContainer);
-
     std::string songUriStr = uri ? uri : "";
     std::string songTitleStr = displayTitle;
     auto actionBtn =
@@ -337,13 +346,16 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn, int activeSongId
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
             ->onMainClick([this, songId, songUriStr, songTitleStr](CSharedPointer<CButtonElement>) {
               Dialogs::showActionMenuDialog({
-                  .options = {"🗑️ Remove from Queue", "📁 Add to Playlist"},
+                  .options = {"▶ Play", "🗑️ Remove from Queue", "📁 Add to Playlist"},
                   .onSelect =
                       [this, songId, songUriStr](size_t idx, const std::string &) {
-                        if (idx == 0) { // 🗑️ Remove
+                        if (idx == 0) { // ▶ Play
+                          if (m_ctx.playMpdSongId)
+                            m_ctx.playMpdSongId(songId);
+                        } else if (idx == 1) { // 🗑️ Remove
                           if (m_ctx.removeSongFromQueue)
                             m_ctx.removeSongFromQueue(songId);
-                        } else if (idx == 1) { // 📁 Add to Playlist
+                        } else if (idx == 2) { // 📁 Add to Playlist
                           if (!songUriStr.empty() && m_ctx.showPlaylistSelectionDialog) {
                             m_ctx.showPlaylistSelectionDialog(songUriStr);
                           }
@@ -360,6 +372,16 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn, int activeSongId
             ->commence();
     actionBtn->setGrow(false);
     rowLayout->addChild(actionBtn);
+
+    auto textContainer =
+        CRowLayoutBuilder::begin()
+            ->gap(0)
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+            ->commence();
+    textContainer->setGrow(true);
+    textContainer->addChild(songText);
+    rowLayout->addChild(textContainer);
 
     songItem->addChild(rowLayout);
     m_queueContentLayout->addChild(songItem);

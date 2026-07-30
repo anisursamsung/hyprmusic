@@ -181,6 +181,15 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                               CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 35.0F}))
           ->commence();
 
+  auto leftSpacer =
+      CRectangleBuilder::begin()
+          ->color([] { return CHyprColor(0, 0, 0, 0); })
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                              CDynamicSize::HT_SIZE_PERCENT, {20.0F, 1.0F}))
+          ->commence();
+  leftSpacer->setGrow(false);
+  topSearchRow->addChild(leftSpacer);
+
   auto titleInput =
       CTextboxBuilder::begin()
           ->placeholder("Search YouTube")
@@ -252,6 +261,15 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
   submitBtn->setGrow(false);
   topSearchRow->addChild(submitBtn);
 
+  auto rightSpacer =
+      CRectangleBuilder::begin()
+          ->color([] { return CHyprColor(0, 0, 0, 0); })
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                              CDynamicSize::HT_SIZE_PERCENT, {20.0F, 1.0F}))
+          ->commence();
+  rightSpacer->setGrow(false);
+  topSearchRow->addChild(rightSpacer);
+
   topControlsCol->addChild(topSearchRow);
   tabMainLayout->addChild(topControlsCol);
 
@@ -309,6 +327,32 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
         std::string itemDuration = res.duration;
         std::string itemUrl = res.url;
 
+        auto triggerPlayStream = [this, itemUrl, itemTitle, itemUploader]() {
+          if (m_ctx.showNotification)
+            m_ctx.showNotification("⏳ Resolving stream link with yt-dlp...");
+
+          std::thread([this, itemUrl, itemTitle, itemUploader]() {
+            std::string realUrl = extractDirectStreamUrl(itemUrl);
+            if (realUrl.empty())
+              realUrl = itemUrl;
+
+            if (m_ctx.ytDlpService) {
+              m_ctx.ytDlpService->setUrlTitle(realUrl, itemTitle, itemUploader);
+              m_ctx.ytDlpService->setUrlTitle(itemUrl, itemTitle, itemUploader);
+            }
+
+            if (m_ctx.backend) {
+              m_ctx.backend->addTimer(
+                  std::chrono::milliseconds(1),
+                  [this, realUrl](CAtomicSharedPointer<CTimer>, void *) {
+                    if (m_ctx.playSongFromUri)
+                      m_ctx.playSongFromUri(realUrl);
+                  },
+                  nullptr);
+            }
+          }).detach();
+        };
+
         auto itemBox =
             CRectangleBuilder::begin()
                 ->color([palette] {
@@ -319,6 +363,13 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                 ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                     CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 48.0F}))
                 ->commence();
+        itemBox->setReceivesMouse(true);
+        itemBox->setMouseButton(
+            [triggerPlayStream](Input::eMouseButton button, bool down) {
+              if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+                triggerPlayStream();
+              }
+            });
 
         auto itemRow =
             CRowLayoutBuilder::begin()
@@ -336,67 +387,20 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
           labelText += " (" + itemDuration + ")";
         }
 
-        auto songText =
-            CTextBuilder::begin()
-                ->text(std::string(labelText))
-                ->color([palette] {
-                  return palette ? palette->m_colors.text
-                                 : CHyprColor(1, 1, 1, 1);
-                })
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-                ->align(HT_FONT_ALIGN_LEFT)
-                ->noEllipsize(false)
-                ->commence();
-
-        auto textContainer =
-            CRowLayoutBuilder::begin()
-                ->gap(0)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-                ->commence();
-        textContainer->setGrow(true);
-        textContainer->addChild(songText);
-        itemRow->addChild(textContainer);
-
         auto actionBtn =
             CButtonBuilder::begin()
                 ->label("⋮")
                 ->alignText(HT_FONT_ALIGN_CENTER)
                 ->fontFamily(std::string(fontFamily))
                 ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->onMainClick([this, itemUrl, itemTitle, itemUploader](CSharedPointer<CButtonElement>) {
+                ->onMainClick([this, itemUrl, itemTitle, itemUploader, triggerPlayStream](CSharedPointer<CButtonElement>) {
                   Dialogs::showActionMenuDialog({
                       .options = {"▶ Play Stream", "➕ Add Stream to Queue", "📁 Add Stream to Playlist",
                                   "🔗 Copy Link", "📥 Download to Database"},
                       .onSelect =
-                          [this, itemUrl, itemTitle, itemUploader](size_t idx, const std::string &) {
+                          [this, itemUrl, itemTitle, itemUploader, triggerPlayStream](size_t idx, const std::string &) {
                             if (idx == 0) { // Play Stream
-                              if (m_ctx.showNotification)
-                                m_ctx.showNotification("⏳ Resolving stream link with yt-dlp...");
-
-                              std::thread([this, itemUrl, itemTitle, itemUploader]() {
-                                std::string realUrl = extractDirectStreamUrl(itemUrl);
-                                if (realUrl.empty())
-                                  realUrl = itemUrl;
-
-                                if (m_ctx.ytDlpService) {
-                                  m_ctx.ytDlpService->setUrlTitle(realUrl, itemTitle, itemUploader);
-                                  m_ctx.ytDlpService->setUrlTitle(itemUrl, itemTitle, itemUploader);
-                                }
-
-                                if (m_ctx.backend) {
-                                  m_ctx.backend->addTimer(
-                                      std::chrono::milliseconds(1),
-                                      [this, realUrl](CAtomicSharedPointer<CTimer>, void *) {
-                                        if (m_ctx.playSongFromUri)
-                                          m_ctx.playSongFromUri(realUrl);
-                                      },
-                                      nullptr);
-                                }
-                              }).detach();
+                              triggerPlayStream();
                             } else if (idx == 1) { // Add Stream to Queue
                               if (m_ctx.showNotification)
                                 m_ctx.showNotification("⏳ Resolving stream link with yt-dlp...");
@@ -490,6 +494,39 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                 ->commence();
         actionBtn->setGrow(false);
         itemRow->addChild(actionBtn);
+
+        auto songText =
+            CTextBuilder::begin()
+                ->text(std::string(labelText))
+                ->color([palette] {
+                  return palette ? palette->m_colors.text
+                                 : CHyprColor(1, 1, 1, 1);
+                })
+                ->fontFamily(std::string(fontFamily))
+                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+                ->align(HT_FONT_ALIGN_LEFT)
+                ->noEllipsize(false)
+                ->interactable(true)
+                ->commence();
+        songText->setReceivesMouse(true);
+        songText->setMouseButton(
+            [triggerPlayStream](Input::eMouseButton button, bool down) {
+              if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+                triggerPlayStream();
+              }
+            });
+
+        auto textContainer =
+            CRowLayoutBuilder::begin()
+                ->gap(0)
+                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+                ->commence();
+        textContainer->setGrow(true);
+        textContainer->addChild(songText);
+        itemRow->addChild(textContainer);
 
         itemBox->addChild(itemRow);
         tabContentLayout->addChild(itemBox);

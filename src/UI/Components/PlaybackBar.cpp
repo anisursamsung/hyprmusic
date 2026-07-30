@@ -1,7 +1,7 @@
 #include "PlaybackBar.hpp"
 #include "../../Utils/FormatUtils.hpp"
-#include <hyprtoolkit/system/Icons.hpp>
 #include <algorithm>
+#include <hyprtoolkit/system/Icons.hpp>
 
 namespace UI::Components {
 
@@ -22,6 +22,24 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                               CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 42.0F}))
           ->commence();
 
+  auto nowPlayingContainer =
+      CRowLayoutBuilder::begin()
+          ->gap(0)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_PERCENT, {0.5F, 1.0F}))
+          ->commence();
+  nowPlayingContainer->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  nowPlayingContainer->setPositionFlag(IElement::HT_POSITION_FLAG_HCENTER, true);
+  nowPlayingContainer->setPositionFlag(IElement::HT_POSITION_FLAG_VCENTER, true);
+
+  auto textWrapper =
+      CRowLayoutBuilder::begin()
+          ->gap(0)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+          ->commence();
+  textWrapper->setGrow(true);
+
   m_nowPlayingText =
       CTextBuilder::begin()
           ->text(std::string("Track 1 - Unknown Artist"))
@@ -30,17 +48,17 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                            : CHyprColor(0.2, 0.8, 0.4, 1.0);
           })
           ->fontFamily(std::string(fontFamily))
-          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-          ->align(HT_FONT_ALIGN_LEFT)
+          ->fontSize(CFontSize(CFontSize::HT_FONT_H2))
+          ->align(HT_FONT_ALIGN_CENTER)
           ->noEllipsize(false)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {0.96F, 1.0F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();
-  m_nowPlayingText->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-  m_nowPlayingText->setPositionFlag(IElement::HT_POSITION_FLAG_VCENTER, true);
-  m_nowPlayingText->setPositionFlag(IElement::HT_POSITION_FLAG_HCENTER, true);
 
-  songInfoSection->addChild(m_nowPlayingText);
+  textWrapper->addChild(m_nowPlayingText);
+  nowPlayingContainer->addChild(textWrapper);
+
+  songInfoSection->addChild(nowPlayingContainer);
   parentColumn->addChild(songInfoSection);
 
   // 2. Seek bar section
@@ -52,7 +70,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
           })
           ->rounding(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 42.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 48.0F}))
           ->commence();
 
   auto seekBarRow =
@@ -61,7 +79,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();
-  seekBarRow->setMargin(15);
+  seekBarRow->setMargin(8);
 
   m_timeText =
       CTextBuilder::begin()
@@ -84,7 +102,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
           ->max(1.0f)
           ->val(0.0f)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 12.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 18.0F}))
           ->onChanged([this](CSharedPointer<CSliderElement>, float val) {
             if (m_isUpdatingSeekBar)
               return;
@@ -180,20 +198,20 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                     ->fitMode(IMAGE_FIT_MODE_CONTAIN)
                     ->commence();
         } else {
-          btn = CTextBuilder::begin()
-                    ->text(std::string(fallbackLabel))
-                    ->color([palette] {
-                      return palette ? palette->m_colors.text
-                                     : CHyprColor(1.0, 1.0, 1.0, 1.0);
-                    })
-                    ->fontFamily(std::string(fontFamily))
-                    ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
-                    ->align(HT_FONT_ALIGN_CENTER)
-                    ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-                                        CDynamicSize::HT_SIZE_AUTO,
-                                        {1.0F, 1.0F}))
-                    ->interactable(true)
-                    ->commence();
+          btn =
+              CTextBuilder::begin()
+                  ->text(std::string(fallbackLabel))
+                  ->color([palette] {
+                    return palette ? palette->m_colors.text
+                                   : CHyprColor(1.0, 1.0, 1.0, 1.0);
+                  })
+                  ->fontFamily(std::string(fontFamily))
+                  ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
+                  ->align(HT_FONT_ALIGN_CENTER)
+                  ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+                                      CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+                  ->interactable(true)
+                  ->commence();
         }
 
         btn->setReceivesMouse(true);
@@ -215,12 +233,12 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                                        {1.0F / 6.0F, 1.0F}))
                    ->commence();
 
-    auto volRow = CRowLayoutBuilder::begin()
-                      ->gap(8)
-                      ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                          CDynamicSize::HT_SIZE_PERCENT,
-                                          {0.85F, 1.0F}))
-                      ->commence();
+    auto volRow =
+        CRowLayoutBuilder::begin()
+            ->gap(8)
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                CDynamicSize::HT_SIZE_PERCENT, {0.85F, 1.0F}))
+            ->commence();
     volRow->setMargin(6);
 
     CSharedPointer<ISystemIconDescription> iconDesc;
@@ -238,20 +256,20 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                       ->fitMode(IMAGE_FIT_MODE_CONTAIN)
                       ->commence();
     } else {
-      m_volIcon = CTextBuilder::begin()
-                      ->text(std::string(m_isMuted ? "🔇" : "🔊"))
-                      ->color([palette] {
-                        return palette ? palette->m_colors.text
-                                       : CHyprColor(1.0, 1.0, 1.0, 1.0);
-                      })
-                      ->fontFamily(std::string(fontFamily))
-                      ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                      ->align(HT_FONT_ALIGN_CENTER)
-                      ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-                                          CDynamicSize::HT_SIZE_AUTO,
-                                          {1.0F, 1.0F}))
-                      ->interactable(true)
-                      ->commence();
+      m_volIcon =
+          CTextBuilder::begin()
+              ->text(std::string(m_isMuted ? "🔇" : "🔊"))
+              ->color([palette] {
+                return palette ? palette->m_colors.text
+                               : CHyprColor(1.0, 1.0, 1.0, 1.0);
+              })
+              ->fontFamily(std::string(fontFamily))
+              ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+              ->align(HT_FONT_ALIGN_CENTER)
+              ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+                                  CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+              ->interactable(true)
+              ->commence();
     }
     m_volIcon->setGrow(false);
 
@@ -267,9 +285,8 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
           updateVolume(targetVol);
         } else {
           m_isMuted = true;
-          m_ctx.runMpdCommand([](struct mpd_connection *conn) {
-            mpd_run_set_volume(conn, 0);
-          });
+          m_ctx.runMpdCommand(
+              [](struct mpd_connection *conn) { mpd_run_set_volume(conn, 0); });
           updateVolume(0);
         }
       }
@@ -281,7 +298,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
             ->max(1.0f)
             ->val(1.0f)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 12.0F}))
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 16.0F}))
             ->onChanged([this](CSharedPointer<CSliderElement>, float val) {
               if (m_isUpdatingVolumeSlider)
                 return;
@@ -302,13 +319,14 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
     m_volumeSlider->setReceivesMouse(true);
     m_volumeSlider->setGrow(true);
 
-    m_volumeSlider->setMouseButton([this](Input::eMouseButton button, bool down) {
+    m_volumeSlider->setMouseButton([this](Input::eMouseButton button,
+                                          bool down) {
       if (button == Input::MOUSE_BUTTON_LEFT && down) {
         auto cursorPos = m_ctx.window->cursorPos();
         auto sliderSize = m_volumeSlider->size();
         if (sliderSize.x > 0.0) {
-          float pct = std::clamp(
-              static_cast<float>(cursorPos.x / sliderSize.x), 0.0f, 1.0f);
+          float pct = std::clamp(static_cast<float>(cursorPos.x / sliderSize.x),
+                                 0.0f, 1.0f);
           int vol = std::clamp(static_cast<int>(pct * 100.0f), 0, 100);
           if (vol > 0) {
             m_isMuted = false;
@@ -327,7 +345,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                 ->val(pct)
                 ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                     CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {1.0F, 12.0F}))
+                                    {1.0F, 16.0F}))
                 ->commence();
             m_volumeSlider->setGrow(true);
             m_isUpdatingVolumeSlider = false;
@@ -411,8 +429,7 @@ void PlaybackBar::updateTrackInfo(const std::string &trackText,
   if (m_timeText) {
     std::string timeStr = "0:00 / 0:00";
     if (hasActiveTrack && total > 0) {
-      timeStr =
-          Utils::formatTime(elapsed) + " / " + Utils::formatTime(total);
+      timeStr = Utils::formatTime(elapsed) + " / " + Utils::formatTime(total);
     }
     m_timeText->rebuild()->text(std::string(timeStr))->commence();
   }
@@ -421,16 +438,15 @@ void PlaybackBar::updateTrackInfo(const std::string &trackText,
     m_isUpdatingSeekBar = true;
     float progress = 0.0f;
     if (hasActiveTrack && total > 0) {
-      progress =
-          std::clamp(static_cast<float>(elapsed) / static_cast<float>(total),
-                     0.0f, 1.0f);
+      progress = std::clamp(
+          static_cast<float>(elapsed) / static_cast<float>(total), 0.0f, 1.0f);
     }
     m_seekBar->rebuild()
         ->min(0.0f)
         ->max(1.0f)
         ->val(progress)
         ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                            CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 12.0F}))
+                            CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 16.0F}))
         ->commence();
     m_seekBar->setGrow(true);
     m_isUpdatingSeekBar = false;
@@ -444,15 +460,16 @@ void PlaybackBar::updateVolumeIconState(bool muted) {
   auto imgBtn = Hyprutils::Memory::dynamicPointerCast<CImageElement>(m_volIcon);
   if (imgBtn) {
     auto iconFactory = m_ctx.backend->systemIcons();
-    auto iconDesc =
-        iconFactory ? iconFactory->lookupIcon(muted ? "audio-volume-muted"
-                                                    : "audio-volume-high")
-                    : nullptr;
+    auto iconDesc = iconFactory
+                        ? iconFactory->lookupIcon(muted ? "audio-volume-muted"
+                                                        : "audio-volume-high")
+                        : nullptr;
     if (iconDesc) {
       imgBtn->rebuild()->icon(iconDesc)->commence();
     }
   } else {
-    auto textBtn = Hyprutils::Memory::dynamicPointerCast<CTextElement>(m_volIcon);
+    auto textBtn =
+        Hyprutils::Memory::dynamicPointerCast<CTextElement>(m_volIcon);
     if (textBtn) {
       std::string iconChar = muted ? "🔇" : "🔊";
       textBtn->rebuild()->text(std::move(iconChar))->commence();
@@ -483,7 +500,7 @@ void PlaybackBar::updateVolume(int currentVolume) {
         ->max(1.0f)
         ->val(fraction)
         ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                            CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 12.0F}))
+                            CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 16.0F}))
         ->commence();
     m_volumeSlider->setGrow(true);
     m_isUpdatingVolumeSlider = false;
@@ -499,10 +516,10 @@ void PlaybackBar::updatePlayPauseState(const std::string &stateText) {
   if (imgBtn) {
     auto iconFactory = m_ctx.backend->systemIcons();
     auto iconDesc =
-        iconFactory ? iconFactory->lookupIcon(stateText == "⏸"
-                                                  ? "media-playback-pause"
-                                                  : "media-playback-start")
-                    : nullptr;
+        iconFactory
+            ? iconFactory->lookupIcon(stateText == "⏸" ? "media-playback-pause"
+                                                       : "media-playback-start")
+            : nullptr;
     if (iconDesc) {
       imgBtn->rebuild()->icon(iconDesc)->commence();
     }
@@ -523,9 +540,11 @@ void PlaybackBar::updatePlaybackModes(bool repeat, bool random) {
   auto iconFactory = m_ctx.backend->systemIcons();
 
   if (m_repeatBtn) {
-    auto imgBtn = Hyprutils::Memory::dynamicPointerCast<CImageElement>(m_repeatBtn);
+    auto imgBtn =
+        Hyprutils::Memory::dynamicPointerCast<CImageElement>(m_repeatBtn);
     if (imgBtn && iconFactory) {
-      std::string iconName = repeat ? "media-playlist-repeat-symbolic" : "media-playlist-repeat";
+      std::string iconName =
+          repeat ? "media-playlist-repeat-symbolic" : "media-playlist-repeat";
       auto iconDesc = iconFactory->lookupIcon(iconName);
       if (!iconDesc && repeat)
         iconDesc = iconFactory->lookupIcon("media-playlist-repeat-song");
@@ -534,7 +553,8 @@ void PlaybackBar::updatePlaybackModes(bool repeat, bool random) {
       if (iconDesc)
         imgBtn->rebuild()->icon(iconDesc)->commence();
     } else {
-      auto textBtn = Hyprutils::Memory::dynamicPointerCast<CTextElement>(m_repeatBtn);
+      auto textBtn =
+          Hyprutils::Memory::dynamicPointerCast<CTextElement>(m_repeatBtn);
       if (textBtn) {
         std::string label = repeat ? "🔂" : "🔁";
         textBtn->rebuild()
@@ -553,16 +573,19 @@ void PlaybackBar::updatePlaybackModes(bool repeat, bool random) {
   }
 
   if (m_randomBtn) {
-    auto imgBtn = Hyprutils::Memory::dynamicPointerCast<CImageElement>(m_randomBtn);
+    auto imgBtn =
+        Hyprutils::Memory::dynamicPointerCast<CImageElement>(m_randomBtn);
     if (imgBtn && iconFactory) {
-      std::string iconName = random ? "media-playlist-shuffle-symbolic" : "media-playlist-shuffle";
+      std::string iconName =
+          random ? "media-playlist-shuffle-symbolic" : "media-playlist-shuffle";
       auto iconDesc = iconFactory->lookupIcon(iconName);
       if (!iconDesc && random)
         iconDesc = iconFactory->lookupIcon("media-playlist-shuffle");
       if (iconDesc)
         imgBtn->rebuild()->icon(iconDesc)->commence();
     } else {
-      auto textBtn = Hyprutils::Memory::dynamicPointerCast<CTextElement>(m_randomBtn);
+      auto textBtn =
+          Hyprutils::Memory::dynamicPointerCast<CTextElement>(m_randomBtn);
       if (textBtn) {
         std::string label = random ? "🔀✨" : "🔀";
         textBtn->rebuild()
