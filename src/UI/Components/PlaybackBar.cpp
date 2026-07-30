@@ -31,7 +31,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
           ->commence();
   playbackSection->addChild(playbackLayout);
 
-  // 1. Song info section (25% of PlaybackSection)
+  // 1. Song info section (30% of PlaybackSection)
   auto songInfoSection =
       CRectangleBuilder::begin()
           ->color([palette] {
@@ -39,7 +39,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                            : CHyprColor(0.15, 0.15, 0.15, 1.0);
           })
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.25F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.30F}))
           ->commence();
 
   CenteredTextLabelContext txtCtx{
@@ -56,7 +56,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
   songInfoSection->addChild(m_nowPlayingLabel->build());
   playbackLayout->addChild(songInfoSection);
 
-  // 2. Seek bar section (25% of PlaybackSection)
+  // 2. Seek bar section (30% of PlaybackSection)
   auto seekBarSection =
       CRectangleBuilder::begin()
           ->color([palette] {
@@ -65,7 +65,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
           })
           ->rounding(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.25F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.30F}))
           ->commence();
 
   auto seekBarRow =
@@ -147,7 +147,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
   seekBarSection->addChild(seekBarRow);
   playbackLayout->addChild(seekBarSection);
 
-  // 3. Controls section (50% of PlaybackSection)
+  // 3. Controls section (40% of PlaybackSection)
   auto controlsSection =
       CRectangleBuilder::begin()
           ->color([palette] {
@@ -156,7 +156,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
           })
           ->rounding(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.50F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.40F}))
           ->commence();
 
   auto controlsLayout =
