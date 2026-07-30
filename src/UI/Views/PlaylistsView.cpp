@@ -623,9 +623,10 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
     auto scrollArea =
         CScrollAreaBuilder::begin()
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.90F}))
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 1.0F}))
             ->scrollY(true)
             ->commence();
+    scrollArea->setGrow(true);
 
     m_leftItemsLayout =
         CColumnLayoutBuilder::begin()
@@ -774,9 +775,10 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
     auto scrollArea =
         CScrollAreaBuilder::begin()
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.90F}))
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 1.0F}))
             ->scrollY(true)
             ->commence();
+    scrollArea->setGrow(true);
 
     m_rightItemsLayout =
         CColumnLayoutBuilder::begin()

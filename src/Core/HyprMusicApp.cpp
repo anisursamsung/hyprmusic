@@ -266,6 +266,16 @@ void HyprMusicApp::createUI() {
       .showNotification = [this](const std::string &msg) { showNotification(msg); }};
   m_helpView = std::make_unique<UI::Views::HelpView>(hCtx);
 
+  UI::Views::TestViewContext tCtx{
+      .window = m_window,
+      .backend = m_backend,
+      .palette = palette,
+      .fontFamily = fontFamily,
+      .runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
+        Services::MPDManager::runMpdCommand(cmd);
+      }};
+  m_testView = std::make_unique<UI::Views::TestView>(tCtx);
+
   m_tabBar->updateActiveTab(m_viewMode);
 }
 
@@ -459,6 +469,7 @@ void HyprMusicApp::updateStatus() {
     isRandom = mpd_status_get_random(status);
     m_isPlaying = (state == MPD_STATE_PLAY);
 
+    std::string currentSongUri = "";
     if (state == MPD_STATE_PLAY || state == MPD_STATE_PAUSE) {
       stateText = (state == MPD_STATE_PLAY) ? "⏸" : "▶";
       elapsed = mpd_status_get_elapsed_time(status);
@@ -470,6 +481,8 @@ void HyprMusicApp::updateStatus() {
         const char *artist = mpd_song_get_tag(song, MPD_TAG_ARTIST, 0);
         const char *title = mpd_song_get_tag(song, MPD_TAG_TITLE, 0);
         const char *uri = mpd_song_get_uri(song);
+        if (uri)
+          currentSongUri = uri;
 
         std::string storedTitle, storedUploader;
         if (title && strlen(title) > 0) {
@@ -547,6 +560,12 @@ void HyprMusicApp::updateStatus() {
         m_playlistLoaded = true;
         m_helpView->rebuildUI(m_tabContentWrapper);
       }
+    } else if (m_viewMode == eViewMode::VIEW_TEST) {
+      if (!m_playlistLoaded) {
+        m_playlistLoaded = true;
+        m_testView->rebuildUI(m_tabContentWrapper, conn);
+      }
+      m_testView->updateTrackInfo(trackText, hasActiveTrack, elapsed, total, currentSongUri);
     }
 
     mpd_status_free(status);

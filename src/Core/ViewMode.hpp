@@ -8,7 +8,8 @@ enum class eViewMode {
   VIEW_PLAYLISTS,
   VIEW_YTDLP,
   VIEW_SETTINGS,
-  VIEW_HELP
+  VIEW_HELP,
+  VIEW_TEST
 };
 
 } // namespace Core

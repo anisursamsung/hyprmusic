@@ -20,6 +20,7 @@
 #include "../UI/Views/PlaylistsView.hpp"
 #include "../UI/Views/QueueView.hpp"
 #include "../UI/Views/SettingsView.hpp"
+#include "../UI/Views/TestView.hpp"
 #include "../UI/Views/YtDlpView.hpp"
 
 namespace Core {
@@ -70,6 +71,7 @@ private:
   std::unique_ptr<UI::Views::YtDlpView> m_ytDlpView;
   std::unique_ptr<UI::Views::SettingsView> m_settingsView;
   std::unique_ptr<UI::Views::HelpView> m_helpView;
+  std::unique_ptr<UI::Views::TestView> m_testView;
 
   CSharedPointer<CRectangleElement> m_tabContentWrapper;
 

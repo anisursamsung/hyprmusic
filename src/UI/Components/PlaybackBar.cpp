@@ -48,7 +48,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                            : CHyprColor(0.2, 0.8, 0.4, 1.0);
           })
           ->fontFamily(std::string(fontFamily))
-          ->fontSize(CFontSize(CFontSize::HT_FONT_H2))
+          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
           ->align(HT_FONT_ALIGN_CENTER)
           ->noEllipsize(false)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
@@ -423,7 +423,14 @@ void PlaybackBar::updateTrackInfo(const std::string &trackText,
   if (m_nowPlayingText) {
     std::string textToDisplay =
         hasActiveTrack ? trackText : "No currently playing songs";
-    m_nowPlayingText->rebuild()->text(std::string(textToDisplay))->commence();
+    m_nowPlayingText->rebuild()
+        ->text(std::string(textToDisplay))
+        ->align(HT_FONT_ALIGN_CENTER)
+        ->noEllipsize(false)
+        ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                            CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+        ->commence();
   }
 
   if (m_timeText) {

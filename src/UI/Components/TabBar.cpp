@@ -42,6 +42,7 @@ CSharedPointer<CRectangleElement> TabBar::build() {
       {"YT DLP", Core::eViewMode::VIEW_YTDLP},
       {"Settings", Core::eViewMode::VIEW_SETTINGS},
       {"Help", Core::eViewMode::VIEW_HELP},
+      {"Test", Core::eViewMode::VIEW_TEST},
   };
 
   for (const auto &tab : tabs) {

@@ -28,6 +28,9 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
   if (!m_queueContentLayout) {
     m_tabContentWrapper->clearChildren();
+    m_tabContentWrapper->rebuild()
+        ->color([] { return CHyprColor(1.0F, 1.0F, 1.0F, 1.0F); })
+        ->commence();
 
     auto tabMainLayout =
         CColumnLayoutBuilder::begin()
@@ -161,9 +164,10 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
     auto scrollArea =
         CScrollAreaBuilder::begin()
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.85F}))
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 1.0F}))
             ->scrollY(true)
             ->commence();
+    scrollArea->setGrow(true);
 
     m_queueContentLayout =
         CColumnLayoutBuilder::begin()
