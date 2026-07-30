@@ -40,7 +40,6 @@ public:
   void updateTrackInfo(const std::string &trackText, bool hasActiveTrack, unsigned elapsed, unsigned total);
   void updateVolume(int currentVolume);
   void updatePlayPauseState(const std::string &stateText);
-  void updatePlaybackModes(bool repeat, bool random);
 
 private:
   PlaybackBarContext m_ctx;
@@ -52,13 +51,9 @@ private:
   CSharedPointer<CSliderElement> m_volumeSlider;
   bool m_isUpdatingVolumeSlider = false;
   CSharedPointer<IElement> m_pauseBtn;
-  CSharedPointer<IElement> m_repeatBtn;
-  CSharedPointer<IElement> m_randomBtn;
   CSharedPointer<IElement> m_volIcon;
   bool m_isMuted = false;
   int m_lastUnmutedVolume = 70;
-  bool m_isRepeat = false;
-  bool m_isRandom = false;
 
   void updateVolumeIconState(bool muted);
 };

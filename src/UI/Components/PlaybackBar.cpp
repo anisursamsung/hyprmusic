@@ -178,7 +178,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                        ->color([] { return CHyprColor(0, 0, 0, 0); })
                        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                            CDynamicSize::HT_SIZE_PERCENT,
-                                           {1.0F / 6.0F, 1.0F}))
+                                           {1.0F / 4.0F, 1.0F}))
                        ->commence();
 
         CSharedPointer<IElement> btn;
@@ -228,7 +228,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                    ->color([] { return CHyprColor(0, 0, 0, 0); })
                    ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                        CDynamicSize::HT_SIZE_PERCENT,
-                                       {1.0F / 6.0F, 1.0F}))
+                                       {1.0F / 4.0F, 1.0F}))
                    ->commence();
 
     auto volRow =
@@ -362,18 +362,6 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
     controlsLayout->addChild(col);
   }
 
-  m_repeatBtn = addControlColumn(
-      "media-playlist-repeat", "🔁",
-      [this](Input::eMouseButton button, bool down) {
-        if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-          bool targetRepeat = !m_isRepeat;
-          m_ctx.runMpdCommand([targetRepeat](struct mpd_connection *conn) {
-            mpd_run_repeat(conn, targetRepeat);
-          });
-          updatePlaybackModes(targetRepeat, m_isRandom);
-        }
-      });
-
   addControlColumn("media-skip-backward", "⏮",
                    [this](Input::eMouseButton button, bool down) {
                      if (button == Input::MOUSE_BUTTON_LEFT && !down) {
@@ -398,18 +386,6 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                          m_ctx.nextTrack();
                      }
                    });
-
-  m_randomBtn = addControlColumn(
-      "media-playlist-shuffle", "🔀",
-      [this](Input::eMouseButton button, bool down) {
-        if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-          bool targetRandom = !m_isRandom;
-          m_ctx.runMpdCommand([targetRandom](struct mpd_connection *conn) {
-            mpd_run_random(conn, targetRandom);
-          });
-          updatePlaybackModes(m_isRepeat, targetRandom);
-        }
-      });
 
   controlsSection->addChild(controlsLayout);
   playbackLayout->addChild(controlsSection);
@@ -527,78 +503,6 @@ void PlaybackBar::updatePlayPauseState(const std::string &stateText) {
         Hyprutils::Memory::dynamicPointerCast<CTextElement>(m_pauseBtn);
     if (textBtn) {
       textBtn->rebuild()->text(std::string(stateText))->commence();
-    }
-  }
-}
-
-void PlaybackBar::updatePlaybackModes(bool repeat, bool random) {
-  m_isRepeat = repeat;
-  m_isRandom = random;
-
-  auto palette = m_ctx.palette;
-  auto iconFactory = m_ctx.backend->systemIcons();
-
-  if (m_repeatBtn) {
-    auto imgBtn =
-        Hyprutils::Memory::dynamicPointerCast<CImageElement>(m_repeatBtn);
-    if (imgBtn && iconFactory) {
-      std::string iconName =
-          repeat ? "media-playlist-repeat-symbolic" : "media-playlist-repeat";
-      auto iconDesc = iconFactory->lookupIcon(iconName);
-      if (!iconDesc && repeat)
-        iconDesc = iconFactory->lookupIcon("media-playlist-repeat-song");
-      if (!iconDesc && repeat)
-        iconDesc = iconFactory->lookupIcon("media-playlist-repeat");
-      if (iconDesc)
-        imgBtn->rebuild()->icon(iconDesc)->commence();
-    } else {
-      auto textBtn =
-          Hyprutils::Memory::dynamicPointerCast<CTextElement>(m_repeatBtn);
-      if (textBtn) {
-        std::string label = repeat ? "🔂" : "🔁";
-        textBtn->rebuild()
-            ->text(std::move(label))
-            ->color([palette, repeat] {
-              if (repeat) {
-                return palette ? palette->m_colors.accent
-                               : CHyprColor(0.2, 0.8, 0.4, 1.0);
-              }
-              return palette ? palette->m_colors.text
-                             : CHyprColor(0.8, 0.8, 0.8, 1.0);
-            })
-            ->commence();
-      }
-    }
-  }
-
-  if (m_randomBtn) {
-    auto imgBtn =
-        Hyprutils::Memory::dynamicPointerCast<CImageElement>(m_randomBtn);
-    if (imgBtn && iconFactory) {
-      std::string iconName =
-          random ? "media-playlist-shuffle-symbolic" : "media-playlist-shuffle";
-      auto iconDesc = iconFactory->lookupIcon(iconName);
-      if (!iconDesc && random)
-        iconDesc = iconFactory->lookupIcon("media-playlist-shuffle");
-      if (iconDesc)
-        imgBtn->rebuild()->icon(iconDesc)->commence();
-    } else {
-      auto textBtn =
-          Hyprutils::Memory::dynamicPointerCast<CTextElement>(m_randomBtn);
-      if (textBtn) {
-        std::string label = random ? "🔀✨" : "🔀";
-        textBtn->rebuild()
-            ->text(std::move(label))
-            ->color([palette, random] {
-              if (random) {
-                return palette ? palette->m_colors.accent
-                               : CHyprColor(0.2, 0.8, 0.4, 1.0);
-              }
-              return palette ? palette->m_colors.text
-                             : CHyprColor(0.8, 0.8, 0.8, 1.0);
-            })
-            ->commence();
-      }
     }
   }
 }

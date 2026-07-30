@@ -456,17 +456,12 @@ void HyprMusicApp::updateStatus() {
   bool hasActiveTrack = false;
   m_isPlaying = false;
 
-  bool isRepeat = false;
-  bool isRandom = false;
-
   struct mpd_status *status = mpd_run_status(conn);
   if (status) {
     enum mpd_state state = mpd_status_get_state(status);
     activeSongId = mpd_status_get_song_id(status);
     currentQueueVersion = mpd_status_get_queue_version(status);
     currentVolume = mpd_status_get_volume(status);
-    isRepeat = mpd_status_get_repeat(status);
-    isRandom = mpd_status_get_random(status);
     m_isPlaying = (state == MPD_STATE_PLAY);
 
     std::string currentSongUri = "";
@@ -576,7 +571,6 @@ void HyprMusicApp::updateStatus() {
   m_playbackBar->updateTrackInfo(trackText, hasActiveTrack, elapsed, total);
   m_playbackBar->updatePlayPauseState(stateText);
   m_playbackBar->updateVolume(currentVolume);
-  m_playbackBar->updatePlaybackModes(isRepeat, isRandom);
 }
 
 void HyprMusicApp::setupTimer() {
