@@ -16,7 +16,7 @@ namespace UI::Views {
 using namespace Hyprtoolkit;
 using namespace Hyprutils::Memory;
 
-struct TestViewContext {
+struct PlayerViewContext {
   CSharedPointer<IWindow> window;
   CSharedPointer<IBackend> backend;
   CSharedPointer<CPalette> palette;
@@ -25,15 +25,15 @@ struct TestViewContext {
   std::function<void(const std::function<void(struct mpd_connection *)> &)> runMpdCommand;
 };
 
-class TestView {
+class PlayerView {
 public:
-  explicit TestView(const TestViewContext &ctx);
+  explicit PlayerView(const PlayerViewContext &ctx);
 
   void rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd_connection *conn);
   void updateTrackInfo(const std::string &trackText, bool hasActiveTrack, unsigned elapsed, unsigned total, const std::string &songUri);
 
 private:
-  TestViewContext m_ctx;
+  PlayerViewContext m_ctx;
   CSharedPointer<CRectangleElement> m_tabContentWrapper;
   CSharedPointer<IElement> m_coverCardElementBackground;
   CSharedPointer<IElement> m_vignetteOverlay;

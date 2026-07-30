@@ -40,7 +40,7 @@ add_executable(hyprmusic
     src/UI/Views/PlaylistsView.cpp
     src/UI/Views/QueueView.cpp
     src/UI/Views/SettingsView.cpp
-    src/UI/Views/TestView.cpp
+    src/UI/Views/PlayerView.cpp
     src/UI/Views/YtDlpView.cpp
     src/Utils/ArtworkUtils.cpp
     src/Utils/StreamUtils.cpp

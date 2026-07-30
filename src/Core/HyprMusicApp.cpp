@@ -266,7 +266,7 @@ void HyprMusicApp::createUI() {
       .showNotification = [this](const std::string &msg) { showNotification(msg); }};
   m_helpView = std::make_unique<UI::Views::HelpView>(hCtx);
 
-  UI::Views::TestViewContext tCtx{
+  UI::Views::PlayerViewContext playerCtx{
       .window = m_window,
       .backend = m_backend,
       .palette = palette,
@@ -274,7 +274,7 @@ void HyprMusicApp::createUI() {
       .runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
         Services::MPDManager::runMpdCommand(cmd);
       }};
-  m_testView = std::make_unique<UI::Views::TestView>(tCtx);
+  m_playerView = std::make_unique<UI::Views::PlayerView>(playerCtx);
 
   m_tabBar->updateActiveTab(m_viewMode);
 }
@@ -555,12 +555,12 @@ void HyprMusicApp::updateStatus() {
         m_playlistLoaded = true;
         m_helpView->rebuildUI(m_tabContentWrapper);
       }
-    } else if (m_viewMode == eViewMode::VIEW_TEST) {
+    } else if (m_viewMode == eViewMode::VIEW_PLAYER) {
       if (!m_playlistLoaded) {
         m_playlistLoaded = true;
-        m_testView->rebuildUI(m_tabContentWrapper, conn);
+        m_playerView->rebuildUI(m_tabContentWrapper, conn);
       }
-      m_testView->updateTrackInfo(trackText, hasActiveTrack, elapsed, total, currentSongUri);
+      m_playerView->updateTrackInfo(trackText, hasActiveTrack, elapsed, total, currentSongUri);
     }
 
     mpd_status_free(status);

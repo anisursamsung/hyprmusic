@@ -20,7 +20,7 @@
 #include "../UI/Views/PlaylistsView.hpp"
 #include "../UI/Views/QueueView.hpp"
 #include "../UI/Views/SettingsView.hpp"
-#include "../UI/Views/TestView.hpp"
+#include "../UI/Views/PlayerView.hpp"
 #include "../UI/Views/YtDlpView.hpp"
 
 namespace Core {
@@ -56,7 +56,7 @@ private:
   CSharedPointer<CPalette> m_palette;
   std::string m_fontFamily = "Sans Serif";
 
-  eViewMode m_viewMode = eViewMode::VIEW_QUEUE;
+  eViewMode m_viewMode = eViewMode::VIEW_PLAYER;
 
   std::unordered_map<std::string, std::string> m_mpdSettings;
   Services::YtDlpService m_ytDlpService;
@@ -71,7 +71,7 @@ private:
   std::unique_ptr<UI::Views::YtDlpView> m_ytDlpView;
   std::unique_ptr<UI::Views::SettingsView> m_settingsView;
   std::unique_ptr<UI::Views::HelpView> m_helpView;
-  std::unique_ptr<UI::Views::TestView> m_testView;
+  std::unique_ptr<UI::Views::PlayerView> m_playerView;
 
   CSharedPointer<CRectangleElement> m_tabContentWrapper;
 

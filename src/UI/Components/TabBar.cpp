@@ -36,13 +36,13 @@ CSharedPointer<CRectangleElement> TabBar::build() {
   };
 
   std::vector<TabDef> tabs = {
+      {"Player", Core::eViewMode::VIEW_PLAYER},
       {"Queue", Core::eViewMode::VIEW_QUEUE},
       {"Database", Core::eViewMode::VIEW_DATABASE},
       {"Playlists", Core::eViewMode::VIEW_PLAYLISTS},
       {"YT DLP", Core::eViewMode::VIEW_YTDLP},
       {"Settings", Core::eViewMode::VIEW_SETTINGS},
       {"Help", Core::eViewMode::VIEW_HELP},
-      {"Test", Core::eViewMode::VIEW_TEST},
   };
 
   for (const auto &tab : tabs) {

@@ -1,4 +1,4 @@
-#include "TestView.hpp"
+#include "PlayerView.hpp"
 #include "../../Utils/ArtworkUtils.hpp"
 #include <hyprtoolkit/system/Icons.hpp>
 #include <algorithm>
@@ -6,7 +6,7 @@
 
 namespace UI::Views {
 
-TestView::TestView(const TestViewContext &ctx) : m_ctx(ctx) {}
+PlayerView::PlayerView(const PlayerViewContext &ctx) : m_ctx(ctx) {}
 
 static CSharedPointer<IElement> buildCardElement(CSharedPointer<CPalette> palette,
                                                  CSharedPointer<IBackend> backend,
@@ -201,7 +201,7 @@ static CSharedPointer<IElement> buildMenuButton(CSharedPointer<CPalette> palette
   return btnContainer;
 }
 
-void TestView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd_connection *conn) {
+void PlayerView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd_connection *conn) {
   m_tabContentWrapper = wrapper;
   if (!m_tabContentWrapper)
     return;
@@ -233,7 +233,7 @@ void TestView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd_c
   m_tabContentWrapper->forceReposition();
 }
 
-void TestView::updateTrackInfo(const std::string & /*trackText*/, bool /*hasActiveTrack*/,
+void PlayerView::updateTrackInfo(const std::string & /*trackText*/, bool /*hasActiveTrack*/,
                                unsigned /*elapsed*/, unsigned /*total*/, const std::string &songUri) {
   if (m_lastSongUri != songUri) {
     m_lastSongUri = songUri;
