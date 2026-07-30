@@ -26,6 +26,22 @@ static std::string applyRoundedCorners(const std::string &inputPath, int width, 
   return inputPath;
 }
 
+std::string generateBlurredArtwork(const std::string &inputPath, int width, int height, int blurSigma) {
+  if (inputPath.empty() || !std::filesystem::exists(inputPath))
+    return "";
+
+  std::string outputPath = "/tmp/hyprmusic_blurred_art.png";
+  std::string cmd = "magick \"" + inputPath + "\" -resize " + std::to_string(width) + "x" + std::to_string(height) +
+                    "^ -gravity center -extent " + std::to_string(width) + "x" + std::to_string(height) +
+                    " -blur 0x" + std::to_string(blurSigma) + " \"" + outputPath + "\" >/dev/null 2>&1";
+
+  int res = std::system(cmd.c_str());
+  if (res == 0 && std::filesystem::exists(outputPath)) {
+    return outputPath;
+  }
+  return inputPath;
+}
+
 std::string getDefaultArtworkPath() {
   std::vector<std::string> candidates = {
       "/home/anisur/git/hyprmusic/assets/default_album_art.png",

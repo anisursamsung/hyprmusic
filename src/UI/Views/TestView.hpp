@@ -35,7 +35,9 @@ public:
 private:
   TestViewContext m_ctx;
   CSharedPointer<CRectangleElement> m_tabContentWrapper;
+  CSharedPointer<IElement> m_coverCardElementBackground;
   CSharedPointer<IElement> m_coverCardElement;
+  CSharedPointer<IElement> m_menuBtn;
 
   std::string m_lastSongUri;
 };

@@ -80,6 +80,114 @@ static CSharedPointer<IElement> buildCardElement(CSharedPointer<CPalette> palett
   return card;
 }
 
+static CSharedPointer<IElement> buildBackgroundElement(CSharedPointer<CPalette> palette,
+                                                       const std::string &artPath) {
+  std::string artPathStr = artPath;
+  if (artPathStr.empty()) {
+    artPathStr = Utils::getDefaultArtworkPath();
+  }
+
+  std::string blurredPath = Utils::generateBlurredArtwork(artPathStr);
+  if (blurredPath.empty())
+    blurredPath = artPathStr;
+
+  if (!blurredPath.empty()) {
+    auto img = CImageBuilder::begin()
+                   ->path(std::string(blurredPath))
+                   ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                       CDynamicSize::HT_SIZE_PERCENT,
+                                       {1.0F, 1.0F}))
+                   ->rounding(0)
+                   ->fitMode(IMAGE_FIT_MODE_COVER)
+                   ->commence();
+    img->setGrow(true, true);
+    img->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+    img->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+    return img;
+  }
+
+  auto card = CRectangleBuilder::begin()
+                  ->color([palette] {
+                    return palette ? palette->m_colors.background
+                                   : CHyprColor(0.12, 0.12, 0.12, 1.0);
+                  })
+                  ->rounding(0)
+                  ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                      CDynamicSize::HT_SIZE_PERCENT,
+                                      {1.0F, 1.0F}))
+                  ->commence();
+  card->setGrow(true, true);
+  card->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  card->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+  return card;
+}
+
+static CSharedPointer<IElement> buildMenuButton(CSharedPointer<CPalette> palette,
+                                                 CSharedPointer<IBackend> backend,
+                                                 const std::string &fontFamily) {
+  auto iconFactory = backend ? backend->systemIcons() : nullptr;
+  CSharedPointer<ISystemIconDescription> menuIcon;
+  if (iconFactory) {
+    menuIcon = iconFactory->lookupIcon("open-menu-symbolic");
+    if (!menuIcon)
+      menuIcon = iconFactory->lookupIcon("view-more-symbolic");
+    if (!menuIcon)
+      menuIcon = iconFactory->lookupIcon("emblem-system-symbolic");
+  }
+
+  auto btnContainer =
+      CRectangleBuilder::begin()
+          ->color([palette] {
+            if (palette) {
+              auto c = palette->m_colors.alternateBase;
+              return CHyprColor(c.r, c.g, c.b, 0.6);
+            }
+            return CHyprColor(0.2, 0.2, 0.2, 0.6);
+          })
+          ->rounding(20)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                              CDynamicSize::HT_SIZE_ABSOLUTE,
+                              {40.0F, 40.0F}))
+          ->commence();
+
+  CSharedPointer<IElement> iconElem;
+  if (menuIcon) {
+    iconElem = CImageBuilder::begin()
+                   ->icon(menuIcon)
+                   ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                       CDynamicSize::HT_SIZE_ABSOLUTE,
+                                       {20.0F, 20.0F}))
+                   ->fitMode(IMAGE_FIT_MODE_CONTAIN)
+                   ->commence();
+  } else {
+    iconElem = CTextBuilder::begin()
+                   ->text(std::string("⋮"))
+                   ->color([palette] {
+                     return palette ? palette->m_colors.text
+                                    : CHyprColor(1.0, 1.0, 1.0, 1.0);
+                   })
+                   ->fontFamily(std::string(fontFamily))
+                   ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
+                   ->align(HT_FONT_ALIGN_CENTER)
+                   ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+                                       CDynamicSize::HT_SIZE_AUTO,
+                                       {1.0F, 1.0F}))
+                   ->commence();
+  }
+  iconElem->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  iconElem->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+
+  btnContainer->addChild(iconElem);
+  btnContainer->setReceivesMouse(true);
+
+  btnContainer->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  btnContainer->setPositionFlag(IElement::HT_POSITION_FLAG_RIGHT, true);
+  btnContainer->setPositionFlag(IElement::HT_POSITION_FLAG_TOP, true);
+  btnContainer->setAbsolutePosition({-16.0F, 16.0F});
+
+  return btnContainer;
+}
+
 void TestView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd_connection *conn) {
   m_tabContentWrapper = wrapper;
   if (!m_tabContentWrapper)
@@ -100,9 +208,13 @@ void TestView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd_c
 
   m_lastSongUri = currentUri;
   std::string artPath = Utils::resolveTrackArtwork(conn, currentUri);
+  m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette, artPath);
   m_coverCardElement = buildCardElement(m_ctx.palette, m_ctx.backend, artPath);
+  m_menuBtn = buildMenuButton(m_ctx.palette, m_ctx.backend, m_ctx.fontFamily);
 
+  m_tabContentWrapper->addChild(m_coverCardElementBackground);
   m_tabContentWrapper->addChild(m_coverCardElement);
+  m_tabContentWrapper->addChild(m_menuBtn);
   m_tabContentWrapper->forceReposition();
 }
 
@@ -114,8 +226,12 @@ void TestView::updateTrackInfo(const std::string & /*trackText*/, bool /*hasActi
       std::string artPath = Utils::resolveTrackArtwork(conn, songUri);
       if (m_tabContentWrapper) {
         m_tabContentWrapper->clearChildren();
+        m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette, artPath);
         m_coverCardElement = buildCardElement(m_ctx.palette, m_ctx.backend, artPath);
+        m_menuBtn = buildMenuButton(m_ctx.palette, m_ctx.backend, m_ctx.fontFamily);
+        m_tabContentWrapper->addChild(m_coverCardElementBackground);
         m_tabContentWrapper->addChild(m_coverCardElement);
+        m_tabContentWrapper->addChild(m_menuBtn);
         m_tabContentWrapper->forceReposition();
       }
     });
