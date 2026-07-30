@@ -2,6 +2,7 @@
 #include "../../Utils/ArtworkUtils.hpp"
 #include <hyprtoolkit/system/Icons.hpp>
 #include <algorithm>
+#include <filesystem>
 
 namespace UI::Views {
 
@@ -12,8 +13,12 @@ static CSharedPointer<IElement> buildCardElement(CSharedPointer<CPalette> palett
                                                  const std::string &artPath) {
   int rounding = 0;
 
-  if (!artPath.empty()) {
-    std::string artPathStr = artPath;
+  std::string artPathStr = artPath;
+  if (artPathStr.empty()) {
+    artPathStr = Utils::getDefaultArtworkPath();
+  }
+
+  if (!artPathStr.empty()) {
     auto img = CImageBuilder::begin()
                    ->path(std::string(artPathStr))
                    ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,

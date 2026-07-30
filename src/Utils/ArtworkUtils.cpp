@@ -26,9 +26,28 @@ static std::string applyRoundedCorners(const std::string &inputPath, int width, 
   return inputPath;
 }
 
+std::string getDefaultArtworkPath() {
+  std::vector<std::string> candidates = {
+      "/home/anisur/git/hyprmusic/assets/default_album_art.png",
+      "assets/default_album_art.png"};
+  try {
+    candidates.push_back(
+        (std::filesystem::current_path() / "assets/default_album_art.png")
+            .string());
+  } catch (...) {
+  }
+
+  for (const auto &p : candidates) {
+    if (!p.empty() && std::filesystem::exists(p)) {
+      return p;
+    }
+  }
+  return "";
+}
+
 std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &songUri, int targetWidth, int targetHeight, int cornerRadius) {
   if (songUri.empty())
-    return "";
+    return getDefaultArtworkPath();
 
   std::vector<uint8_t> imgBytes;
   char buffer[16384];
@@ -80,6 +99,11 @@ std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &
         }
       }
     } catch (...) {}
+  }
+
+  // 4. Default artwork fallback
+  if (rawPath.empty()) {
+    rawPath = getDefaultArtworkPath();
   }
 
   if (!rawPath.empty() && cornerRadius > 0) {
