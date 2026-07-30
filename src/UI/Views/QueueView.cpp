@@ -28,9 +28,6 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
   if (!m_queueContentLayout) {
     m_tabContentWrapper->clearChildren();
-    m_tabContentWrapper->rebuild()
-        ->color([] { return CHyprColor(1.0F, 1.0F, 1.0F, 1.0F); })
-        ->commence();
 
     auto tabMainLayout =
         CColumnLayoutBuilder::begin()
