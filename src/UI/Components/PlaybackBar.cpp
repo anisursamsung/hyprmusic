@@ -11,7 +11,27 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
   auto palette = m_ctx.palette;
   std::string fontFamily = m_ctx.fontFamily;
 
-  // 1. Song info section
+  // Outer Playback Section container (15% of parentColumn)
+  auto playbackSection =
+      CRectangleBuilder::begin()
+          ->color([palette] {
+            return palette ? palette->m_colors.background
+                           : CHyprColor(0.15, 0.15, 0.15, 1.0);
+          })
+          ->rounding(0)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.15F}))
+          ->commence();
+
+  auto playbackLayout =
+      CColumnLayoutBuilder::begin()
+          ->gap(0)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+          ->commence();
+  playbackSection->addChild(playbackLayout);
+
+  // 1. Song info section (25% of PlaybackSection)
   auto songInfoSection =
       CRectangleBuilder::begin()
           ->color([palette] {
@@ -19,7 +39,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                            : CHyprColor(0.15, 0.15, 0.15, 1.0);
           })
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 42.0F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.25F}))
           ->commence();
 
   CenteredTextLabelContext txtCtx{
@@ -34,9 +54,9 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
   };
   m_nowPlayingLabel = std::make_unique<CenteredTextLabel>(txtCtx);
   songInfoSection->addChild(m_nowPlayingLabel->build());
-  parentColumn->addChild(songInfoSection);
+  playbackLayout->addChild(songInfoSection);
 
-  // 2. Seek bar section
+  // 2. Seek bar section (25% of PlaybackSection)
   auto seekBarSection =
       CRectangleBuilder::begin()
           ->color([palette] {
@@ -45,7 +65,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
           })
           ->rounding(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 48.0F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.25F}))
           ->commence();
 
   auto seekBarRow =
@@ -125,9 +145,9 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
   seekBarRow->addChild(m_timeText);
   seekBarRow->addChild(m_seekBar);
   seekBarSection->addChild(seekBarRow);
-  parentColumn->addChild(seekBarSection);
+  playbackLayout->addChild(seekBarSection);
 
-  // 3. Controls section
+  // 3. Controls section (50% of PlaybackSection)
   auto controlsSection =
       CRectangleBuilder::begin()
           ->color([palette] {
@@ -136,7 +156,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
           })
           ->rounding(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.12F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.50F}))
           ->commence();
 
   auto controlsLayout =
@@ -389,7 +409,8 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
       });
 
   controlsSection->addChild(controlsLayout);
-  parentColumn->addChild(controlsSection);
+  playbackLayout->addChild(controlsSection);
+  parentColumn->addChild(playbackSection);
 }
 
 void PlaybackBar::updateTrackInfo(const std::string &trackText,
