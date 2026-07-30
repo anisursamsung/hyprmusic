@@ -12,6 +12,7 @@ CSharedPointer<CColumnLayoutElement> CenteredTextLabel::build() {
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();
+  m_container->setMargin(m_ctx.margin);
 
   auto palette = m_ctx.palette;
   colorFn textColor = m_ctx.color;
