@@ -36,6 +36,7 @@ private:
   TestViewContext m_ctx;
   CSharedPointer<CRectangleElement> m_tabContentWrapper;
   CSharedPointer<IElement> m_coverCardElementBackground;
+  CSharedPointer<IElement> m_vignetteOverlay;
   CSharedPointer<IElement> m_coverCardElement;
   CSharedPointer<IElement> m_menuBtn;
 

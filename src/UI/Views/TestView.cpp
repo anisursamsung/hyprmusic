@@ -21,13 +21,12 @@ static CSharedPointer<IElement> buildCardElement(CSharedPointer<CPalette> palett
   if (!artPathStr.empty()) {
     auto img = CImageBuilder::begin()
                    ->path(std::string(artPathStr))
-                   ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                   ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
                                        CDynamicSize::HT_SIZE_PERCENT,
                                        {1.0F, 1.0F}))
                    ->rounding(rounding)
                    ->fitMode(IMAGE_FIT_MODE_CONTAIN)
                    ->commence();
-    img->setGrow(true, true);
     img->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
     img->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
     return img;
@@ -80,22 +79,42 @@ static CSharedPointer<IElement> buildCardElement(CSharedPointer<CPalette> palett
   return card;
 }
 
-static CSharedPointer<IElement> buildBackgroundElement(CSharedPointer<CPalette> palette) {
-  std::string bgPath = Utils::getBackgroundImagePath();
-  if (bgPath.empty()) {
-    bgPath = Utils::getDefaultArtworkPath();
+static CSharedPointer<IElement> buildVignetteOverlay(CSharedPointer<CPalette> palette) {
+  auto overlay =
+      CRectangleBuilder::begin()
+          ->color([palette] {
+            if (palette) {
+              auto bg = palette->m_colors.background;
+              return CHyprColor(bg.r, bg.g, bg.b, 0.50F);
+            }
+            return CHyprColor(0.12F, 0.12F, 0.12F, 0.50F);
+          })
+          ->rounding(0)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_PERCENT,
+                              {1.0F, 1.0F}))
+          ->commence();
+  overlay->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  overlay->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+  return overlay;
+}
+
+static CSharedPointer<IElement> buildBackgroundElement(CSharedPointer<CPalette> palette,
+                                                       const std::string &artPath) {
+  std::string artPathStr = artPath;
+  if (artPathStr.empty()) {
+    artPathStr = Utils::getDefaultArtworkPath();
   }
 
-  if (!bgPath.empty()) {
+  if (!artPathStr.empty()) {
     auto img = CImageBuilder::begin()
-                   ->path(std::string(bgPath))
+                   ->path(std::string(artPathStr))
                    ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                        CDynamicSize::HT_SIZE_PERCENT,
                                        {1.0F, 1.0F}))
                    ->rounding(0)
                    ->fitMode(IMAGE_FIT_MODE_COVER)
                    ->commence();
-    img->setGrow(true, true);
     img->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
     img->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
     return img;
@@ -111,7 +130,6 @@ static CSharedPointer<IElement> buildBackgroundElement(CSharedPointer<CPalette> 
                                       CDynamicSize::HT_SIZE_PERCENT,
                                       {1.0F, 1.0F}))
                   ->commence();
-  card->setGrow(true, true);
   card->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
   card->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
   return card;
@@ -203,11 +221,13 @@ void TestView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd_c
 
   m_lastSongUri = currentUri;
   std::string artPath = Utils::resolveTrackArtwork(conn, currentUri);
-  m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette);
+  m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette, artPath);
+  m_vignetteOverlay = buildVignetteOverlay(m_ctx.palette);
   m_coverCardElement = buildCardElement(m_ctx.palette, m_ctx.backend, artPath);
   m_menuBtn = buildMenuButton(m_ctx.palette, m_ctx.backend, m_ctx.fontFamily);
 
   m_tabContentWrapper->addChild(m_coverCardElementBackground);
+  m_tabContentWrapper->addChild(m_vignetteOverlay);
   m_tabContentWrapper->addChild(m_coverCardElement);
   m_tabContentWrapper->addChild(m_menuBtn);
   m_tabContentWrapper->forceReposition();
@@ -221,10 +241,12 @@ void TestView::updateTrackInfo(const std::string & /*trackText*/, bool /*hasActi
       std::string artPath = Utils::resolveTrackArtwork(conn, songUri);
       if (m_tabContentWrapper) {
         m_tabContentWrapper->clearChildren();
-        m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette);
+        m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette, artPath);
+        m_vignetteOverlay = buildVignetteOverlay(m_ctx.palette);
         m_coverCardElement = buildCardElement(m_ctx.palette, m_ctx.backend, artPath);
         m_menuBtn = buildMenuButton(m_ctx.palette, m_ctx.backend, m_ctx.fontFamily);
         m_tabContentWrapper->addChild(m_coverCardElementBackground);
+        m_tabContentWrapper->addChild(m_vignetteOverlay);
         m_tabContentWrapper->addChild(m_coverCardElement);
         m_tabContentWrapper->addChild(m_menuBtn);
         m_tabContentWrapper->forceReposition();
