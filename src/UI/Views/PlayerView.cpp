@@ -141,11 +141,13 @@ static CSharedPointer<IElement> buildMenuButton(CSharedPointer<CPalette> palette
   auto iconFactory = backend ? backend->systemIcons() : nullptr;
   CSharedPointer<ISystemIconDescription> menuIcon;
   if (iconFactory) {
-    menuIcon = iconFactory->lookupIcon("open-menu-symbolic");
+    menuIcon = iconFactory->lookupIcon("media-graphic-equalizer-symbolic");
     if (!menuIcon)
-      menuIcon = iconFactory->lookupIcon("view-more-symbolic");
+      menuIcon = iconFactory->lookupIcon("office-chart-bar-symbolic");
     if (!menuIcon)
-      menuIcon = iconFactory->lookupIcon("emblem-system-symbolic");
+      menuIcon = iconFactory->lookupIcon("utilities-system-monitor-symbolic");
+    if (!menuIcon)
+      menuIcon = iconFactory->lookupIcon("emblem-music-symbolic");
   }
 
   auto btnContainer =
@@ -174,7 +176,7 @@ static CSharedPointer<IElement> buildMenuButton(CSharedPointer<CPalette> palette
                    ->commence();
   } else {
     iconElem = CTextBuilder::begin()
-                   ->text(std::string("⋮"))
+                   ->text(std::string("📊"))
                    ->color([palette] {
                      return palette ? palette->m_colors.text
                                     : CHyprColor(1.0, 1.0, 1.0, 1.0);
