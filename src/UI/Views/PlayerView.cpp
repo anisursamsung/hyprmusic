@@ -1,6 +1,7 @@
 #include "PlayerView.hpp"
 #include "../../Utils/ArtworkUtils.hpp"
 #include <hyprtoolkit/system/Icons.hpp>
+#include "../Components/Visualizer.hpp"
 #include <algorithm>
 #include <filesystem>
 
@@ -12,12 +13,10 @@ static CSharedPointer<IElement> buildCardElement(CSharedPointer<CPalette> palett
                                                  CSharedPointer<IBackend> backend,
                                                  const std::string &artPath) {
   int rounding = 0;
-
   std::string artPathStr = artPath;
   if (artPathStr.empty()) {
     artPathStr = Utils::getDefaultArtworkPath();
   }
-
   if (!artPathStr.empty()) {
     auto img = CImageBuilder::begin()
                    ->path(std::string(artPathStr))
@@ -66,6 +65,10 @@ static CSharedPointer<IElement> buildCardElement(CSharedPointer<CPalette> palett
   } else {
     iconElem = CTextBuilder::begin()
                    ->text(std::string("🎵"))
+                   ->color([palette] {
+                     return palette ? palette->m_colors.text
+                                    : CHyprColor(1.0, 1.0, 1.0, 1.0);
+                   })
                    ->fontSize(CFontSize(CFontSize::HT_FONT_H1))
                    ->align(HT_FONT_ALIGN_CENTER)
                    ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
@@ -105,7 +108,6 @@ static CSharedPointer<IElement> buildBackgroundElement(CSharedPointer<CPalette> 
   if (artPathStr.empty()) {
     artPathStr = Utils::getDefaultArtworkPath();
   }
-
   if (!artPathStr.empty()) {
     auto img = CImageBuilder::begin()
                    ->path(std::string(artPathStr))
@@ -135,34 +137,31 @@ static CSharedPointer<IElement> buildBackgroundElement(CSharedPointer<CPalette> 
   return card;
 }
 
+
+
 static CSharedPointer<IElement> buildMenuButton(CSharedPointer<CPalette> palette,
                                                  CSharedPointer<IBackend> backend,
-                                                 const std::string &fontFamily) {
+                                                 const std::string &fontFamily,
+                                                 std::function<void()> onClick) {
   auto iconFactory = backend ? backend->systemIcons() : nullptr;
   CSharedPointer<ISystemIconDescription> menuIcon;
+  
   if (iconFactory) {
-    menuIcon = iconFactory->lookupIcon("media-graphic-equalizer-symbolic");
-    if (!menuIcon)
-      menuIcon = iconFactory->lookupIcon("office-chart-bar-symbolic");
-    if (!menuIcon)
-      menuIcon = iconFactory->lookupIcon("utilities-system-monitor-symbolic");
-    if (!menuIcon)
-      menuIcon = iconFactory->lookupIcon("emblem-music-symbolic");
+    menuIcon = iconFactory->lookupIcon("utilities-system-monitor-symbolic");
+    if (!menuIcon) menuIcon = iconFactory->lookupIcon("office-chart-bar-symbolic");
+    if (!menuIcon) menuIcon = iconFactory->lookupIcon("audio-x-generic-symbolic");
+    if (!menuIcon) menuIcon = iconFactory->lookupIcon("audio-x-generic");
   }
 
   auto btnContainer =
       CRectangleBuilder::begin()
           ->color([palette] {
-            if (palette) {
-              auto c = palette->m_colors.alternateBase;
-              return CHyprColor(c.r, c.g, c.b, 0.6);
-            }
-            return CHyprColor(0.2, 0.2, 0.2, 0.6);
+            return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); 
           })
-          ->rounding(20)
+          ->rounding(28)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                               CDynamicSize::HT_SIZE_ABSOLUTE,
-                              {40.0F, 40.0F}))
+                              {56.0F, 56.0F}))
           ->commence();
 
   CSharedPointer<IElement> iconElem;
@@ -171,36 +170,80 @@ static CSharedPointer<IElement> buildMenuButton(CSharedPointer<CPalette> palette
                    ->icon(menuIcon)
                    ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                        CDynamicSize::HT_SIZE_ABSOLUTE,
-                                       {20.0F, 20.0F}))
+                                       {32.0F, 32.0F}))
                    ->fitMode(IMAGE_FIT_MODE_CONTAIN)
                    ->commence();
   } else {
     iconElem = CTextBuilder::begin()
-                   ->text(std::string("📊"))
+                   ->text(std::string("ılılı"))
                    ->color([palette] {
-                     return palette ? palette->m_colors.text
-                                    : CHyprColor(1.0, 1.0, 1.0, 1.0);
+                     return palette ? palette->m_colors.background : CHyprColor(0.12, 0.12, 0.12, 1.0);
                    })
                    ->fontFamily(std::string(fontFamily))
-                   ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
+                   ->fontSize(CFontSize(CFontSize::HT_FONT_H2))
                    ->align(HT_FONT_ALIGN_CENTER)
                    ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
                                        CDynamicSize::HT_SIZE_AUTO,
                                        {1.0F, 1.0F}))
                    ->commence();
   }
+
   iconElem->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
   iconElem->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-
   btnContainer->addChild(iconElem);
+  
   btnContainer->setReceivesMouse(true);
+  btnContainer->setMouseButton([onClick](Input::eMouseButton button, bool down) {
+    if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+      if (onClick) onClick();
+    }
+  });
 
   btnContainer->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
   btnContainer->setPositionFlag(IElement::HT_POSITION_FLAG_RIGHT, true);
   btnContainer->setPositionFlag(IElement::HT_POSITION_FLAG_TOP, true);
-  btnContainer->setAbsolutePosition({-16.0F, 16.0F});
+  btnContainer->setAbsolutePosition({-20.0F, 20.0F}); 
 
   return btnContainer;
+}
+
+void PlayerView::toggleVisualizer() {
+	m_showVisualizer = !m_showVisualizer;
+
+	m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
+			std::string artPath = Utils::resolveTrackArtwork(conn, m_lastSongUri);
+			if (m_tabContentWrapper) {
+			m_tabContentWrapper->clearChildren();
+
+			m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette, artPath);
+			m_vignetteOverlay = buildVignetteOverlay(m_ctx.palette);
+			m_coverCardElement = buildCardElement(m_ctx.palette, m_ctx.backend, artPath);
+
+			m_menuBtn = buildMenuButton(m_ctx.palette, m_ctx.backend, m_ctx.fontFamily, [this]() {
+					toggleVisualizer();
+					});
+
+
+			// Conditionally add the correct centered element
+			if (m_showVisualizer) {
+			// Instantiate the visualizer if it doesn't exist
+			if (!m_visualizer) {
+			m_visualizer = std::make_shared<UI::Components::Visualizer>(m_ctx.backend, m_ctx.palette);
+			}
+			m_tabContentWrapper->addChild(m_visualizer->build());
+			} else {
+				// Kill the visualizer thread and free memory when returning to album art
+				m_visualizer.reset(); 
+
+				m_tabContentWrapper->addChild(m_coverCardElementBackground);
+				m_tabContentWrapper->addChild(m_vignetteOverlay);
+				m_tabContentWrapper->addChild(m_coverCardElement);
+			}
+
+			m_tabContentWrapper->addChild(m_menuBtn);
+			m_tabContentWrapper->forceReposition();
+			}
+	});
 }
 
 void PlayerView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd_connection *conn) {
@@ -220,17 +263,36 @@ void PlayerView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd
       mpd_song_free(s);
     }
   }
-
   m_lastSongUri = currentUri;
+
   std::string artPath = Utils::resolveTrackArtwork(conn, currentUri);
   m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette, artPath);
   m_vignetteOverlay = buildVignetteOverlay(m_ctx.palette);
   m_coverCardElement = buildCardElement(m_ctx.palette, m_ctx.backend, artPath);
-  m_menuBtn = buildMenuButton(m_ctx.palette, m_ctx.backend, m_ctx.fontFamily);
+  
+  m_menuBtn = buildMenuButton(m_ctx.palette, m_ctx.backend, m_ctx.fontFamily, [this]() {
+    toggleVisualizer();
+  });
 
-  m_tabContentWrapper->addChild(m_coverCardElementBackground);
-  m_tabContentWrapper->addChild(m_vignetteOverlay);
-  m_tabContentWrapper->addChild(m_coverCardElement);
+ 
+
+// Conditionally add the correct centered element
+  if (m_showVisualizer) {
+    // Instantiate the visualizer if it doesn't exist
+    if (!m_visualizer) {
+      m_visualizer = std::make_shared<UI::Components::Visualizer>(m_ctx.backend, m_ctx.palette);
+    }
+    m_tabContentWrapper->addChild(m_visualizer->build());
+  } else {
+    // Kill the visualizer thread and free memory when returning to album art
+    m_visualizer.reset(); 
+    
+    m_tabContentWrapper->addChild(m_coverCardElementBackground);
+    m_tabContentWrapper->addChild(m_vignetteOverlay);
+    m_tabContentWrapper->addChild(m_coverCardElement);
+  }
+
+  
   m_tabContentWrapper->addChild(m_menuBtn);
   m_tabContentWrapper->forceReposition();
 }
@@ -239,17 +301,39 @@ void PlayerView::updateTrackInfo(const std::string & /*trackText*/, bool /*hasAc
                                unsigned /*elapsed*/, unsigned /*total*/, const std::string &songUri) {
   if (m_lastSongUri != songUri) {
     m_lastSongUri = songUri;
+
     m_ctx.runMpdCommand([this, songUri](struct mpd_connection *conn) {
       std::string artPath = Utils::resolveTrackArtwork(conn, songUri);
       if (m_tabContentWrapper) {
         m_tabContentWrapper->clearChildren();
+
         m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette, artPath);
         m_vignetteOverlay = buildVignetteOverlay(m_ctx.palette);
         m_coverCardElement = buildCardElement(m_ctx.palette, m_ctx.backend, artPath);
-        m_menuBtn = buildMenuButton(m_ctx.palette, m_ctx.backend, m_ctx.fontFamily);
-        m_tabContentWrapper->addChild(m_coverCardElementBackground);
-        m_tabContentWrapper->addChild(m_vignetteOverlay);
-        m_tabContentWrapper->addChild(m_coverCardElement);
+        
+        m_menuBtn = buildMenuButton(m_ctx.palette, m_ctx.backend, m_ctx.fontFamily, [this]() {
+          toggleVisualizer();
+        });
+
+      // Conditionally add the correct centered element
+  if (m_showVisualizer) {
+    // Instantiate the visualizer if it doesn't exist
+    if (!m_visualizer) {
+      m_visualizer = std::make_shared<UI::Components::Visualizer>(m_ctx.backend, m_ctx.palette);
+    }
+    m_tabContentWrapper->addChild(m_visualizer->build());
+  } else {
+    // Kill the visualizer thread and free memory when returning to album art
+    m_visualizer.reset(); 
+    
+    m_tabContentWrapper->addChild(m_coverCardElementBackground);
+    m_tabContentWrapper->addChild(m_vignetteOverlay);
+    m_tabContentWrapper->addChild(m_coverCardElement);
+  }
+
+
+
+
         m_tabContentWrapper->addChild(m_menuBtn);
         m_tabContentWrapper->forceReposition();
       }
