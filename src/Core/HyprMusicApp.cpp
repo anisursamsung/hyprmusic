@@ -279,6 +279,17 @@ void HyprMusicApp::createUI() {
       }};
   m_playerView = std::make_unique<UI::Views::PlayerView>(playerCtx);
 
+
+  
+UI::Views::VisualizerViewContext visCtx{
+    .backend = m_backend,
+    .palette = palette
+};
+m_visualizerView = std::make_unique<UI::Views::VisualizerView>(visCtx);
+
+
+
+
   m_tabBar->updateActiveTab(m_viewMode);
 }
 
@@ -293,6 +304,11 @@ void HyprMusicApp::setupEventHandlers() {
 void HyprMusicApp::switchViewMode(eViewMode mode) {
   if (m_viewMode == mode)
     return;
+
+if (m_viewMode == eViewMode::VIEW_VISUALIZER) {
+    m_visualizerView->destroyVisualizer();
+  }
+
   m_viewMode = mode;
   m_playlistLoaded = false;
   m_playlistsView->setSelectedPlaylist("");
@@ -557,6 +573,11 @@ void HyprMusicApp::updateStatus() {
       if (!m_playlistLoaded) {
         m_playlistLoaded = true;
         m_helpView->rebuildUI(m_tabContentWrapper);
+      }
+    }else if (m_viewMode == eViewMode::VIEW_VISUALIZER) {
+      if (!m_playlistLoaded) {
+        m_playlistLoaded = true;
+        m_visualizerView->rebuildUI(m_tabContentWrapper);
       }
     } else if (m_viewMode == eViewMode::VIEW_PLAYER) {
       if (!m_playlistLoaded) {

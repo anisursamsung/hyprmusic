@@ -30,6 +30,7 @@ add_executable(hyprmusic
     src/UI/Components/TabBar.cpp
     src/UI/Components/UIFactory.cpp
     src/UI/Components/Visualizer.cpp
+    src/UI/Views/VisualizerView.cpp
     src/UI/Components/Visualizations/Default1Visualization.cpp
     src/UI/Components/Visualizations/Default2Visualization.cpp
  src/UI/Components/Visualizations/Default3Visualization.cpp

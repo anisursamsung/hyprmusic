@@ -83,6 +83,8 @@ namespace UI::Components {
 			{"Database", Core::eViewMode::VIEW_DATABASE},
 			{"Playlists", Core::eViewMode::VIEW_PLAYLISTS},
 			{"YT DLP", Core::eViewMode::VIEW_YTDLP},
+{"Visualizer", Core::eViewMode::VIEW_VISUALIZER},
+
 			{"Settings", Core::eViewMode::VIEW_SETTINGS},
 			{"Help", Core::eViewMode::VIEW_HELP},
 		};

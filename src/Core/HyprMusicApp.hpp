@@ -22,7 +22,7 @@
 #include "../UI/Views/SettingsView.hpp"
 #include "../UI/Views/PlayerView.hpp"
 #include "../UI/Views/YtDlpView.hpp"
-
+#include "../UI/Views/VisualizerView.hpp"
 namespace Core {
 
 using namespace Hyprtoolkit;
@@ -72,6 +72,9 @@ private:
   std::unique_ptr<UI::Views::SettingsView> m_settingsView;
   std::unique_ptr<UI::Views::HelpView> m_helpView;
   std::unique_ptr<UI::Views::PlayerView> m_playerView;
+
+  std::unique_ptr<UI::Views::VisualizerView> m_visualizerView;
+
 
   CSharedPointer<CRectangleElement> m_tabContentWrapper;
 
