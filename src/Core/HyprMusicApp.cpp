@@ -76,6 +76,7 @@ void HyprMusicApp::createUI() {
   auto mainColumn =
       CColumnLayoutBuilder::begin()
           ->gap(0)
+	 
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();

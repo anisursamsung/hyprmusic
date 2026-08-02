@@ -7,7 +7,7 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include <unordered_map>
+#include <vector>
 #include "../../Core/ViewMode.hpp"
 
 namespace UI::Components {
@@ -19,16 +19,18 @@ class TabBar {
 public:
   TabBar(CSharedPointer<CPalette> palette, const std::string &fontFamily,
          std::function<void(Core::eViewMode)> onSwitchMode);
-
   CSharedPointer<CRectangleElement> build();
   void updateActiveTab(Core::eViewMode activeMode);
 
 private:
+  void populateTabs(); // Helper function to rebuild tabs
+
   CSharedPointer<CPalette> m_palette;
   std::string m_fontFamily;
   std::function<void(Core::eViewMode)> m_onSwitchMode;
-
-  std::unordered_map<Core::eViewMode, CSharedPointer<CRectangleElement>> m_tabLines;
+  
+  CSharedPointer<CRowLayoutElement> m_tabsRow; // Stores the row container
+  Core::eViewMode m_activeMode = Core::eViewMode::VIEW_PLAYER;
 };
 
 } // namespace UI::Components
