@@ -140,58 +140,39 @@ static CSharedPointer<IElement> buildBackgroundElement(CSharedPointer<CPalette> 
 
 
 static CSharedPointer<IElement> buildMenuButton(CSharedPointer<CPalette> palette,
-                                                 CSharedPointer<IBackend> backend,
+                                                 CSharedPointer<IBackend> /* backend */,
                                                  const std::string &fontFamily,
                                                  std::function<void()> onClick) {
-  auto iconFactory = backend ? backend->systemIcons() : nullptr;
-  CSharedPointer<ISystemIconDescription> menuIcon;
-  
-  if (iconFactory) {
-    menuIcon = iconFactory->lookupIcon("utilities-system-monitor-symbolic");
-    if (!menuIcon) menuIcon = iconFactory->lookupIcon("office-chart-bar-symbolic");
-    if (!menuIcon) menuIcon = iconFactory->lookupIcon("audio-x-generic-symbolic");
-    if (!menuIcon) menuIcon = iconFactory->lookupIcon("audio-x-generic");
-  }
-
+  // Create a wider pill-shaped button instead of a circle
   auto btnContainer =
       CRectangleBuilder::begin()
           ->color([palette] {
-            return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); 
-          })
-          ->rounding(28)
+            return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
+           })
+          ->rounding(16) 
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                               CDynamicSize::HT_SIZE_ABSOLUTE,
-                              {56.0F, 56.0F}))
+                              {110.0F, 32.0F}))
           ->commence();
 
-  CSharedPointer<IElement> iconElem;
-  if (menuIcon) {
-    iconElem = CImageBuilder::begin()
-                   ->icon(menuIcon)
-                   ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                       CDynamicSize::HT_SIZE_ABSOLUTE,
-                                       {32.0F, 32.0F}))
-                   ->fitMode(IMAGE_FIT_MODE_CONTAIN)
-                   ->commence();
-  } else {
-    iconElem = CTextBuilder::begin()
-                   ->text(std::string("ılılı"))
-                   ->color([palette] {
-                     return palette ? palette->m_colors.background : CHyprColor(0.12, 0.12, 0.12, 1.0);
-                   })
-                   ->fontFamily(std::string(fontFamily))
-                   ->fontSize(CFontSize(CFontSize::HT_FONT_H2))
-                   ->align(HT_FONT_ALIGN_CENTER)
-                   ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-                                       CDynamicSize::HT_SIZE_AUTO,
-                                       {1.0F, 1.0F}))
-                   ->commence();
-  }
+  // Create the text element
+  auto textElem = CTextBuilder::begin()
+                  ->text("Visualizer")
+                  ->color([palette] {
+                    return palette ? palette->m_colors.background : CHyprColor(0.12, 0.12, 0.12, 1.0);
+                  })
+                  ->fontFamily(std::string(fontFamily))
+                  ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                  ->align(HT_FONT_ALIGN_CENTER)
+                  ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                      CDynamicSize::HT_SIZE_AUTO,
+                                      {1.0F, 1.0F}))
+                  ->commence();
 
-  iconElem->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-  iconElem->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-  btnContainer->addChild(iconElem);
-  
+  textElem->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  textElem->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+
+  btnContainer->addChild(textElem);
   btnContainer->setReceivesMouse(true);
   btnContainer->setMouseButton([onClick](Input::eMouseButton button, bool down) {
     if (button == Input::MOUSE_BUTTON_LEFT && !down) {
@@ -199,10 +180,11 @@ static CSharedPointer<IElement> buildMenuButton(CSharedPointer<CPalette> palette
     }
   });
 
+  // Anchor it to the top right corner
   btnContainer->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
   btnContainer->setPositionFlag(IElement::HT_POSITION_FLAG_RIGHT, true);
   btnContainer->setPositionFlag(IElement::HT_POSITION_FLAG_TOP, true);
-  btnContainer->setAbsolutePosition({-20.0F, 20.0F}); 
+  btnContainer->setAbsolutePosition({-20.0F, 20.0F});
 
   return btnContainer;
 }

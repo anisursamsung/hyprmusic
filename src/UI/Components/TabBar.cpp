@@ -10,11 +10,12 @@ CSharedPointer<CRectangleElement> TabBar::build() {
   auto palette = m_palette;
   std::string fontFamily = m_fontFamily;
 
+  // Color the main parent container with alternateBase
   auto tabsSection =
       CRectangleBuilder::begin()
           ->color([palette] {
-            return palette ? palette->m_colors.background
-                           : CHyprColor(0.15, 0.15, 0.15, 1.0);
+            return palette ? palette->m_colors.alternateBase
+                           : CHyprColor(0.20, 0.20, 0.20, 1.0);
           })
           ->rounding(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
@@ -22,13 +23,19 @@ CSharedPointer<CRectangleElement> TabBar::build() {
           ->commence();
   tabsSection->setGrow(false);
 
+  // Change width to AUTO so the row wraps tightly around the buttons
   auto tabsRow =
       CRowLayoutBuilder::begin()
           ->gap(15)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO, 
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();
   tabsRow->setMargin(12);
+
+  // Pin the wrapped row directly to the absolute center of the bar
+  tabsRow->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  tabsRow->setPositionFlag(IElement::HT_POSITION_FLAG_HCENTER, true);
+  tabsRow->setPositionFlag(IElement::HT_POSITION_FLAG_VCENTER, true);
 
   struct TabDef {
     std::string label;

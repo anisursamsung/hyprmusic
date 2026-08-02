@@ -81,10 +81,6 @@ void HyprMusicApp::createUI() {
           ->commence();
   mainBg->addChild(mainColumn);
 
-  // Tab Header
-  m_tabBar = std::make_unique<UI::Components::TabBar>(
-      palette, fontFamily, [this](eViewMode mode) { switchViewMode(mode); });
-  mainColumn->addChild(m_tabBar->build());
 
   // Content Area Section
   auto contentSection =
@@ -115,7 +111,13 @@ void HyprMusicApp::createUI() {
           ->commence();
   contentLayout->addChild(m_tabContentWrapper);
   mainColumn->addChild(contentSection);
+  
 
+  // Tab Bar
+  m_tabBar = std::make_unique<UI::Components::TabBar>(
+      palette, fontFamily, [this](eViewMode mode) { switchViewMode(mode); });
+  mainColumn->addChild(m_tabBar->build());
+ 
   // Playback Control Bar
   UI::Components::PlaybackBarContext pCtx{
       .window = m_window,
