@@ -1,6 +1,8 @@
 #include "Visualizer.hpp"
 #include "Visualizations/Default1Visualization.hpp"
 #include "Visualizations/Default2Visualization.hpp"
+#include "Visualizations/Default3Visualization.hpp" 
+#include "Visualizations/Default4Visualization.hpp"
 #include <cmath>
 #include <fcntl.h>
 #include <unistd.h>
@@ -15,9 +17,11 @@ const int SAMPLES_PER_FRAME = 512;
 
 Visualizer::Visualizer(CSharedPointer<IBackend> backend, CSharedPointer<CPalette> palette)
     : m_backend(backend), m_palette(palette) {
-  
-  m_visualizations.push_back(std::make_shared<Default1Visualization>());
+    m_visualizations.push_back(std::make_shared<Default3Visualization>());
+  m_visualizations.push_back(std::make_shared<Default4Visualization>());
+ m_visualizations.push_back(std::make_shared<Default1Visualization>());
   m_visualizations.push_back(std::make_shared<Default2Visualization>());
+
 
   m_sharedData = std::make_shared<VisualizerSharedData>();
   m_sharedData->smoothedSpectrum.resize(BARS_COUNT, 0.0f);
