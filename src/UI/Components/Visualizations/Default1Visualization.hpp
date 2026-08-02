@@ -1,6 +1,7 @@
 #pragma once
 #include "IVisualization.hpp"
 #include <hyprtoolkit/element/Rectangle.hpp>
+#include <vector>
 
 namespace UI::Components {
 
@@ -12,6 +13,9 @@ public:
 private:
   CSharedPointer<CRectangleElement> m_container;
   std::vector<CSharedPointer<CRectangleElement>> m_bars;
+  
+  // ---> NEW: Track last heights to prevent UI spam <---
+  std::vector<float> m_lastHeights;
 };
 
 } // namespace UI::Components

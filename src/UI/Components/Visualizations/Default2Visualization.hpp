@@ -1,16 +1,9 @@
 #pragma once
 #include "IVisualization.hpp"
 #include <hyprtoolkit/element/Rectangle.hpp>
+#include <vector>
 
 namespace UI::Components {
-
-struct KineticBall {
-  CSharedPointer<CRectangleElement> elem;
-  float x, y;
-  float dx, dy;
-  float baseSize;
-  CHyprColor color; // <-- New property for individual colors
-};
 
 class Default2Visualization : public IVisualization {
 public:
@@ -19,7 +12,10 @@ public:
 
 private:
   CSharedPointer<CRectangleElement> m_container;
-  std::vector<KineticBall> m_balls;
+  std::vector<CSharedPointer<CRectangleElement>> m_bars;
+  
+  // Track last heights to prevent UI thread spam (The Delta Gate)
+  std::vector<float> m_lastHeights;
 };
 
 } // namespace UI::Components

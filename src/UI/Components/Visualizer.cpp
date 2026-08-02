@@ -32,6 +32,26 @@ Visualizer::~Visualizer() {
 }
 
 void Visualizer::readerThreadFunc(std::shared_ptr<VisualizerSharedData> sharedData) {
+  // ---> MATH BOTTLENECK FIX: PRE-COMPUTE LOOKUP TABLES <---
+  // Calculate the Hanning window and all Sine/Cosine angles exactly ONCE.
+  std::vector<float> window(SAMPLES_PER_FRAME);
+  for (int n = 0; n < SAMPLES_PER_FRAME; ++n) {
+    window[n] = 0.5f * (1.0f - std::cos(2.0f * M_PI * n / (SAMPLES_PER_FRAME - 1)));
+  }
+
+  std::vector<std::vector<float>> cosTable(BARS_COUNT, std::vector<float>(SAMPLES_PER_FRAME));
+  std::vector<std::vector<float>> sinTable(BARS_COUNT, std::vector<float>(SAMPLES_PER_FRAME));
+
+  for (int k = 0; k < BARS_COUNT; ++k) {
+    float freqIndex = std::pow(static_cast<float>(k) / BARS_COUNT, 2.0f) * (SAMPLES_PER_FRAME / 2.0f);
+    for (int n = 0; n < SAMPLES_PER_FRAME; ++n) {
+      float angle = 2.0f * M_PI * freqIndex * n / SAMPLES_PER_FRAME;
+      cosTable[k][n] = std::cos(angle);
+      sinTable[k][n] = std::sin(angle);
+    }
+  }
+  // --------------------------------------------------------
+
   sharedData->fifoFd = open("/tmp/mpd.fifo", O_RDWR | O_NONBLOCK);
   if (sharedData->fifoFd < 0) {
     std::cerr << "Visualizer: Failed to open /tmp/mpd.fifo" << std::endl;
@@ -70,28 +90,30 @@ void Visualizer::readerThreadFunc(std::shared_ptr<VisualizerSharedData> sharedDa
         }
       }
 
-      // Only perform the heavy math and UI locking on the absolute newest frame
+      // Only perform the math on the absolute newest frame
       if (lastBytesRead > 0) {
         int samplesRead = lastBytesRead / bytesPerSample;
-        std::vector<float> currentSpectrum(BARS_COUNT, 0.0f);
+        // Safety bound to prevent array overflow on partial reads
+        if (samplesRead > SAMPLES_PER_FRAME) samplesRead = SAMPLES_PER_FRAME;
 
+        std::vector<float> currentSpectrum(BARS_COUNT, 0.0f);
         std::vector<float> monoSamples(samplesRead);
+        
         for (int i = 0; i < samplesRead; ++i) {
           float left = finalBuffer[i * 2] / 32768.0f;
           float right = finalBuffer[i * 2 + 1] / 32768.0f;
           monoSamples[i] = (left + right) / 2.0f;
         }
 
+        // ---> FAST ARRAY LOOKUPS <---
         for (int k = 0; k < BARS_COUNT; ++k) {
           float re = 0.0f;
           float im = 0.0f;
-          float freqIndex = std::pow(static_cast<float>(k) / BARS_COUNT, 2.0f) * (samplesRead / 2.0f);
           
           for (int n = 0; n < samplesRead; ++n) {
-            float angle = 2.0f * M_PI * freqIndex * n / samplesRead;
-            float window = 0.5f * (1.0f - std::cos(2.0f * M_PI * n / (samplesRead - 1)));
-            re += monoSamples[n] * window * std::cos(angle);
-            im -= monoSamples[n] * window * std::sin(angle);
+            float val = monoSamples[n] * window[n];
+            re += val * cosTable[k][n];
+            im -= val * sinTable[k][n];
           }
           
           float magnitude = std::sqrt(re * re + im * im) / (samplesRead / 4.0f);

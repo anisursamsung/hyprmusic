@@ -4,27 +4,8 @@
 #include <vector>
 #include <fstream>
 #include <filesystem>
-#include <cstdlib>
 
 namespace Utils {
-
-static std::string applyRoundedCorners(const std::string &inputPath, int width, int height, int cornerRadius) {
-  if (inputPath.empty() || !std::filesystem::exists(inputPath))
-    return "";
-
-  std::string outputPath = "/tmp/hyprmusic_rounded_art.png";
-  std::string cmd = "magick \"" + inputPath + "\" -resize " + std::to_string(width) + "x" + std::to_string(height) +
-                    "^ -gravity center -extent " + std::to_string(width) + "x" + std::to_string(height) +
-                    " \\( +clone -alpha extract -draw \"roundrectangle 0,0 " + std::to_string(width) + "," + std::to_string(height) +
-                    " " + std::to_string(cornerRadius) + "," + std::to_string(cornerRadius) + "\" \\)" +
-                    " -alpha off -compose CopyOpacity -composite \"" + outputPath + "\" >/dev/null 2>&1";
-
-  int res = std::system(cmd.c_str());
-  if (res == 0 && std::filesystem::exists(outputPath)) {
-    return outputPath;
-  }
-  return inputPath;
-}
 
 std::string getBackgroundImagePath() {
   std::vector<std::string> candidates = {
@@ -36,7 +17,6 @@ std::string getBackgroundImagePath() {
             .string());
   } catch (...) {
   }
-
   for (const auto &p : candidates) {
     if (!p.empty() && std::filesystem::exists(p)) {
       return p;
@@ -55,7 +35,6 @@ std::string getDefaultArtworkPath() {
             .string());
   } catch (...) {
   }
-
   for (const auto &p : candidates) {
     if (!p.empty() && std::filesystem::exists(p)) {
       return p;
@@ -64,7 +43,7 @@ std::string getDefaultArtworkPath() {
   return "";
 }
 
-std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &songUri, int targetWidth, int targetHeight, int cornerRadius) {
+std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &songUri) {
   if (songUri.empty())
     return getDefaultArtworkPath();
 
@@ -123,12 +102,6 @@ std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &
   // 4. Default artwork fallback
   if (rawPath.empty()) {
     rawPath = getDefaultArtworkPath();
-  }
-
-  if (!rawPath.empty() && cornerRadius > 0) {
-    std::string processed = applyRoundedCorners(rawPath, targetWidth, targetHeight, cornerRadius);
-    if (!processed.empty())
-      return processed;
   }
 
   return rawPath;
