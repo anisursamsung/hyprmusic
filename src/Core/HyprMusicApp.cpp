@@ -23,10 +23,8 @@ void HyprMusicApp::run() {
   createWindow();
   createUI();
   setupEventHandlers();
-
   updateStatus();
   setupTimer();
-
   std::cout << "Starting HyprMusic..." << std::endl;
   m_window->open();
   m_backend->enterLoop();
@@ -40,7 +38,6 @@ void HyprMusicApp::createWindow() {
                  ->preferredSize({0, 0})
                  ->minSize({600, 400})
                  ->commence();
-
   if (!m_window) {
     throw std::runtime_error("Failed to create window");
   }
@@ -50,6 +47,7 @@ void HyprMusicApp::createUI() {
   m_palette = CPalette::palette();
   m_fontFamily =
       m_palette ? std::string(m_palette->m_vars.fontFamily) : "Sans Serif";
+
   auto palette = m_palette;
   std::string fontFamily = m_fontFamily;
 
@@ -76,12 +74,10 @@ void HyprMusicApp::createUI() {
   auto mainColumn =
       CColumnLayoutBuilder::begin()
           ->gap(0)
-	 
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();
   mainBg->addChild(mainColumn);
-
 
   // Tab Bar (top)
   m_tabBar = std::make_unique<UI::Components::TabBar>(
@@ -117,7 +113,7 @@ void HyprMusicApp::createUI() {
           ->commence();
   contentLayout->addChild(m_tabContentWrapper);
   mainColumn->addChild(contentSection);
- 
+
   // Playback Control Bar
   UI::Components::PlaybackBarContext pCtx{
       .window = m_window,
@@ -136,8 +132,8 @@ void HyprMusicApp::createUI() {
       .nextTrack = [this] {
         Services::MPDManager::nextTrack([this] { updateStatus(); });
       },
-      .onNowPlayingClick = [this] {
-        switchViewMode(eViewMode::VIEW_PLAYER);
+      .onNavigationClick = [this](eViewMode mode) {
+        switchViewMode(mode);
       }};
   m_playbackBar = std::make_unique<UI::Components::PlaybackBar>(pCtx);
   m_playbackBar->build(mainColumn);
@@ -281,16 +277,10 @@ void HyprMusicApp::createUI() {
       }};
   m_playerView = std::make_unique<UI::Views::PlayerView>(playerCtx);
 
-
-  
-UI::Views::VisualizerViewContext visCtx{
-    .backend = m_backend,
-    .palette = palette
-};
-m_visualizerView = std::make_unique<UI::Views::VisualizerView>(visCtx);
-
-
-
+  UI::Views::VisualizerViewContext visCtx{
+      .backend = m_backend,
+      .palette = palette};
+  m_visualizerView = std::make_unique<UI::Views::VisualizerView>(visCtx);
 
   m_tabBar->updateActiveTab(m_viewMode);
 }
@@ -306,22 +296,18 @@ void HyprMusicApp::setupEventHandlers() {
 void HyprMusicApp::switchViewMode(eViewMode mode) {
   if (m_viewMode == mode)
     return;
-
-if (m_viewMode == eViewMode::VIEW_VISUALIZER) {
+  if (m_viewMode == eViewMode::VIEW_VISUALIZER) {
     m_visualizerView->destroyVisualizer();
   }
-
   m_viewMode = mode;
   m_playlistLoaded = false;
   m_playlistsView->setSelectedPlaylist("");
   m_playlistsView->setDetailedView(false);
-
   m_playlistsView->resetLayout();
   m_dbView->resetLayout();
   m_queueView->resetLayout();
   m_settingsView->resetLayout();
   m_helpView->resetLayout();
-
   m_tabBar->updateActiveTab(m_viewMode);
   updateStatus();
 }
@@ -462,13 +448,14 @@ void HyprMusicApp::updateStatus() {
   struct mpd_connection *conn = mpd_connection_new(NULL, 0, 0);
   if (!conn)
     return;
+
   if (mpd_connection_get_error(conn) != MPD_ERROR_SUCCESS) {
     mpd_connection_free(conn);
     return;
   }
 
   std::string trackText = "No currently playing songs";
-  std::string stateText = "▶";
+  std::string stateText = "media-playback-start";
   int activeSongId = -1;
   unsigned currentQueueVersion = 0;
   int currentVolume = -1;
@@ -487,7 +474,7 @@ void HyprMusicApp::updateStatus() {
 
     std::string currentSongUri = "";
     if (state == MPD_STATE_PLAY || state == MPD_STATE_PAUSE) {
-      stateText = (state == MPD_STATE_PLAY) ? "⏸" : "▶";
+      stateText = (state == MPD_STATE_PLAY) ? "media-playback-pause" : "media-playback-start";
       elapsed = mpd_status_get_elapsed_time(status);
       total = mpd_status_get_total_time(status);
       hasActiveTrack = true;
@@ -530,11 +517,11 @@ void HyprMusicApp::updateStatus() {
       }
 
       if (state == MPD_STATE_PAUSE) {
-        trackText = "⏸  " + trackText;
+        trackText = "⏸ " + trackText;
       }
     } else {
       trackText = "No currently playing songs";
-      stateText = "▶";
+      stateText = "media-playback-start";
     }
 
     if (m_viewMode == eViewMode::VIEW_QUEUE) {
@@ -576,7 +563,7 @@ void HyprMusicApp::updateStatus() {
         m_playlistLoaded = true;
         m_helpView->rebuildUI(m_tabContentWrapper);
       }
-    }else if (m_viewMode == eViewMode::VIEW_VISUALIZER) {
+    } else if (m_viewMode == eViewMode::VIEW_VISUALIZER) {
       if (!m_playlistLoaded) {
         m_playlistLoaded = true;
         m_visualizerView->rebuildUI(m_tabContentWrapper);
