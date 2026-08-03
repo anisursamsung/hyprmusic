@@ -1,9 +1,7 @@
 #pragma once
 #include <hyprtoolkit/core/Backend.hpp>
-#include <hyprtoolkit/element/Combobox.hpp>
 #include <hyprtoolkit/element/ColumnLayout.hpp>
 #include <hyprtoolkit/element/Rectangle.hpp>
-#include <hyprtoolkit/element/Text.hpp>
 #include <hyprtoolkit/palette/Palette.hpp>
 #include <hyprtoolkit/window/Window.hpp>
 #include <mpd/client.h>
@@ -12,6 +10,7 @@
 #include <string>
 #include <unordered_map>
 #include "../../Services/YtDlpService.hpp"
+#include "../Components/SongCard.hpp"
 
 namespace UI::Views {
 
@@ -48,7 +47,7 @@ private:
 
   std::string m_searchQuery = "";
   int m_lastActiveSongId = -2;
-  std::unordered_map<int, CSharedPointer<CTextElement>> m_queueSongTexts;
+  std::unordered_map<int, std::shared_ptr<UI::Components::SongCard>> m_queueSongCards;
 };
 
 } // namespace UI::Views

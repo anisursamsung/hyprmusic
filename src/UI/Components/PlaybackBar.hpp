@@ -29,6 +29,7 @@ struct PlaybackBarContext {
   std::function<void()> togglePlayPause;
   std::function<void()> prevTrack;
   std::function<void()> nextTrack;
+  std::function<void()> onNowPlayingClick;  // called when the song info area is clicked
 };
 
 class PlaybackBar {

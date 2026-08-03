@@ -1,9 +1,7 @@
 #pragma once
 #include <hyprtoolkit/core/Backend.hpp>
-#include <hyprtoolkit/element/Combobox.hpp>
 #include <hyprtoolkit/element/ColumnLayout.hpp>
 #include <hyprtoolkit/element/Rectangle.hpp>
-#include <hyprtoolkit/element/Text.hpp>
 #include <hyprtoolkit/element/Textbox.hpp>
 #include <hyprtoolkit/palette/Palette.hpp>
 #include <hyprtoolkit/window/Window.hpp>
@@ -13,6 +11,7 @@
 #include <string>
 #include <vector>
 #include "../../Services/YtDlpService.hpp"
+#include "../Components/SongCard.hpp"
 
 namespace UI::Views {
 

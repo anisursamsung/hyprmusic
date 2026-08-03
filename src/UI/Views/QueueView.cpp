@@ -1,11 +1,12 @@
 #include "QueueView.hpp"
+#include "../Components/SongCard.hpp"
 #include "../Dialogs/ActionMenuDialog.hpp"
+#include <algorithm>
+#include <cstring>
 #include <hyprtoolkit/element/Button.hpp>
 #include <hyprtoolkit/element/RowLayout.hpp>
 #include <hyprtoolkit/element/ScrollArea.hpp>
 #include <hyprtoolkit/element/Textbox.hpp>
-#include <algorithm>
-#include <cstring>
 #include <iostream>
 #include <unordered_set>
 
@@ -35,6 +36,7 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                 CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
             ->commence();
+
     m_tabContentWrapper->addChild(tabMainLayout);
 
     auto topControlsCol =
@@ -112,33 +114,35 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             ->fontFamily(std::string(fontFamily))
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
             ->onMainClick([this](CSharedPointer<CButtonElement>) {
-              Dialogs::showActionMenuDialog({
-                  .options = {"▶ Play All", "🔀 Shuffle Queue", "🗑️ Clear Queue"},
-                  .onSelect =
-                      [this](size_t idx, const std::string &) {
-                        if (idx == 0) { // ▶ Play All
-                          m_ctx.runMpdCommand([](struct mpd_connection *conn) {
-                            if (conn)
-                              mpd_run_play_pos(conn, 0);
-                          });
-                        } else if (idx == 1) { // 🔀 Shuffle Queue
-                          m_ctx.runMpdCommand([](struct mpd_connection *conn) {
-                            if (conn)
-                              mpd_run_shuffle(conn);
-                          });
-                        } else if (idx == 2) { // 🗑️ Clear Queue
-                          m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
-                            if (!conn)
-                              return;
-                            mpd_run_clear(conn);
-                            populateQueueSongs(conn, -1);
-                          });
-                        }
-                      },
-                  .parentWindow = m_ctx.window,
-                  .backend = m_ctx.backend,
-                  .palette = m_ctx.palette,
-                  .fontFamily = m_ctx.fontFamily});
+              Dialogs::showActionMenuDialog(
+                  {.options = {"▶ Play All", "🔀 Shuffle Queue",
+                               "🗑️ Clear Queue"},
+                   .onSelect =
+                       [this](size_t idx, const std::string &) {
+                         if (idx == 0) { // ▶ Play All
+                           m_ctx.runMpdCommand([](struct mpd_connection *conn) {
+                             if (conn)
+                               mpd_run_play_pos(conn, 0);
+                           });
+                         } else if (idx == 1) { // 🔀 Shuffle Queue
+                           m_ctx.runMpdCommand([](struct mpd_connection *conn) {
+                             if (conn)
+                               mpd_run_shuffle(conn);
+                           });
+                         } else if (idx == 2) { // 🗑️ Clear Queue
+                           m_ctx.runMpdCommand(
+                               [this](struct mpd_connection *conn) {
+                                 if (!conn)
+                                   return;
+                                 mpd_run_clear(conn);
+                                 populateQueueSongs(conn, -1);
+                               });
+                         }
+                       },
+                   .parentWindow = m_ctx.window,
+                   .backend = m_ctx.backend,
+                   .palette = m_ctx.palette,
+                   .fontFamily = m_ctx.fontFamily});
             })
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
                                 CDynamicSize::HT_SIZE_ABSOLUTE, {32.0F, 32.0F}))
@@ -168,7 +172,7 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     m_queueContentLayout =
         CColumnLayoutBuilder::begin()
-            ->gap(10)
+            ->gap(0)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                 CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
             ->commence();
@@ -208,7 +212,8 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
       nullptr);
 }
 
-void QueueView::populateQueueSongs(struct mpd_connection *conn, int activeSongId) {
+void QueueView::populateQueueSongs(struct mpd_connection *conn,
+                                   int activeSongId) {
   if (activeSongId >= 0) {
     m_lastActiveSongId = activeSongId;
   }
@@ -216,7 +221,7 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn, int activeSongId
     return;
 
   m_queueContentLayout->clearChildren();
-  m_queueSongTexts.clear();
+  m_queueSongCards.clear();
 
   auto palette = m_ctx.palette;
   int rounding = palette ? palette->m_vars.smallRounding : 5;
@@ -236,156 +241,94 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn, int activeSongId
     unsigned songPos = mpd_song_get_pos(s);
 
     const char *artist = mpd_song_get_tag(s, MPD_TAG_ARTIST, 0);
-    const char *title = mpd_song_get_tag(s, MPD_TAG_TITLE, 0);
-    const char *uri = mpd_song_get_uri(s);
+    const char *title  = mpd_song_get_tag(s, MPD_TAG_TITLE, 0);
+    const char *uri    = mpd_song_get_uri(s);
+
     std::string displayTitle;
+    std::string displayArtist;
 
     std::string storedTitle, storedUploader;
     if (title && strlen(title) > 0) {
-      std::string artistStr = artist ? artist : "Unknown Artist";
-      displayTitle = std::string(title) + " - " + artistStr;
+      displayTitle  = std::string(title);
+      displayArtist = artist ? artist : "Unavailable";
     } else if (uri && m_ctx.ytDlpService &&
                m_ctx.ytDlpService->getUrlTitle(uri, storedTitle, storedUploader)) {
-      displayTitle = "Stream (" + storedTitle + ")";
-      if (!storedUploader.empty()) {
-        displayTitle += " - " + storedUploader;
-      }
+      displayTitle  = "Stream (" + storedTitle + ")";
+      displayArtist = storedUploader.empty() ? "Unavailable" : storedUploader;
     } else if (uri) {
       std::string uriStr(uri);
       if (uriStr.find("googlevideo.com") != std::string::npos ||
           uriStr.find("http://") == 0 || uriStr.find("https://") == 0) {
-        if (uriStr.length() > 50) {
-          displayTitle = "🌐 Stream (" + uriStr.substr(0, 35) + "...)";
-        } else {
-          displayTitle = uriStr;
-        }
+        displayTitle = uriStr.length() > 50
+                           ? "🌐 Stream (" + uriStr.substr(0, 35) + "...)"
+                           : uriStr;
       } else {
         displayTitle = uriStr;
       }
+      displayArtist = "Unavailable";
     } else {
-      displayTitle = "Unknown Track";
+      displayTitle  = "Unknown Track";
+      displayArtist = "Unavailable";
     }
 
     if (!m_searchQuery.empty()) {
-      std::string query = m_searchQuery;
-      std::string titleLower = displayTitle;
-      std::transform(titleLower.begin(), titleLower.end(), titleLower.begin(), ::tolower);
+      std::string query        = m_searchQuery;
+      std::string searchTarget = displayTitle + " " + displayArtist;
+      std::transform(searchTarget.begin(), searchTarget.end(), searchTarget.begin(), ::tolower);
       std::transform(query.begin(), query.end(), query.begin(), ::tolower);
-      if (titleLower.find(query) == std::string::npos) {
+      if (searchTarget.find(query) == std::string::npos) {
         mpd_song_free(s);
         continue;
       }
     }
 
     foundAny = true;
-    auto songItem = CRectangleBuilder::begin()
-                        ->color([palette] {
-                          return palette ? palette->m_colors.base
-                                         : CHyprColor(0.15, 0.15, 0.15, 1.0);
-                        })
-                        ->rounding(rounding)
-                        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                            CDynamicSize::HT_SIZE_ABSOLUTE,
-                                            {1.0F, 40.0F}))
-                        ->commence();
-    songItem->setReceivesMouse(true);
-    songItem->setMouseButton(
-        [this, songId](Input::eMouseButton button, bool down) {
-          if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-            if (m_ctx.playMpdSongId)
-              m_ctx.playMpdSongId(songId);
-          }
-        });
 
-    auto rowLayout =
-        CRowLayoutBuilder::begin()
-            ->gap(10)
-            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-            ->commence();
-    rowLayout->setMargin(6);
+    // ── Build card via reusable SongCard component ────────────────────────
+    std::string indexStr    = std::to_string(songPos + 1) + ". ";
+    std::string songUriStr  = uri ? uri : "";
+    bool isActive = (songId == m_lastActiveSongId);
 
-    std::string indexStr = std::to_string(songPos + 1) + ". ";
-    auto songText =
-        CTextBuilder::begin()
-            ->text(std::string(indexStr + displayTitle))
-            ->color([this, songId] {
-              auto palette = m_ctx.palette;
-              bool isPlaying = (songId == m_lastActiveSongId);
-              if (isPlaying) {
-                return palette ? palette->m_colors.accent
-                               : CHyprColor(0.2, 0.8, 0.4, 1.0);
-              }
-              return palette ? palette->m_colors.text
-                             : CHyprColor(1, 1, 1, 1);
-            })
-            ->fontFamily(std::string(fontFamily))
-            ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-            ->align(HT_FONT_ALIGN_LEFT)
-            ->noEllipsize(false)
-            ->interactable(true)
-            ->commence();
-    songText->setReceivesMouse(true);
-    songText->setMouseButton(
-        [this, songId](Input::eMouseButton button, bool down) {
-          if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-            if (m_ctx.playMpdSongId)
-              m_ctx.playMpdSongId(songId);
-          }
-        });
-    m_queueSongTexts[songId] = songText;
+    auto card = std::make_shared<UI::Components::SongCard>(
+        UI::Components::SongCardConfig{
+            .palette    = palette,
+            .fontFamily = fontFamily,
+            .rounding   = rounding,
+            .cardHeight = 70.0f,
+            .title      = indexStr + displayTitle,
+            .subtitle   = displayArtist,
+            .isActive   = isActive,
+            .onCardBodyClick = [this, songId] {
+              if (m_ctx.playMpdSongId)
+                m_ctx.playMpdSongId(songId);
+            },
+            .onActionClick = [this, songId, songUriStr, displayTitle] {
+              Dialogs::showActionMenuDialog(
+                  {.options  = {"▶ Play", "🗑️ Remove from Queue",
+                                "📁 Add to Playlist"},
+                   .onSelect =
+                       [this, songId, songUriStr](size_t idx,
+                                                  const std::string &) {
+                         if (idx == 0) {
+                           if (m_ctx.playMpdSongId)
+                             m_ctx.playMpdSongId(songId);
+                         } else if (idx == 1) {
+                           if (m_ctx.removeSongFromQueue)
+                             m_ctx.removeSongFromQueue(songId);
+                         } else if (idx == 2) {
+                           if (!songUriStr.empty() &&
+                               m_ctx.showPlaylistSelectionDialog)
+                             m_ctx.showPlaylistSelectionDialog(songUriStr);
+                         }
+                       },
+                   .parentWindow = m_ctx.window,
+                   .backend      = m_ctx.backend,
+                   .palette      = m_ctx.palette,
+                   .fontFamily   = m_ctx.fontFamily});
+            }});
 
-    std::string songUriStr = uri ? uri : "";
-    std::string songTitleStr = displayTitle;
-    auto actionBtn =
-        CButtonBuilder::begin()
-            ->label("⋮")
-            ->alignText(HT_FONT_ALIGN_CENTER)
-            ->fontFamily(std::string(fontFamily))
-            ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-            ->onMainClick([this, songId, songUriStr, songTitleStr](CSharedPointer<CButtonElement>) {
-              Dialogs::showActionMenuDialog({
-                  .options = {"▶ Play", "🗑️ Remove from Queue", "📁 Add to Playlist"},
-                  .onSelect =
-                      [this, songId, songUriStr](size_t idx, const std::string &) {
-                        if (idx == 0) { // ▶ Play
-                          if (m_ctx.playMpdSongId)
-                            m_ctx.playMpdSongId(songId);
-                        } else if (idx == 1) { // 🗑️ Remove
-                          if (m_ctx.removeSongFromQueue)
-                            m_ctx.removeSongFromQueue(songId);
-                        } else if (idx == 2) { // 📁 Add to Playlist
-                          if (!songUriStr.empty() && m_ctx.showPlaylistSelectionDialog) {
-                            m_ctx.showPlaylistSelectionDialog(songUriStr);
-                          }
-                        }
-                      },
-                  .parentWindow = m_ctx.window,
-                  .backend = m_ctx.backend,
-                  .palette = m_ctx.palette,
-                  .fontFamily = m_ctx.fontFamily});
-            })
-            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                CDynamicSize::HT_SIZE_ABSOLUTE,
-                                {28.0F, 28.0F}))
-            ->commence();
-    actionBtn->setGrow(false);
-    rowLayout->addChild(actionBtn);
-
-    auto textContainer =
-        CRowLayoutBuilder::begin()
-            ->gap(0)
-            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-            ->commence();
-    textContainer->setGrow(true);
-    textContainer->addChild(songText);
-    rowLayout->addChild(textContainer);
-
-    songItem->addChild(rowLayout);
-    m_queueContentLayout->addChild(songItem);
+    m_queueSongCards[songId] = card;
+    m_queueContentLayout->addChild(card->build());
 
     mpd_song_free(s);
   }

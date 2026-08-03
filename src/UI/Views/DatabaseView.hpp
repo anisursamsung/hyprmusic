@@ -1,9 +1,7 @@
 #pragma once
 #include <hyprtoolkit/core/Backend.hpp>
-#include <hyprtoolkit/element/Combobox.hpp>
 #include <hyprtoolkit/element/ColumnLayout.hpp>
 #include <hyprtoolkit/element/Rectangle.hpp>
-#include <hyprtoolkit/element/Text.hpp>
 #include <hyprtoolkit/palette/Palette.hpp>
 #include <hyprtoolkit/window/Window.hpp>
 #include <mpd/client.h>
@@ -11,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "../Components/SongCard.hpp"
 
 namespace UI::Views {
 

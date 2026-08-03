@@ -1,4 +1,5 @@
 #include "YtDlpView.hpp"
+#include "../Components/SongCard.hpp"
 #include "../Dialogs/ActionMenuDialog.hpp"
 #include "../Dialogs/DownloadProgressDialog.hpp"
 #include "../../Utils/ClipboardUtils.hpp"
@@ -354,183 +355,133 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
           }).detach();
         };
 
-        auto itemBox =
-            CRectangleBuilder::begin()
-                ->color([palette] {
-                  return palette ? palette->m_colors.base
-                                 : CHyprColor(0.15, 0.15, 0.15, 1.0);
-                })
-                ->rounding(palette ? palette->m_vars.smallRounding : 6)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 48.0F}))
-                ->commence();
-        itemBox->setReceivesMouse(true);
-        itemBox->setMouseButton(
-            [triggerPlayStream](Input::eMouseButton button, bool down) {
-              if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-                triggerPlayStream();
-              }
-            });
-
-        auto itemRow =
-            CRowLayoutBuilder::begin()
-                ->gap(16)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-                ->commence();
-        itemRow->setMargin(6);
-
-        std::string labelText = std::to_string(idx++) + ". " + itemTitle;
-        if (!itemUploader.empty()) {
-          labelText += " - " + itemUploader;
-        }
+        // ── Subtitle: "Uploader • Duration" ───────────────────────────────────
+        std::string subtitle;
+        if (!itemUploader.empty()) subtitle = itemUploader;
         if (!itemDuration.empty()) {
-          labelText += " (" + itemDuration + ")";
+          subtitle += subtitle.empty() ? itemDuration : " \u2022 " + itemDuration;
         }
 
-        auto actionBtn =
-            CButtonBuilder::begin()
-                ->label("⋮")
-                ->alignText(HT_FONT_ALIGN_CENTER)
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->onMainClick([this, itemUrl, itemTitle, itemUploader, triggerPlayStream](CSharedPointer<CButtonElement>) {
+        // ── Build card via reusable SongCard component ────────────────────────
+        auto card = std::make_shared<UI::Components::SongCard>(
+            UI::Components::SongCardConfig{
+                .palette    = palette,
+                .fontFamily = fontFamily,
+                .rounding   = palette ? palette->m_vars.smallRounding : 6,
+                .cardHeight = 70.0f,
+                .title      = std::to_string(idx++) + ". " + itemTitle,
+                .subtitle   = subtitle,
+                .isActive   = false,
+                .onCardBodyClick = triggerPlayStream,
+                .onActionClick   = [this, itemUrl, itemTitle, itemUploader,
+                                    triggerPlayStream] {
                   Dialogs::showActionMenuDialog({
-                      .options = {"▶ Play Stream", "➕ Add Stream to Queue", "📁 Add Stream to Playlist",
-                                  "🔗 Copy Link", "📥 Download to Database"},
+                      .options  = {"▶ Play Stream", "➕ Add Stream to Queue",
+                                   "📁 Add Stream to Playlist", "🔗 Copy Link",
+                                   "📥 Download to Database"},
                       .onSelect =
-                          [this, itemUrl, itemTitle, itemUploader, triggerPlayStream](size_t idx, const std::string &) {
-                            if (idx == 0) { // Play Stream
+                          [this, itemUrl, itemTitle, itemUploader,
+                           triggerPlayStream](size_t idx,
+                                             const std::string &) {
+                            if (idx == 0) {
                               triggerPlayStream();
-                            } else if (idx == 1) { // Add Stream to Queue
+                            } else if (idx == 1) {
                               if (m_ctx.showNotification)
-                                m_ctx.showNotification("⏳ Resolving stream link with yt-dlp...");
-
-                              std::thread([this, itemUrl, itemTitle, itemUploader]() {
-                                std::string realUrl = extractDirectStreamUrl(itemUrl);
+                                m_ctx.showNotification(
+                                    "⏳ Resolving stream link with yt-dlp...");
+                              std::thread([this, itemUrl, itemTitle,
+                                           itemUploader]() {
+                                std::string realUrl =
+                                    extractDirectStreamUrl(itemUrl);
                                 if (realUrl.empty())
                                   realUrl = itemUrl;
-
                                 if (m_ctx.ytDlpService) {
-                                  m_ctx.ytDlpService->setUrlTitle(realUrl, itemTitle, itemUploader);
-                                  m_ctx.ytDlpService->setUrlTitle(itemUrl, itemTitle, itemUploader);
+                                  m_ctx.ytDlpService->setUrlTitle(
+                                      realUrl, itemTitle, itemUploader);
+                                  m_ctx.ytDlpService->setUrlTitle(
+                                      itemUrl, itemTitle, itemUploader);
                                 }
-
-                                if (m_ctx.backend) {
+                                if (m_ctx.backend)
                                   m_ctx.backend->addTimer(
                                       std::chrono::milliseconds(1),
-                                      [this, realUrl](CAtomicSharedPointer<CTimer>, void *) {
+                                      [this,
+                                       realUrl](CAtomicSharedPointer<CTimer>,
+                                                void *) {
                                         if (m_ctx.addSongToQueue)
                                           m_ctx.addSongToQueue(realUrl);
                                       },
                                       nullptr);
-                                }
                               }).detach();
-                            } else if (idx == 2) { // Add Stream to Playlist
-                              if (m_ctx.ytDlpService) {
-                                m_ctx.ytDlpService->setUrlTitle(itemUrl, itemTitle, itemUploader);
-                              }
-                              if (m_ctx.backend) {
+                            } else if (idx == 2) {
+                              if (m_ctx.ytDlpService)
+                                m_ctx.ytDlpService->setUrlTitle(
+                                    itemUrl, itemTitle, itemUploader);
+                              if (m_ctx.backend)
                                 m_ctx.backend->addTimer(
                                     std::chrono::milliseconds(1),
-                                    [this, itemUrl](CAtomicSharedPointer<CTimer>, void *) {
+                                    [this,
+                                     itemUrl](CAtomicSharedPointer<CTimer>,
+                                              void *) {
                                       if (m_ctx.showPlaylistSelectionDialog)
-                                        m_ctx.showPlaylistSelectionDialog(itemUrl);
+                                        m_ctx.showPlaylistSelectionDialog(
+                                            itemUrl);
                                     },
                                     nullptr);
-                              }
-                            } else if (idx == 3) { // Copy Link
+                            } else if (idx == 3) {
                               if (m_ctx.showNotification)
-                                m_ctx.showNotification("⏳ Extracting stream link with yt-dlp...");
-
-                              std::thread([this, itemUrl, itemTitle, itemUploader]() {
-                                std::string directUrl = extractDirectStreamUrl(itemUrl);
+                                m_ctx.showNotification(
+                                    "⏳ Extracting stream link with yt-dlp...");
+                              std::thread([this, itemUrl, itemTitle,
+                                           itemUploader]() {
+                                std::string directUrl =
+                                    extractDirectStreamUrl(itemUrl);
                                 if (directUrl.empty())
                                   directUrl = itemUrl;
-
                                 if (m_ctx.ytDlpService) {
-                                  m_ctx.ytDlpService->setUrlTitle(directUrl, itemTitle, itemUploader);
-                                  m_ctx.ytDlpService->setUrlTitle(itemUrl, itemTitle, itemUploader);
+                                  m_ctx.ytDlpService->setUrlTitle(
+                                      directUrl, itemTitle, itemUploader);
+                                  m_ctx.ytDlpService->setUrlTitle(
+                                      itemUrl, itemTitle, itemUploader);
                                 }
-
-                                bool success = Utils::copyToClipboard(directUrl);
-
-                                if (m_ctx.backend) {
+                                bool ok = Utils::copyToClipboard(directUrl);
+                                if (m_ctx.backend)
                                   m_ctx.backend->addTimer(
                                       std::chrono::milliseconds(1),
-                                      [this, success](CAtomicSharedPointer<CTimer>, void *) {
-                                        if (m_ctx.showNotification) {
-                                          if (success) {
-                                            m_ctx.showNotification("📋 Copied direct stream link to clipboard!");
-                                          } else {
-                                            m_ctx.showNotification("❌ Failed to copy stream link");
-                                          }
-                                        }
+                                      [this,
+                                       ok](CAtomicSharedPointer<CTimer>,
+                                           void *) {
+                                        if (m_ctx.showNotification)
+                                          m_ctx.showNotification(
+                                              ok ? "📋 Copied direct stream "
+                                                   "link to clipboard!"
+                                                 : "❌ Failed to copy stream "
+                                                   "link");
                                       },
                                       nullptr);
-                                }
                               }).detach();
-                            } else if (idx == 4) { // Download to Database
+                            } else if (idx == 4) {
                               std::string musicDir =
-                                  m_ctx.getMusicDirectory ? m_ctx.getMusicDirectory() : "";
+                                  m_ctx.getMusicDirectory
+                                      ? m_ctx.getMusicDirectory()
+                                      : "";
                               Dialogs::showDownloadProgressDialog({
-                                  .title = itemTitle,
-                                  .url = itemUrl,
-                                  .destDir = musicDir,
+                                  .title    = itemTitle,
+                                  .url      = itemUrl,
+                                  .destDir  = musicDir,
                                   .parentWindow = m_ctx.window,
-                                  .backend = m_ctx.backend,
-                                  .palette = m_ctx.palette,
-                                  .fontFamily = m_ctx.fontFamily,
+                                  .backend      = m_ctx.backend,
+                                  .palette      = m_ctx.palette,
+                                  .fontFamily   = m_ctx.fontFamily,
                                   .showNotification = m_ctx.showNotification,
-                                  .runMpdCommand = m_ctx.runMpdCommand});
+                                  .runMpdCommand    = m_ctx.runMpdCommand});
                             }
                           },
                       .parentWindow = m_ctx.window,
-                      .backend = m_ctx.backend,
-                      .palette = m_ctx.palette,
-                      .fontFamily = m_ctx.fontFamily});
-                })
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE, {28.0F, 28.0F}))
-                ->commence();
-        actionBtn->setGrow(false);
-        itemRow->addChild(actionBtn);
-
-        auto songText =
-            CTextBuilder::begin()
-                ->text(std::string(labelText))
-                ->color([palette] {
-                  return palette ? palette->m_colors.text
-                                 : CHyprColor(1, 1, 1, 1);
-                })
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-                ->align(HT_FONT_ALIGN_LEFT)
-                ->noEllipsize(false)
-                ->interactable(true)
-                ->commence();
-        songText->setReceivesMouse(true);
-        songText->setMouseButton(
-            [triggerPlayStream](Input::eMouseButton button, bool down) {
-              if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-                triggerPlayStream();
-              }
-            });
-
-        auto textContainer =
-            CRowLayoutBuilder::begin()
-                ->gap(0)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-                ->commence();
-        textContainer->setGrow(true);
-        textContainer->addChild(songText);
-        itemRow->addChild(textContainer);
-
-        itemBox->addChild(itemRow);
-        tabContentLayout->addChild(itemBox);
+                      .backend      = m_ctx.backend,
+                      .palette      = m_ctx.palette,
+                      .fontFamily   = m_ctx.fontFamily});
+                }});
+        tabContentLayout->addChild(card->build());
       }
     }
   }

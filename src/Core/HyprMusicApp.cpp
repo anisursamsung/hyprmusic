@@ -136,6 +136,9 @@ void HyprMusicApp::createUI() {
       },
       .nextTrack = [this] {
         Services::MPDManager::nextTrack([this] { updateStatus(); });
+      },
+      .onNowPlayingClick = [this] {
+        switchViewMode(eViewMode::VIEW_PLAYER);
       }};
   m_playbackBar = std::make_unique<UI::Components::PlaybackBar>(pCtx);
   m_playbackBar->build(mainColumn);

@@ -1,4 +1,5 @@
 #include "DatabaseView.hpp"
+#include "../Components/SongCard.hpp"
 #include "../Dialogs/ActionMenuDialog.hpp"
 #include <hyprtoolkit/element/Button.hpp>
 #include <hyprtoolkit/element/RowLayout.hpp>
@@ -289,21 +290,19 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
         std::string songUri(uri);
 
         const char *artist = mpd_song_get_tag(s, MPD_TAG_ARTIST, 0);
-        const char *title = mpd_song_get_tag(s, MPD_TAG_TITLE, 0);
-        std::string displayTitle;
-        if (title) {
-          std::string artistStr = artist ? artist : "Unknown Artist";
-          displayTitle = std::string(title) + " - " + artistStr;
-        } else {
-          displayTitle = songUri;
-        }
+        const char *title  = mpd_song_get_tag(s, MPD_TAG_TITLE, 0);
 
+        // Build separate title and artist strings for the two-line SongCard
+        std::string displayTitle  = title  ? std::string(title)  : songUri;
+        std::string displayArtist = artist ? std::string(artist) : "Unknown Artist";
+
+        // Search across both fields
         if (!m_searchQuery.empty()) {
-          std::string query = m_searchQuery;
-          std::string titleLower = displayTitle;
-          std::transform(titleLower.begin(), titleLower.end(), titleLower.begin(), ::tolower);
+          std::string query       = m_searchQuery;
+          std::string searchTarget = displayTitle + " " + displayArtist;
+          std::transform(searchTarget.begin(), searchTarget.end(), searchTarget.begin(), ::tolower);
           std::transform(query.begin(), query.end(), query.begin(), ::tolower);
-          if (titleLower.find(query) == std::string::npos) {
+          if (searchTarget.find(query) == std::string::npos) {
             mpd_entity_free(entity);
             continue;
           }
@@ -313,114 +312,44 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
         bool inQueue = (queueUris.find(songUri) != queueUris.end());
         std::string indexStr = std::to_string(trackNum++) + ". ";
 
-        auto songItem =
-            CRectangleBuilder::begin()
-                ->color([palette] {
-                  return palette ? palette->m_colors.base
-                                 : CHyprColor(0.15, 0.15, 0.15, 1.0);
-                })
-                ->rounding(rounding)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {1.0F, 40.0F}))
-                ->commence();
-        songItem->setReceivesMouse(true);
-        songItem->setMouseButton(
-            [this, songUri](Input::eMouseButton button, bool down) {
-              if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-                if (!songUri.empty() && m_ctx.playSongFromUri) {
-                  m_ctx.playSongFromUri(songUri);
-                }
-              }
-            });
-
-        auto rowLayout = CRowLayoutBuilder::begin()
-                             ->gap(10)
-                             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                                 CDynamicSize::HT_SIZE_PERCENT,
-                                                 {1.0F, 1.0F}))
-                             ->commence();
-        rowLayout->setMargin(6);
-
-        auto actionBtn =
-            CButtonBuilder::begin()
-                ->label("⋮")
-                ->alignText(HT_FONT_ALIGN_CENTER)
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->onMainClick([this, songUri](CSharedPointer<CButtonElement>) {
+        // ── Build card via reusable SongCard component ────────────────────────
+        auto card = std::make_shared<UI::Components::SongCard>(
+            UI::Components::SongCardConfig{
+                .palette    = palette,
+                .fontFamily = fontFamily,
+                .rounding   = rounding,
+                .cardHeight = 70.0f,
+                .title      = indexStr + displayTitle,
+                .subtitle   = displayArtist,
+                .isActive   = inQueue,
+                .onCardBodyClick = [this, songUri] {
+                  if (!songUri.empty() && m_ctx.playSongFromUri)
+                    m_ctx.playSongFromUri(songUri);
+                },
+                .onActionClick = [this, songUri] {
                   Dialogs::showActionMenuDialog({
-                      .options = {"▶ Play", "➕ Add to Queue", "📁 Add to Playlist"},
+                      .options  = {"▶ Play", "➕ Add to Queue",
+                                   "📁 Add to Playlist"},
                       .onSelect =
                           [this, songUri](size_t idx, const std::string &) {
-                            if (idx == 0) { // ▶ Play
-                              if (!songUri.empty() && m_ctx.playSongFromUri) {
+                            if (idx == 0) {
+                              if (!songUri.empty() && m_ctx.playSongFromUri)
                                 m_ctx.playSongFromUri(songUri);
-                              }
-                            } else if (idx == 1) { // ➕ Add to Queue
+                            } else if (idx == 1) {
                               if (m_ctx.addSongToQueue)
                                 m_ctx.addSongToQueue(songUri);
-                            } else if (idx == 2) { // 📁 Add to Playlist
-                              if (!songUri.empty() && m_ctx.showPlaylistSelectionDialog) {
+                            } else if (idx == 2) {
+                              if (!songUri.empty() &&
+                                  m_ctx.showPlaylistSelectionDialog)
                                 m_ctx.showPlaylistSelectionDialog(songUri);
-                              }
                             }
                           },
                       .parentWindow = m_ctx.window,
-                      .backend = m_ctx.backend,
-                      .palette = m_ctx.palette,
-                      .fontFamily = m_ctx.fontFamily});
-                })
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {28.0F, 28.0F}))
-                ->commence();
-        actionBtn->setGrow(false);
-        rowLayout->addChild(actionBtn);
-
-        auto songText = CTextBuilder::begin()
-                            ->text(std::string(indexStr + displayTitle))
-                            ->color([palette, inQueue] {
-                              if (inQueue) {
-                                return palette
-                                           ? palette->m_colors.accent
-                                           : CHyprColor(0.2, 0.8, 0.4, 1.0);
-                              }
-                              return palette ? palette->m_colors.text
-                                             : CHyprColor(1, 1, 1, 1);
-                            })
-                            ->fontFamily(std::string(fontFamily))
-                            ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                                CDynamicSize::HT_SIZE_PERCENT,
-                                                {1.0F, 1.0F}))
-                            ->align(HT_FONT_ALIGN_LEFT)
-                            ->noEllipsize(false)
-                            ->interactable(true)
-                            ->commence();
-        songText->setReceivesMouse(true);
-        songText->setMouseButton(
-            [this, songUri](Input::eMouseButton button, bool down) {
-              if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-                if (!songUri.empty() && m_ctx.playSongFromUri) {
-                  m_ctx.playSongFromUri(songUri);
-                }
-              }
-            });
-
-        auto textContainer =
-            CRowLayoutBuilder::begin()
-                ->gap(0)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    CDynamicSize::HT_SIZE_PERCENT,
-                                    {1.0F, 1.0F}))
-                ->commence();
-        textContainer->setGrow(true);
-        textContainer->addChild(songText);
-        rowLayout->addChild(textContainer);
-
-        songItem->addChild(rowLayout);
-        m_dbContentLayout->addChild(songItem);
+                      .backend      = m_ctx.backend,
+                      .palette      = m_ctx.palette,
+                      .fontFamily   = m_ctx.fontFamily});
+                }});
+        m_dbContentLayout->addChild(card->build());
       }
     }
     mpd_entity_free(entity);

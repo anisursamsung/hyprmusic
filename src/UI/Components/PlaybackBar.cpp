@@ -58,6 +58,17 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
   labelElem->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
   labelElem->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
   songInfoSection->addChild(labelElem);
+
+  // Clicking the song info area navigates to the Player tab
+  if (m_ctx.onNowPlayingClick) {
+    auto cb = m_ctx.onNowPlayingClick;
+    songInfoSection->setReceivesMouse(true);
+    songInfoSection->setMouseButton([cb](Input::eMouseButton button, bool down) {
+      if (button == Input::MOUSE_BUTTON_LEFT && !down)
+        cb();
+    });
+  }
+
   playbackLayout->addChild(songInfoSection);
 
   // 2. Seek bar section (30% of PlaybackSection)
