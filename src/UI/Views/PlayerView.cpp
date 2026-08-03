@@ -1,142 +1,61 @@
+
 #include "PlayerView.hpp"
 #include "../../Utils/ArtworkUtils.hpp"
-#include <hyprtoolkit/system/Icons.hpp>
-#include <algorithm>
-#include <filesystem>
 
 namespace UI::Views {
-
 PlayerView::PlayerView(const PlayerViewContext &ctx) : m_ctx(ctx) {}
 
-static CSharedPointer<IElement> buildCardElement(CSharedPointer<CPalette> palette,
-                                                 CSharedPointer<IBackend> backend,
-                                                 const std::string &artPath) {
-  int rounding = 0;
-  std::string artPathStr = artPath;
-  if (artPathStr.empty()) {
-    artPathStr = Utils::getDefaultArtworkPath();
-  }
-  
-  if (!artPathStr.empty()) {
-    auto img = CImageBuilder::begin()
-                   ->path(std::string(artPathStr))
-                   ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-                                       CDynamicSize::HT_SIZE_PERCENT,
-                                       {1.0F, 1.0F}))
-                   ->rounding(rounding)
-                   ->fitMode(IMAGE_FIT_MODE_CONTAIN)
-                   ->commence();
-    img->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-    img->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-    return img;
-  }
-  
-  auto card = CRectangleBuilder::begin()
-                  ->color([palette] {
-                    return palette ? palette->m_colors.alternateBase
-                                   : CHyprColor(0.12, 0.12, 0.12, 1.0);
-                  })
-                  ->rounding(rounding)
-                  ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                      CDynamicSize::HT_SIZE_PERCENT,
-                                      {1.0F, 1.0F}))
-                  ->commence();
-  card->setGrow(true, true);
-  card->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-  card->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-  
-  auto iconFactory = backend ? backend->systemIcons() : nullptr;
-  CSharedPointer<ISystemIconDescription> musicIcon;
-  if (iconFactory) {
-    musicIcon = iconFactory->lookupIcon("media-optical-audio-symbolic");
-    if (!musicIcon)
-      musicIcon = iconFactory->lookupIcon("audio-x-generic");
-  }
-  
-  CSharedPointer<IElement> iconElem;
-  if (musicIcon) {
-    iconElem = CImageBuilder::begin()
-                   ->icon(musicIcon)
-                   ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                       CDynamicSize::HT_SIZE_PERCENT,
-                                       {0.6F, 0.6F}))
-                   ->fitMode(IMAGE_FIT_MODE_CONTAIN)
-                   ->commence();
-  } else {
-    iconElem = CTextBuilder::begin()
-                   ->text(std::string("🎵"))
-                   ->color([palette] {
-                     return palette ? palette->m_colors.text
-                                    : CHyprColor(1.0, 1.0, 1.0, 1.0);
-                   })
-                   ->fontSize(CFontSize(CFontSize::HT_FONT_H1))
-                   ->align(HT_FONT_ALIGN_CENTER)
-                   ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-                                       CDynamicSize::HT_SIZE_AUTO,
-                                       {1.0F, 1.0F}))
-                   ->commence();
-  }
-  iconElem->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-  iconElem->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-  card->addChild(iconElem);
-  
-  return card;
+// 1. Foreground image (centered auto width, full height and rounding corner) 
+static CSharedPointer<IElement> buildAlbumArtCard(const std::string &artPath) {
+  auto artImage = CImageBuilder::begin()
+                      ->path(std::string(artPath))
+                      ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+                                          CDynamicSize::HT_SIZE_PERCENT,
+                                          {1.0F, 1.0F}))
+                      ->rounding(0) 
+                      ->fitMode(IMAGE_FIT_MODE_CONTAIN)
+                      ->commence();
+
+  artImage->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  artImage->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+
+  return artImage;
 }
 
-static CSharedPointer<IElement> buildVignetteOverlay(CSharedPointer<CPalette> palette) {
-  auto overlay =
+// 2. Overlay between the background and foreground
+static CSharedPointer<IElement> buildDarkTintOverlay(CSharedPointer<CPalette> palette) {
+  auto tintOverlay =
       CRectangleBuilder::begin()
           ->color([palette] {
             if (palette) {
               auto bg = palette->m_colors.background;
-              return CHyprColor(bg.r, bg.g, bg.b, 0.50F);
+              return CHyprColor(bg.r, bg.g, bg.b, 0.55F); // 55% dark tint
             }
-            return CHyprColor(0.12F, 0.12F, 0.12F, 0.50F);
+            return CHyprColor(0.12F, 0.12F, 0.12F, 0.55F);
           })
           ->rounding(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT,
                               {1.0F, 1.0F}))
           ->commence();
-  overlay->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-  overlay->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-  return overlay;
+  tintOverlay->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  tintOverlay->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+  return tintOverlay;
 }
 
-static CSharedPointer<IElement> buildBackgroundElement(CSharedPointer<CPalette> palette,
-                                                       const std::string &artPath) {
-  std::string artPathStr = artPath;
-  if (artPathStr.empty()) {
-    artPathStr = Utils::getDefaultArtworkPath();
-  }
-  
-  if (!artPathStr.empty()) {
-    auto img = CImageBuilder::begin()
-                   ->path(std::string(artPathStr))
-                   ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                       CDynamicSize::HT_SIZE_PERCENT,
-                                       {1.0F, 1.0F}))
-                   ->rounding(0)
-                   ->fitMode(IMAGE_FIT_MODE_COVER)
-                   ->commence();
-    img->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-    img->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-    return img;
-  }
-  
-  auto card = CRectangleBuilder::begin()
-                  ->color([palette] {
-                    return palette ? palette->m_colors.background
-                                   : CHyprColor(0.12, 0.12, 0.12, 1.0);
-                  })
-                  ->rounding(0)
-                  ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                      CDynamicSize::HT_SIZE_PERCENT,
-                                      {1.0F, 1.0F}))
-                  ->commence();
-  card->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-  card->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-  return card;
+// 3. fullscreen background covering the entire view area
+static CSharedPointer<IElement> buildFullscreenBackground(const std::string &artPath) {
+  auto bgImage = CImageBuilder::begin()
+                 ->path(std::string(artPath))
+                 ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                     CDynamicSize::HT_SIZE_PERCENT,
+                                     {1.0F, 1.0F}))
+                 ->rounding(0)
+                 ->fitMode(IMAGE_FIT_MODE_COVER) // Fills entire screen nicely
+                 ->commence();
+  bgImage->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  bgImage->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+  return bgImage;
 }
 
 void PlayerView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd_connection *conn) {
@@ -160,9 +79,10 @@ void PlayerView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd
 
   std::string artPath = Utils::resolveTrackArtwork(conn, currentUri);
 
-  m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette, artPath);
-  m_vignetteOverlay = buildVignetteOverlay(m_ctx.palette);
-  m_coverCardElement = buildCardElement(m_ctx.palette, m_ctx.backend, artPath);
+  // Assemble 
+  m_coverCardElementBackground = buildFullscreenBackground(artPath);
+  m_vignetteOverlay = buildDarkTintOverlay(m_ctx.palette);
+  m_coverCardElement = buildAlbumArtCard(artPath);
 
   m_tabContentWrapper->addChild(m_coverCardElementBackground);
   m_tabContentWrapper->addChild(m_vignetteOverlay);
@@ -181,9 +101,9 @@ void PlayerView::updateTrackInfo(const std::string & /*trackText*/, bool /*hasAc
       if (m_tabContentWrapper) {
         m_tabContentWrapper->clearChildren();
 
-        m_coverCardElementBackground = buildBackgroundElement(m_ctx.palette, artPath);
-        m_vignetteOverlay = buildVignetteOverlay(m_ctx.palette);
-        m_coverCardElement = buildCardElement(m_ctx.palette, m_ctx.backend, artPath);
+        m_coverCardElementBackground = buildFullscreenBackground(artPath);
+        m_vignetteOverlay = buildDarkTintOverlay(m_ctx.palette);
+        m_coverCardElement = buildAlbumArtCard(artPath);
 
         m_tabContentWrapper->addChild(m_coverCardElementBackground);
         m_tabContentWrapper->addChild(m_vignetteOverlay);

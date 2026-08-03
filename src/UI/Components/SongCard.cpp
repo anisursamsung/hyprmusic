@@ -107,16 +107,18 @@ CSharedPointer<CRectangleElement> SongCard::build() {
   auto actionCb = m_cfg.onActionClick;
   auto actionBtn =
       CButtonBuilder::begin()
-          ->label("⋮")
+          ->label("⌄")
           ->alignText(HT_FONT_ALIGN_CENTER)
           ->fontFamily(std::string(fontFamily))
-          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+          ->fontSize(CFontSize(CFontSize::HT_FONT_H2))
+          ->noBg(true)
+          ->noBorder(true)
           ->onMainClick([actionCb](CSharedPointer<CButtonElement>) {
             if (actionCb)
               actionCb();
           })
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {32.0F, 32.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {36.0F, 44.0F}))
           ->commence();
   actionBtn->setGrow(false);
 
