@@ -11,40 +11,7 @@ namespace UI::Components {
 	void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
 		auto palette = m_ctx.palette;
 		std::string fontFamily = m_ctx.fontFamily;
-
-		// Outer Playback Section container (20% of parentColumn)
-		auto playbackSection =
-			CRectangleBuilder::begin()
-			->color([palette] {
-					return palette ? palette->m_colors.background
-					: CHyprColor(0.15, 0.15, 0.15, 1.0);
-					})
-		->rounding(0)
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-						CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.20F}))
-			->commence();
-
-		auto playbackLayout =
-			CColumnLayoutBuilder::begin()
-			->gap(0)
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-						CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-			->commence();
-		playbackSection->addChild(playbackLayout);
-
-	// 1. Song info section (100% width, 30% height of PlaybackSection)
-		auto songInfoSection = CRectangleBuilder::begin()
-			->color([palette] { return palette ? palette->m_colors.background : CHyprColor(0.15, 0.15, 0.15, 1.0); })
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.30F}))
-			->commence();
-
-		// Horizontal Row Layout to manage the 10-80-10 spacing
-		auto infoRow = CRowLayoutBuilder::begin()
-			->gap(0)
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-			->commence();
-
-		auto navCallback = m_ctx.onNavigationClick;
+	auto navCallback = m_ctx.onNavigationClick;
 		auto onPlayerNavClick = [navCallback](Input::eMouseButton button, bool down) {
 			if (navCallback && button == Input::MOUSE_BUTTON_LEFT && !down) {
 				navCallback(Core::eViewMode::VIEW_PLAYER);
@@ -55,20 +22,61 @@ namespace UI::Components {
 				navCallback(Core::eViewMode::VIEW_QUEUE);
 			}
 		};
-
-		// ==========================================
-		// Left 10%: Album Art Container
-		// ==========================================
-		m_artContainer = CRectangleBuilder::begin()
+		// Outer Playback Section container (20% of parentColumn)
+		auto playbackSection =
+			CRowLayoutBuilder::begin()
+			->gap(0)
+		
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.2F}))
+			->commence();
+	auto leftLayout =
+			CRectangleBuilder::begin()
 			->color([] { return CHyprColor(0, 0, 0, 0); })
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.1F, 1.0F}))
+			->rounding(0)
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+						CDynamicSize::HT_SIZE_PERCENT, {0.2F, 1.0F}))
+			->commence();
+m_artContainer = CRectangleBuilder::begin()
+			->color([] { return CHyprColor(0, 0, 0, 0); })
+			->rounding(20)
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
 			->commence();
 
 		m_artContainer->setReceivesMouse(true);
 		m_artContainer->setMouseButton(onPlayerNavClick); 
-		infoRow->addChild(m_artContainer);
+	leftLayout->addChild(m_artContainer);
 
-	// ==========================================
+
+		auto rightLayout =
+			CColumnLayoutBuilder::begin()
+			->gap(0)
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+						CDynamicSize::HT_SIZE_PERCENT, {0.8F, 1.0F}))
+			->commence();
+			playbackSection->addChild(leftLayout);
+
+
+		playbackSection->addChild(rightLayout);
+
+	// 1. Song info section (100% width, 30% height of PlaybackSection)
+		auto songInfoSection = CRectangleBuilder::begin()
+			->color([] { return CHyprColor(0, 0, 0, 0); })
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.30F}))
+			->commence();
+
+		// Horizontal Row Layout to manage the 10-80-10 spacing
+		auto infoRow = CRowLayoutBuilder::begin()
+			->gap(0)
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+			->commence();
+
+	
+
+		// ==========================================
+		// Left 10%: Album Art Container
+		// ==========================================
+		
+		// ==========================================
 		// Middle 80%: Song Label
 		// ==========================================
 	// ==========================================
@@ -97,6 +105,8 @@ namespace UI::Components {
 			->color([] { return CHyprColor(0, 0, 0, 0); })
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.80F, 1.0F}))
 			->commence();
+
+labelElem ->setMargin(10);
 
 		labelElem->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
 		labelElem->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
@@ -148,7 +158,7 @@ infoRow->addChild(textContainer);
 		infoRow->addChild(listIconContainer);
 
 		songInfoSection->addChild(infoRow);
-		playbackLayout->addChild(songInfoSection);
+		rightLayout->addChild(songInfoSection);
 
 
 
@@ -170,7 +180,7 @@ infoRow->addChild(textContainer);
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
 						CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
 			->commence();
-		seekBarRow->setMargin(8);
+		seekBarRow->setMargin(10);
 
 		m_timeText =
 			CTextBuilder::begin()
@@ -238,10 +248,11 @@ infoRow->addChild(textContainer);
 		});
 		m_seekBar->setGrow(true);
 
-		seekBarRow->addChild(m_timeText);
+	
 		seekBarRow->addChild(m_seekBar);
+	seekBarRow->addChild(m_timeText);
 		seekBarSection->addChild(seekBarRow);
-		playbackLayout->addChild(seekBarSection);
+		rightLayout->addChild(seekBarSection);
 
 	// 3. Controls section (40% of PlaybackSection)
 		auto controlsSection =
@@ -264,77 +275,7 @@ infoRow->addChild(textContainer);
 		controlsLayout->setMargin(8);
 
 		auto iconFactory = m_ctx.backend->systemIcons();
-
 	// ==========================================
-		// Left: Settings Icon in Circular Rectangle
-		// ==========================================
-		auto settingsWrapper = CRectangleBuilder::begin()
-			->color([] { return CHyprColor(0, 0, 0, 0); })
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-						CDynamicSize::HT_SIZE_PERCENT, {48.0F, 1.0F}))
-			->commence();
-
-		auto settingsBg = CRectangleBuilder::begin()
-			->color([palette] { 
-					// Solid background to make it look like a real circular button
-					return palette ? palette->m_colors.base 
-					: CHyprColor(0.18, 0.18, 0.18, 1.0); 
-					})
-			->borderThickness(1)
-			->borderColor([palette] {
-					return palette ? palette->m_colors.alternateBase
-					: CHyprColor(0.30, 0.30, 0.30, 1.0);
-					})
-			->rounding(16) // Exactly half of the 32px size for a perfect circle
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-						CDynamicSize::HT_SIZE_ABSOLUTE, {32.0F, 32.0F}))
-			->commence();
-		settingsBg->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-		settingsBg->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-
-		CSharedPointer<ISystemIconDescription> settingsIconDesc;
-		if (iconFactory) {
-			settingsIconDesc = iconFactory->lookupIcon("preferences-system");
-		}
-
-		CSharedPointer<IElement> settingsIconBtn;
-		if (settingsIconDesc) {
-			settingsIconBtn = CImageBuilder::begin()
-				->icon(settingsIconDesc)
-				->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-							CDynamicSize::HT_SIZE_PERCENT, {0.55F, 0.55F})) // Scaled down slightly to fit inside the circle
-				->fitMode(IMAGE_FIT_MODE_CONTAIN)
-				->commence();
-		} else {
-			settingsIconBtn = CTextBuilder::begin()
-				->text("⚙")
-				->color([palette] {
-						return palette ? palette->m_colors.text
-						: CHyprColor(1.0, 1.0, 1.0, 1.0);
-						})
-				->fontFamily(std::string(fontFamily))
-				->fontSize(CFontSize(CFontSize::HT_FONT_H3))
-				->align(HT_FONT_ALIGN_CENTER)
-				->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-							CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
-				->commence();
-		}
-		settingsIconBtn->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-		settingsIconBtn->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-
-		settingsBg->addChild(settingsIconBtn);
-		settingsWrapper->addChild(settingsBg);
-
-		settingsWrapper->setReceivesMouse(true);
-		settingsWrapper->setMouseButton([this](Input::eMouseButton button, bool down) {
-				if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-					if (m_ctx.onNavigationClick) {
-						m_ctx.onNavigationClick(Core::eViewMode::VIEW_SETTINGS);
-					}
-				}
-		});
-
-		controlsLayout->addChild(settingsWrapper);		// ==========================================
 		// Rest of the Area: 4-Cell Row Layout
 		// ==========================================
 		auto mainControlsRow = CRowLayoutBuilder::begin()
@@ -540,8 +481,132 @@ infoRow->addChild(textContainer);
 		}
 
 		controlsLayout->addChild(mainControlsRow);
+
+
+	// ==========================================
+		// Left: Settings Icon in Circular Rectangle
+		// ==========================================
+		auto settingsWrapper = CRectangleBuilder::begin()
+			->color([] { return CHyprColor(0, 0, 0, 0); })
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+						CDynamicSize::HT_SIZE_PERCENT, {48.0F, 1.0F}))
+			->commence();
+
+		auto settingsBg = CRectangleBuilder::begin()
+			->color([palette] { 
+					// Solid background to make it look like a real circular button
+					return palette ? palette->m_colors.base 
+					: CHyprColor(0.18, 0.18, 0.18, 1.0); 
+					})
+			->borderThickness(1)
+			->borderColor([palette] {
+					return palette ? palette->m_colors.alternateBase
+					: CHyprColor(0.30, 0.30, 0.30, 1.0);
+					})
+			->rounding(16) // Exactly half of the 32px size for a perfect circle
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+						CDynamicSize::HT_SIZE_ABSOLUTE, {32.0F, 32.0F}))
+			->commence();
+		settingsBg->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+		settingsBg->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+
+		CSharedPointer<ISystemIconDescription> settingsIconDesc;
+		if (iconFactory) {
+			settingsIconDesc = iconFactory->lookupIcon("preferences-system");
+		}
+
+		CSharedPointer<IElement> settingsIconBtn;
+		if (settingsIconDesc) {
+			settingsIconBtn = CImageBuilder::begin()
+				->icon(settingsIconDesc)
+				->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+							CDynamicSize::HT_SIZE_PERCENT, {0.55F, 0.55F})) // Scaled down slightly to fit inside the circle
+				->fitMode(IMAGE_FIT_MODE_CONTAIN)
+				->commence();
+		} else {
+			settingsIconBtn = CTextBuilder::begin()
+				->text("⚙")
+				->color([palette] {
+						return palette ? palette->m_colors.text
+						: CHyprColor(1.0, 1.0, 1.0, 1.0);
+						})
+				->fontFamily(std::string(fontFamily))
+				->fontSize(CFontSize(CFontSize::HT_FONT_H3))
+				->align(HT_FONT_ALIGN_CENTER)
+				->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+							CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+				->commence();
+		}
+		settingsIconBtn->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+		settingsIconBtn->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+
+		settingsBg->addChild(settingsIconBtn);
+		settingsWrapper->addChild(settingsBg);
+
+		settingsWrapper->setReceivesMouse(true);
+		settingsWrapper->setMouseButton([this](Input::eMouseButton button, bool down) {
+				if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+					if (m_ctx.onNavigationClick) {
+						m_ctx.onNavigationClick(Core::eViewMode::VIEW_SETTINGS);
+					}
+				}
+		});
+
+		controlsLayout->addChild(settingsWrapper);	
+
+
+
+
+
+
+
+
 		controlsSection->addChild(controlsLayout);
-		playbackLayout->addChild(controlsSection);		parentColumn->addChild(playbackSection);
+		rightLayout->addChild(controlsSection);	
+		parentColumn->addChild(playbackSection);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	}
 
 	void PlaybackBar::updateTrackInfo(const std::string &trackText,
@@ -662,37 +727,44 @@ if (m_nowPlayingLabel) {
 	}
 
 
+void PlaybackBar::applyAlbumArt(const std::string &artPath) {
+    if (!m_artContainer) return;
+
+    m_artContainer->clearChildren();
+
+    m_albumArt = CImageBuilder::begin()
+        ->path(std::string(artPath))
+        ->fitMode(IMAGE_FIT_MODE_COVER) 
+        ->rounding(20)
+        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+        ->commence();
+
+    m_artContainer->addChild(m_albumArt);
+    m_artContainer->forceReposition();
+}
+
 void PlaybackBar::updateAlbumArt(const std::string &songUri) {
-		// Stop execution if the song hasn't changed
-		if (m_lastSongUri == songUri) return;
-		m_lastSongUri = songUri;
+    if (m_lastSongUri == songUri) return;
+    m_lastSongUri = songUri;
 
-		std::string artPath = Utils::getDefaultArtworkPath();
+    // Default art path initially
+    std::string artPath = Utils::getDefaultArtworkPath();
 
-		// If a song is playing, resolve its actual artwork path
-		if (!songUri.empty()) {
-			m_ctx.runMpdCommand([&artPath, songUri](struct mpd_connection *conn) {
-				artPath = Utils::resolveTrackArtwork(conn, songUri);
-			});
-		}
+    if (songUri.empty()) {
+        applyAlbumArt(artPath);
+        return;
+    }
 
-		// Destroy the old image and create a brand new one to bypass texture caching
-		if (m_artContainer) {
-			m_artContainer->clearChildren();
-
-			m_albumArt = CImageBuilder::begin()
-				->path(std::string(artPath))
-				->fitMode(IMAGE_FIT_MODE_COVER) // Fill the 10% container fully
-				->rounding(0)
-				->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-				->commence();
-
-			// Absolute positioning is not needed when completely filling the container
-			m_artContainer->addChild(m_albumArt);
-			
-			// Force the UI engine to redraw the container with the new child
-			m_artContainer->forceReposition();
-		}
-	}
-
+    // Use m_ctx.runMpdCommand safely (which handles the background/command dispatch cleanly)
+    m_ctx.runMpdCommand([this, artPath](struct mpd_connection *conn) mutable {
+        if (conn) {
+            artPath = Utils::resolveTrackArtwork(conn, m_lastSongUri);
+        }
+        
+        // Since we are inside the command callback, apply it. 
+        // If your toolkit requires main-thread dispatch for UI changes, 
+        // ensure it's handled, or apply directly if runMpdCommand handles thread safety.
+        applyAlbumArt(artPath);
+    });
+}
 } // namespace UI::Components

@@ -55,6 +55,7 @@ private:
     bool m_isMuted = false;
     int m_lastUnmutedVolume = 70;
     void updateVolumeIconState(bool muted);
+void applyAlbumArt(const std::string &artPath);
   
   CSharedPointer<CRectangleElement> m_artContainer;
     Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CImageElement> m_albumArt;
