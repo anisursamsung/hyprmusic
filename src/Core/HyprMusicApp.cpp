@@ -79,12 +79,30 @@ void HyprMusicApp::createUI() {
           ->commence();
   mainBg->addChild(mainColumn);
 
-  // Tab Bar (top)
+  // Top Layout (contains Sidebar and Content Section)
+  auto topLayout =
+      CRowLayoutBuilder::begin()
+          ->gap(0)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 1.0F}))
+          ->commence();
+  topLayout->setGrow(true);
+  mainColumn->addChild(topLayout);
+
+  // Sidebar (Tab Bar container - 20% width)
+  auto sidebarContainer =
+      CRectangleBuilder::begin()
+          ->color([] { return CHyprColor(0, 0, 0, 0); })
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_PERCENT, {0.2F, 1.0F}))
+          ->commence();
+
   m_tabBar = std::make_unique<UI::Components::TabBar>(
       palette, fontFamily, [this](eViewMode mode) { switchViewMode(mode); });
-  mainColumn->addChild(m_tabBar->build());
+  sidebarContainer->addChild(m_tabBar->build());
+  topLayout->addChild(sidebarContainer);
 
-  // Content Area Section
+  // Content Area Section (80% width)
   auto contentSection =
       CRectangleBuilder::begin()
           ->color([palette] {
@@ -93,9 +111,8 @@ void HyprMusicApp::createUI() {
           })
           ->rounding(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 1.0F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {0.8F, 1.0F}))
           ->commence();
-  contentSection->setGrow(true);
 
   auto contentLayout =
       CColumnLayoutBuilder::begin()
@@ -112,7 +129,7 @@ void HyprMusicApp::createUI() {
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();
   contentLayout->addChild(m_tabContentWrapper);
-  mainColumn->addChild(contentSection);
+  topLayout->addChild(contentSection);
 
   // Playback Control Bar
   UI::Components::PlaybackBarContext pCtx{
@@ -456,7 +473,7 @@ void HyprMusicApp::updateStatus() {
 
   std::string trackText = "No currently playing songs";
   std::string stateText = "media-playback-start";
-std::string currentSongUri = ""; 
+  std::string currentSongUri = ""; 
   int activeSongId = -1;
   unsigned currentQueueVersion = 0;
   int currentVolume = -1;
@@ -473,7 +490,6 @@ std::string currentSongUri = "";
     currentVolume = mpd_status_get_volume(status);
     m_isPlaying = (state == MPD_STATE_PLAY);
 
-    
     if (state == MPD_STATE_PLAY || state == MPD_STATE_PAUSE) {
       stateText = (state == MPD_STATE_PLAY) ? "media-playback-pause" : "media-playback-start";
       elapsed = mpd_status_get_elapsed_time(status);
