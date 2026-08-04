@@ -15,6 +15,7 @@
 #include <memory>
 #include <string>
 #include "../../Core/ViewMode.hpp"
+#include "CustomSeekBar.hpp" 
 
 namespace UI::Components {
 
@@ -56,6 +57,7 @@ private:
     int m_lastUnmutedVolume = 70;
     void updateVolumeIconState(bool muted);
 void applyAlbumArt(const std::string &artPath);
+std::unique_ptr<CustomSeekBar> m_customSeekBar;
   
   CSharedPointer<CRectangleElement> m_artContainer;
     Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CImageElement> m_albumArt;

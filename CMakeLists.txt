@@ -25,6 +25,7 @@ add_executable(hyprmusic
     src/Services/SettingsManager.cpp
     src/Services/YtDlpService.cpp
     src/UI/Components/CenteredTextLabel.cpp
+    src/UI/Components/CustomSeekBar.cpp
     src/UI/Components/NotificationManager.cpp
     src/UI/Components/PlaybackBar.cpp
     src/UI/Components/TabBar.cpp
