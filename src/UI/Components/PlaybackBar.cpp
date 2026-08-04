@@ -75,38 +75,39 @@ namespace UI::Components {
 		// Middle 80%: Song Label
 		// ==========================================
 		//
-		auto songInfoSectionBg = CRectangleBuilder::begin()
-			->color([] { return CHyprColor(0, 0, 0, 0); })
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.8F, 1.0F}))
-			->commence();
-		
-		auto textContainer = CColumnLayoutBuilder::begin()
-			->gap(0)
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
-			->commence();
-
-	textContainer ->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-	textContainer->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-
-
-		m_nowPlayingLabel = CTextBuilder::begin()
-			->text("Track 1 - Unknown Artist")
-			->color([palette] { return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); })
-			->fontFamily(std::string(fontFamily))
-			->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-			->align(HT_FONT_ALIGN_CENTER)
-			->noEllipsize(false)
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
-			->commence();
-	
-
-		textContainer->addChild(m_nowPlayingLabel);
-
-songInfoSectionBg->addChild(textContainer);
-	songInfoSectionBg->setReceivesMouse(true);
-	songInfoSectionBg->setMouseButton(onPlayerNavClick);
-		infoRow->addChild(songInfoSectionBg);
+	// ==========================================
+		// Middle 80%: Song Label via CenteredTextLabel
 		// ==========================================
+		CenteredTextLabelContext txtCtx{
+			.text = "Track 1 - Unknown Artist",
+			.palette = palette,
+			.fontFamily = fontFamily,
+			.fontSize = CFontSize(CFontSize::HT_FONT_TEXT),
+			.color = [palette] { return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); },
+			.widthPercent = 1.0f // Fills the 80% container fully
+		};
+
+		m_nowPlayingLabel = std::make_unique<CenteredTextLabel>(txtCtx);
+		auto labelElem = m_nowPlayingLabel->build();
+		labelElem->setPositionMode(IElement::HT_POSITION_AUTO);
+		labelElem->setPositionFlag(IElement::HT_POSITION_FLAG_VCENTER, true);
+
+		// Container for the middle 80% cell
+		auto textContainer = CRectangleBuilder::begin()
+			->color([] { return CHyprColor(0, 0, 0, 0); })
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.80F, 1.0F}))
+			->commence();
+
+		labelElem->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+		labelElem->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+		textContainer->addChild(labelElem);
+
+		textContainer->setReceivesMouse(true);
+		textContainer->setMouseButton(onPlayerNavClick);
+infoRow->addChild(textContainer);	
+
+		// Navigate to Player
+			// ==========================================
 		// Right 10%: List Icon Container
 		// ==========================================
 		auto listIconContainer = CRectangleBuilder::begin()
@@ -550,8 +551,9 @@ if (m_nowPlayingLabel) {
 			std::string textToDisplay =
 				hasActiveTrack ? trackText : "No currently playing songs";
 				
-		
-			m_nowPlayingLabel->rebuild()->text(std::string(textToDisplay))->commence();
+			// Uses the helper method which completely recreates the internal text node, 
+			// eliminating any lingering truncation/ghosting pixels from previous songs.
+			m_nowPlayingLabel->updateText(textToDisplay);
 		}
 		if (m_timeText) {
 			std::string timeStr = "0:00 / 0:00";
