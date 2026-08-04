@@ -1,6 +1,7 @@
 #include "PlaybackBar.hpp"
 #include "../../Utils/FormatUtils.hpp"
 #include <algorithm>
+#include "../../Utils/ArtworkUtils.hpp"
 #include <hyprtoolkit/system/Icons.hpp>
 
 namespace UI::Components {
@@ -31,7 +32,7 @@ namespace UI::Components {
 			->commence();
 		playbackSection->addChild(playbackLayout);
 
-		// 1. Song info section (100% width, 30% height of PlaybackSection)
+	// 1. Song info section (100% width, 30% height of PlaybackSection)
 		auto songInfoSection = CRectangleBuilder::begin()
 			->color([palette] { return palette ? palette->m_colors.background : CHyprColor(0.15, 0.15, 0.15, 1.0); })
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.30F}))
@@ -43,15 +44,12 @@ namespace UI::Components {
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
 			->commence();
 
-		// Define the specific callbacks utilizing the new argument
 		auto navCallback = m_ctx.onNavigationClick;
-
 		auto onPlayerNavClick = [navCallback](Input::eMouseButton button, bool down) {
 			if (navCallback && button == Input::MOUSE_BUTTON_LEFT && !down) {
 				navCallback(Core::eViewMode::VIEW_PLAYER);
 			}
 		};
-
 		auto onQueueNavClick = [navCallback](Input::eMouseButton button, bool down) {
 			if (navCallback && button == Input::MOUSE_BUTTON_LEFT && !down) {
 				navCallback(Core::eViewMode::VIEW_QUEUE);
@@ -59,60 +57,61 @@ namespace UI::Components {
 		};
 
 		// ==========================================
-		// Left 10%: Disc Container
+		// Left 10%: Album Art Container
 		// ==========================================
-		auto discContainer = CRectangleBuilder::begin()
+		m_artContainer = CRectangleBuilder::begin()
 			->color([] { return CHyprColor(0, 0, 0, 0); })
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.10F, 1.0F}))
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.1F, 1.0F}))
 			->commence();
 
-		m_discElement = CRectangleBuilder::begin()
-			->color([palette, this] { 
-				if (m_isPlaying) {
-					return CHyprColor(0.9f, 0.2f, 0.2f, 1.0f); // Red when playing
-				}
-				return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); // Accent when paused/stopped
-			})
-			->rounding(10)
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE, CDynamicSize::HT_SIZE_ABSOLUTE, {20.0F, 20.0F}))
-			->commence();
+		m_artContainer->setReceivesMouse(true);
+		m_artContainer->setMouseButton(onPlayerNavClick); 
+		infoRow->addChild(m_artContainer);
 
-		m_discElement->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-		m_discElement->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-		discContainer->addChild(m_discElement);
-
-		// Apply click event to the Disc cell
-		discContainer->setReceivesMouse(true);
-		discContainer->setMouseButton(onPlayerNavClick); // Navigate to Player
-		infoRow->addChild(discContainer);
-
-		// ==========================================
+	// ==========================================
 		// Middle 80%: Song Label
 		// ==========================================
-		CenteredTextLabelContext txtCtx{
-			.text = "Track 1 - Unknown Artist",
-				.palette = palette,
-				.fontFamily = fontFamily,
-				.fontSize = CFontSize(CFontSize::HT_FONT_TEXT),
-				.color = [palette] { return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); },
-				.widthPercent = 0.80f};
+	// ==========================================
+		// Middle 80%: Song Label
+		// ==========================================
+		//
+		auto songInfoSectionBg = CRectangleBuilder::begin()
+			->color([] { return CHyprColor(0, 0, 0, 0); })
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.8F, 1.0F}))
+			->commence();
+		
+		auto textContainer = CColumnLayoutBuilder::begin()
+			->gap(0)
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+			->commence();
 
-		m_nowPlayingLabel = std::make_unique<CenteredTextLabel>(txtCtx);
-		auto labelElem = m_nowPlayingLabel->build();
-		labelElem->setPositionMode(IElement::HT_POSITION_AUTO);
-		labelElem->setPositionFlag(IElement::HT_POSITION_FLAG_VCENTER, true);
+	textContainer ->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+	textContainer->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
 
-		// Apply click event to the Text cell
-		labelElem->setReceivesMouse(true);
-		labelElem->setMouseButton(onPlayerNavClick); // Navigate to Player
-		infoRow->addChild(labelElem);
 
+		m_nowPlayingLabel = CTextBuilder::begin()
+			->text("Track 1 - Unknown Artist")
+			->color([palette] { return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); })
+			->fontFamily(std::string(fontFamily))
+			->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+			->align(HT_FONT_ALIGN_CENTER)
+			->noEllipsize(false)
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+			->commence();
+	
+
+		textContainer->addChild(m_nowPlayingLabel);
+
+songInfoSectionBg->addChild(textContainer);
+	songInfoSectionBg->setReceivesMouse(true);
+	songInfoSectionBg->setMouseButton(onPlayerNavClick);
+		infoRow->addChild(songInfoSectionBg);
 		// ==========================================
 		// Right 10%: List Icon Container
 		// ==========================================
 		auto listIconContainer = CRectangleBuilder::begin()
 			->color([] { return CHyprColor(0, 0, 0, 0); })
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.10F, 1.0F}))
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.1F, 1.0F}))
 			->commence();
 
 		auto listIconFactory = m_ctx.backend->systemIcons();
@@ -142,12 +141,15 @@ namespace UI::Components {
 		listIconElem->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
 		listIconElem->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
 		listIconContainer->addChild(listIconElem);
+
 		listIconContainer->setReceivesMouse(true);
-		listIconContainer->setMouseButton(onQueueNavClick); // Navigate to Queue
+		listIconContainer->setMouseButton(onQueueNavClick);
 		infoRow->addChild(listIconContainer);
 
 		songInfoSection->addChild(infoRow);
 		playbackLayout->addChild(songInfoSection);
+
+
 
 		// 2. Seek bar section (30% of PlaybackSection)
 		auto seekBarSection =
@@ -544,12 +546,13 @@ namespace UI::Components {
 	void PlaybackBar::updateTrackInfo(const std::string &trackText,
 			bool hasActiveTrack, unsigned elapsed,
 			unsigned total) {
-		if (m_nowPlayingLabel) {
+if (m_nowPlayingLabel) {
 			std::string textToDisplay =
 				hasActiveTrack ? trackText : "No currently playing songs";
-			m_nowPlayingLabel->updateText(textToDisplay);
+				
+		
+			m_nowPlayingLabel->rebuild()->text(std::string(textToDisplay))->commence();
 		}
-
 		if (m_timeText) {
 			std::string timeStr = "0:00 / 0:00";
 			if (hasActiveTrack && total > 0) {
@@ -632,14 +635,8 @@ namespace UI::Components {
 	}
 
 	void PlaybackBar::updatePlayPauseState(const std::string &stateText) {
-		bool wasPlaying = m_isPlaying;
-		m_isPlaying = (stateText == "media-playback-pause");
-
-		if (m_discElement && (wasPlaying != m_isPlaying)) {
-			m_discElement->rebuild()->commence();
-		}
-
-		if (!m_pauseBtn)
+	m_isPlaying = (stateText == "media-playback-pause");
+	if (!m_pauseBtn)
 			return;
 
 		auto imgBtn =
@@ -659,6 +656,40 @@ namespace UI::Components {
 			if (textBtn) {
 				textBtn->rebuild()->text(std::string(m_isPlaying ? "⏸" : "▶"))->commence();
 			}
+		}
+	}
+
+
+void PlaybackBar::updateAlbumArt(const std::string &songUri) {
+		// Stop execution if the song hasn't changed
+		if (m_lastSongUri == songUri) return;
+		m_lastSongUri = songUri;
+
+		std::string artPath = Utils::getDefaultArtworkPath();
+
+		// If a song is playing, resolve its actual artwork path
+		if (!songUri.empty()) {
+			m_ctx.runMpdCommand([&artPath, songUri](struct mpd_connection *conn) {
+				artPath = Utils::resolveTrackArtwork(conn, songUri);
+			});
+		}
+
+		// Destroy the old image and create a brand new one to bypass texture caching
+		if (m_artContainer) {
+			m_artContainer->clearChildren();
+
+			m_albumArt = CImageBuilder::begin()
+				->path(std::string(artPath))
+				->fitMode(IMAGE_FIT_MODE_COVER) // Fill the 10% container fully
+				->rounding(0)
+				->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+				->commence();
+
+			// Absolute positioning is not needed when completely filling the container
+			m_artContainer->addChild(m_albumArt);
+			
+			// Force the UI engine to redraw the container with the new child
+			m_artContainer->forceReposition();
 		}
 	}
 

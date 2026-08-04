@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CenteredTextLabel.hpp"
+
 #include <hyprtoolkit/core/Backend.hpp>
 #include <hyprtoolkit/element/ColumnLayout.hpp>
 #include <hyprtoolkit/element/Image.hpp>
@@ -40,10 +40,11 @@ public:
     void updateTrackInfo(const std::string &trackText, bool hasActiveTrack, unsigned elapsed, unsigned total);
     void updateVolume(int currentVolume);
     void updatePlayPauseState(const std::string &stateText);
+    void updateAlbumArt(const std::string &songUri);
 
 private:
     PlaybackBarContext m_ctx;
-    std::unique_ptr<CenteredTextLabel> m_nowPlayingLabel;
+   Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CTextElement> m_nowPlayingLabel;
     CSharedPointer<CTextElement> m_timeText;
     CSharedPointer<CSliderElement> m_seekBar;
     bool m_isUpdatingSeekBar = false;
@@ -54,9 +55,14 @@ private:
     bool m_isMuted = false;
     int m_lastUnmutedVolume = 70;
     void updateVolumeIconState(bool muted);
-    CSharedPointer<CRectangleElement> m_discElement;
+  
+  CSharedPointer<CRectangleElement> m_artContainer;
+    Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CImageElement> m_albumArt;
+    
+    // Set to a dummy value so the first update ALWAYS runs
+    std::string m_lastSongUri = "__INIT__"; 
     bool m_isPlaying = false;
- 
+  
 };
 
 } // namespace UI::Components

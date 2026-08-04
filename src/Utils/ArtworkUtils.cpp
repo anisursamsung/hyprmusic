@@ -70,9 +70,9 @@ std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &
   }
 
   std::string rawPath = "";
-
   if (!imgBytes.empty()) {
-    std::string tmpPath = "/tmp/hyprmusic_raw_art.bin";
+    // Generate a unique filename per track using a hash of the URI
+    std::string tmpPath = "/tmp/hyprmusic_art_" + std::to_string(std::hash<std::string>{}(songUri)) + ".bin";
     std::ofstream ofs(tmpPath, std::ios::binary);
     if (ofs) {
       ofs.write(reinterpret_cast<const char *>(imgBytes.data()), imgBytes.size());
