@@ -36,6 +36,7 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                 CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
             ->commence();
+    tabMainLayout->setMargin(20);
 
     m_tabContentWrapper->addChild(tabMainLayout);
 

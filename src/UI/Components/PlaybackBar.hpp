@@ -49,8 +49,7 @@ private:
     CSharedPointer<CTextElement> m_timeText;
     CSharedPointer<CSliderElement> m_seekBar;
     bool m_isUpdatingSeekBar = false;
-    CSharedPointer<CSliderElement> m_volumeSlider;
-    bool m_isUpdatingVolumeSlider = false;
+    std::unique_ptr<CustomSeekBar> m_customVolumeBar;
     CSharedPointer<IElement> m_pauseBtn;
     CSharedPointer<IElement> m_volIcon;
     bool m_isMuted = false;
@@ -65,7 +64,13 @@ std::unique_ptr<CustomSeekBar> m_customSeekBar;
     // Set to a dummy value so the first update ALWAYS runs
     std::string m_lastSongUri = "__INIT__"; 
     bool m_isPlaying = false;
-  
+
+    // Mini visualizer members
+    std::vector<CSharedPointer<CRectangleElement>> m_miniVisBars;
+    bool m_isMiniVisAnimating = false;
+    float m_miniVisAnimPhase = 0.0f;
+    void scheduleMiniVisAnimation();
+    void updateMiniVisBars();
 };
 
 } // namespace UI::Components

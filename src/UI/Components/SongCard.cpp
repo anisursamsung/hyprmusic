@@ -78,7 +78,7 @@ CSharedPointer<CRectangleElement> SongCard::build() {
             auto c = palette ? palette->m_colors.text : CHyprColor(1, 1, 1, 1);
             return CHyprColor(c.r, c.g, c.b, 0.15);
           })
-          ->borderThickness(1)
+          ->borderThickness(0)
           ->rounding(m_cfg.rounding)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_ABSOLUTE,
@@ -136,7 +136,7 @@ CSharedPointer<CRectangleElement> SongCard::build() {
                                  : CHyprColor(1, 1, 1, 1);
           })
           ->fontFamily(std::string(fontFamily))
-          ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
+          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->align(HT_FONT_ALIGN_LEFT)

@@ -1,6 +1,7 @@
 #include "PlaybackBar.hpp"
 #include "../../Utils/FormatUtils.hpp"
 #include <algorithm>
+#include <cmath>
 #include "../../Utils/ArtworkUtils.hpp"
 #include <hyprtoolkit/system/Icons.hpp>
 
@@ -22,27 +23,38 @@ namespace UI::Components {
 				navCallback(Core::eViewMode::VIEW_QUEUE);
 			}
 		};
+		auto onVisNavClick = [navCallback](Input::eMouseButton button, bool down) {
+			if (navCallback && button == Input::MOUSE_BUTTON_LEFT && !down) {
+				navCallback(Core::eViewMode::VIEW_VISUALIZER);
+			}
+		};
 		// Outer Playback Section container (20% of parentColumn)
 		auto playbackSection =
 			CRowLayoutBuilder::begin()
 			->gap(0)
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.2F}))
 			->commence();
-		
+
 		auto leftLayout =
 			CRectangleBuilder::begin()
 			->color([] { return CHyprColor(0, 0, 0, 0); })
-			->rounding(0)
+			->rounding(8)
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
 						CDynamicSize::HT_SIZE_PERCENT, {0.2F, 1.0F}))
-			->commence();
-			
-		m_artContainer = CRectangleBuilder::begin()
-			->color([] { return CHyprColor(0, 0, 0, 0); })
-			->rounding(20)
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+		
 			->commence();
 
+		m_artContainer = CRectangleBuilder::begin()
+			->color([] { return CHyprColor(0, 0, 0, 0); })
+			->rounding(15)
+				->borderThickness(15)
+					->borderColor([palette] { return palette ? palette->m_colors.alternateBase : CHyprColor(1.0, 1.0, 1.0, 1.0); })
+
+						->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.75F, 0.75F}))
+			->commence();
+		
+		m_artContainer->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+		m_artContainer->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
 		m_artContainer->setReceivesMouse(true);
 		m_artContainer->setMouseButton(onPlayerNavClick); 
 		leftLayout->addChild(m_artContainer);
@@ -53,7 +65,7 @@ namespace UI::Components {
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
 						CDynamicSize::HT_SIZE_PERCENT, {0.8F, 1.0F}))
 			->commence();
-			
+
 		playbackSection->addChild(leftLayout);
 		playbackSection->addChild(rightLayout);
 
@@ -63,20 +75,20 @@ namespace UI::Components {
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.30F}))
 			->commence();
 
-		// Horizontal Row Layout to manage the 10-80-10 spacing
+		// Horizontal Row Layout to manage song label, list icon, and mini visualizer
 		auto infoRow = CRowLayoutBuilder::begin()
 			->gap(0)
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
 			->commence();
 
-		// Middle 80%: Song Label via CenteredTextLabel
+		// Song Label (75%)
 		CenteredTextLabelContext txtCtx{
 			.text = "Track 1 - Unknown Artist",
-			.palette = palette,
-			.fontFamily = fontFamily,
-			.fontSize = CFontSize(CFontSize::HT_FONT_TEXT),
-			.color = [palette] { return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); },
-			.widthPercent = 1.0f
+				.palette = palette,
+				.fontFamily = fontFamily,
+				.fontSize = CFontSize(CFontSize::HT_FONT_TEXT),
+				.color = [palette] { return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); },
+				.widthPercent = 1.0f
 		};
 
 		m_nowPlayingLabel = std::make_unique<CenteredTextLabel>(txtCtx);
@@ -86,7 +98,7 @@ namespace UI::Components {
 
 		auto textContainer = CRectangleBuilder::begin()
 			->color([] { return CHyprColor(0, 0, 0, 0); })
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.80F, 1.0F}))
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.75F, 1.0F}))
 			->commence();
 
 		labelElem->setMargin(10);
@@ -98,10 +110,10 @@ namespace UI::Components {
 		textContainer->setMouseButton(onPlayerNavClick);
 		infoRow->addChild(textContainer);	
 
-		// Right 10%: List Icon Container
+		// List Icon Container (10%)
 		auto listIconContainer = CRectangleBuilder::begin()
 			->color([] { return CHyprColor(0, 0, 0, 0); })
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.1F, 1.0F}))
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.10F, 1.0F}))
 			->commence();
 
 		auto listIconFactory = m_ctx.backend->systemIcons();
@@ -136,6 +148,35 @@ namespace UI::Components {
 		listIconContainer->setMouseButton(onQueueNavClick);
 		infoRow->addChild(listIconContainer);
 
+		// Mini Visualizer Container (15%)
+		auto miniVisContainer = CRectangleBuilder::begin()
+			->color([] { return CHyprColor(0, 0, 0, 0); })
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.15F, 1.0F}))
+			->commence();
+
+		auto miniVisRow = CRowLayoutBuilder::begin()
+			->gap(3)
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO, CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+			->commence();
+		miniVisRow->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+		miniVisRow->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+
+		m_miniVisBars.clear();
+		float defaultHeights[4] = {12.0f, 6.0f, 15.0f, 8.0f};
+		for (int i = 0; i < 4; ++i) {
+			auto bar = CRectangleBuilder::begin()
+				->color([palette] { return palette ? palette->m_colors.text : CHyprColor(0.6F, 0.6F, 0.6F, 1.0F); })
+				->rounding(2)
+				->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE, CDynamicSize::HT_SIZE_ABSOLUTE, {3.0F, defaultHeights[i]}))
+				->commence();
+			m_miniVisBars.push_back(bar);
+			miniVisRow->addChild(bar);
+		}
+		miniVisContainer->addChild(miniVisRow);
+		miniVisContainer->setReceivesMouse(true);
+		miniVisContainer->setMouseButton(onVisNavClick);
+		infoRow->addChild(miniVisContainer);
+
 		songInfoSection->addChild(infoRow);
 		rightLayout->addChild(songInfoSection);
 
@@ -146,7 +187,7 @@ namespace UI::Components {
 					return palette ? palette->m_colors.background
 					: CHyprColor(0.15, 0.15, 0.15, 1.0);
 					})
-			->rounding(0)
+		->rounding(0)
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
 						CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.30F}))
 			->commence();
@@ -166,7 +207,7 @@ namespace UI::Components {
 					return palette ? palette->m_colors.text
 					: CHyprColor(0.8, 0.8, 0.8, 1.0);
 					})
-			->fontFamily(std::string(fontFamily))
+		->fontFamily(std::string(fontFamily))
 			->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
 			->align(HT_FONT_ALIGN_LEFT)
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
@@ -174,24 +215,24 @@ namespace UI::Components {
 			->commence();
 		m_timeText->setGrow(false);
 
-// Custom Seekbar Initialization
-CustomSeekBar::Context seekCtx{
+		// Custom Seekbar Initialization
+		CustomSeekBar::Context seekCtx{
 			.window = m_ctx.window,
-			.palette = palette,
-			.onSeek = [this](float pct) {
-				m_ctx.runMpdCommand([pct](struct mpd_connection *conn) {
-					struct mpd_status *status = mpd_run_status(conn);
-					if (status) {
-						unsigned total = mpd_status_get_total_time(status);
-						if (total > 0) {
+				.palette = palette,
+				.onSeek = [this](float pct) {
+					m_ctx.runMpdCommand([pct](struct mpd_connection *conn) {
+							struct mpd_status *status = mpd_run_status(conn);
+							if (status) {
+							unsigned total = mpd_status_get_total_time(status);
+							if (total > 0) {
 							float seconds = pct * static_cast<float>(total);
 							mpd_run_seek_current(conn, seconds, false);
-						}
-						mpd_status_free(status);
-					}
-				});
-			},
-			.size = CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE, CDynamicSize::HT_SIZE_ABSOLUTE, {0.0F, 44.0F})
+							}
+							mpd_status_free(status);
+							}
+							});
+				},
+				.size = CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE, CDynamicSize::HT_SIZE_ABSOLUTE, {0.0F, 44.0F})
 		};
 
 		m_customSeekBar = std::make_unique<CustomSeekBar>(seekCtx);
@@ -210,7 +251,7 @@ CustomSeekBar::Context seekCtx{
 					return palette ? palette->m_colors.background
 					: CHyprColor(0.15, 0.15, 0.15, 1.0);
 					})
-			->rounding(0)
+		->rounding(0)
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
 						CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.40F}))
 			->commence();
@@ -224,7 +265,7 @@ CustomSeekBar::Context seekCtx{
 		controlsLayout->setMargin(8);
 
 		auto iconFactory = m_ctx.backend->systemIcons();
-		
+
 		auto mainControlsRow = CRowLayoutBuilder::begin()
 			->gap(0)
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
@@ -260,7 +301,7 @@ CustomSeekBar::Context seekCtx{
 							return palette ? palette->m_colors.text
 							: CHyprColor(1.0, 1.0, 1.0, 1.0);
 							})
-					->fontFamily(std::string(fontFamily))
+				->fontFamily(std::string(fontFamily))
 					->fontSize(CFontSize(CFontSize::HT_FONT_H3))
 					->align(HT_FONT_ALIGN_CENTER)
 					->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
@@ -282,23 +323,23 @@ CustomSeekBar::Context seekCtx{
 		// 1. Skip Backward
 		addControlColumn("media-skip-backward", "⏮", [this](Input::eMouseButton button, bool down) {
 				if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-					if (m_ctx.prevTrack) m_ctx.prevTrack();
+				if (m_ctx.prevTrack) m_ctx.prevTrack();
 				}
-		});
+				});
 
 		// 2. Play / Pause
 		m_pauseBtn = addControlColumn("media-playback-start", "▶", [this](Input::eMouseButton button, bool down) {
 				if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-					if (m_ctx.togglePlayPause) m_ctx.togglePlayPause();
+				if (m_ctx.togglePlayPause) m_ctx.togglePlayPause();
 				}
-		});
+				});
 
 		// 3. Skip Forward
 		addControlColumn("media-skip-forward", "⏭", [this](Input::eMouseButton button, bool down) {
 				if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-					if (m_ctx.nextTrack) m_ctx.nextTrack();
+				if (m_ctx.nextTrack) m_ctx.nextTrack();
 				}
-		});
+				});
 
 		// 4. Volume Column
 		{
@@ -335,7 +376,7 @@ CustomSeekBar::Context seekCtx{
 							return palette ? palette->m_colors.text
 							: CHyprColor(1.0, 1.0, 1.0, 1.0);
 							})
-					->fontFamily(std::string(fontFamily))
+				->fontFamily(std::string(fontFamily))
 					->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
 					->align(HT_FONT_ALIGN_CENTER)
 					->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
@@ -347,78 +388,46 @@ CustomSeekBar::Context seekCtx{
 			m_volIcon->setReceivesMouse(true);
 			m_volIcon->setMouseButton([this](Input::eMouseButton button, bool down) {
 					if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-						if (m_isMuted) {
-							int targetVol = (m_lastUnmutedVolume > 0) ? m_lastUnmutedVolume : 50;
-							m_isMuted = false;
-							m_ctx.runMpdCommand([targetVol](struct mpd_connection *conn) {
-									mpd_run_set_volume(conn, targetVol);
-									});
-							updateVolume(targetVol);
-						} else {
-							m_isMuted = true;
-							m_ctx.runMpdCommand([](struct mpd_connection *conn) { mpd_run_set_volume(conn, 0); });
-							updateVolume(0);
-						}
-					}
-			});
-
-			m_volumeSlider = CSliderBuilder::begin()
-				->min(0.0f)
-				->max(1.0f)
-				->val(1.0f)
-				->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-							CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 16.0F}))
-				->onChanged([this](CSharedPointer<CSliderElement>, float val) {
-						if (m_isUpdatingVolumeSlider) return;
-						int vol = std::clamp(static_cast<int>(val * 100.0f), 0, 100);
-						if (vol > 0) {
-							m_isMuted = false;
-							m_lastUnmutedVolume = vol;
-							updateVolumeIconState(false);
-						} else {
-							m_isMuted = true;
-							updateVolumeIconState(true);
-						}
-						m_ctx.runMpdCommand([vol](struct mpd_connection *conn) { mpd_run_set_volume(conn, vol); });
-				})
-				->commence();
-			m_volumeSlider->setReceivesMouse(true);
-			m_volumeSlider->setGrow(true);
-
-			m_volumeSlider->setMouseButton([this](Input::eMouseButton button, bool down) {
-					if (button == Input::MOUSE_BUTTON_LEFT && down) {
-						auto cursorPos = m_ctx.window->cursorPos();
-						auto sliderSize = m_volumeSlider->size();
-						if (sliderSize.x > 0.0) {
-							float pct = std::clamp(static_cast<float>(cursorPos.x / sliderSize.x), 0.0f, 1.0f);
-							int vol = std::clamp(static_cast<int>(pct * 100.0f), 0, 100);
-							if (vol > 0) {
-								m_isMuted = false;
-								m_lastUnmutedVolume = vol;
-								updateVolumeIconState(false);
-							} else {
-								m_isMuted = true;
-								updateVolumeIconState(true);
-							}
-							m_ctx.runMpdCommand([this, pct, vol](struct mpd_connection *conn) {
-									mpd_run_set_volume(conn, vol);
-									m_isUpdatingVolumeSlider = true;
-									m_volumeSlider->rebuild()
-										->min(0.0f)
-										->max(1.0f)
-										->val(pct)
-										->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-													CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 16.0F}))
-										->commence();
-									m_volumeSlider->setGrow(true);
-									m_isUpdatingVolumeSlider = false;
+					if (m_isMuted) {
+					int targetVol = (m_lastUnmutedVolume > 0) ? m_lastUnmutedVolume : 50;
+					m_isMuted = false;
+					m_ctx.runMpdCommand([targetVol](struct mpd_connection *conn) {
+							mpd_run_set_volume(conn, targetVol);
 							});
-						}
+					updateVolume(targetVol);
+					} else {
+					m_isMuted = true;
+					m_ctx.runMpdCommand([](struct mpd_connection *conn) { mpd_run_set_volume(conn, 0); });
+					updateVolume(0);
 					}
-			});
+					}
+					});
+
+			CustomSeekBar::Context volCtx{
+				.window = m_ctx.window,
+				.palette = palette,
+				.onSeek = [this](float pct) {
+					int vol = std::clamp(static_cast<int>(pct * 100.0f), 0, 100);
+					if (vol > 0) {
+						m_isMuted = false;
+						m_lastUnmutedVolume = vol;
+						updateVolumeIconState(false);
+					} else {
+						m_isMuted = true;
+						updateVolumeIconState(true);
+					}
+					m_ctx.runMpdCommand([vol](struct mpd_connection *conn) {
+						mpd_run_set_volume(conn, vol);
+					});
+				},
+				.size = CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE, CDynamicSize::HT_SIZE_ABSOLUTE, {0.0F, 24.0F})
+			};
+			m_customVolumeBar = std::make_unique<CustomSeekBar>(volCtx);
+			auto volElem = m_customVolumeBar->build();
+			volElem->setGrow(true);
 
 			volRow->addChild(m_volIcon);
-			volRow->addChild(m_volumeSlider);
+			volRow->addChild(volElem);
 			volRow->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
 			volRow->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
 
@@ -440,12 +449,12 @@ CustomSeekBar::Context seekCtx{
 					return palette ? palette->m_colors.base 
 					: CHyprColor(0.18, 0.18, 0.18, 1.0); 
 					})
-			->borderThickness(1)
+		->borderThickness(1)
 			->borderColor([palette] {
 					return palette ? palette->m_colors.alternateBase
 					: CHyprColor(0.30, 0.30, 0.30, 1.0);
 					})
-			->rounding(16)
+		->rounding(16)
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
 						CDynamicSize::HT_SIZE_ABSOLUTE, {32.0F, 32.0F}))
 			->commence();
@@ -472,7 +481,7 @@ CustomSeekBar::Context seekCtx{
 						return palette ? palette->m_colors.text
 						: CHyprColor(1.0, 1.0, 1.0, 1.0);
 						})
-				->fontFamily(std::string(fontFamily))
+			->fontFamily(std::string(fontFamily))
 				->fontSize(CFontSize(CFontSize::HT_FONT_H3))
 				->align(HT_FONT_ALIGN_CENTER)
 				->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
@@ -488,11 +497,11 @@ CustomSeekBar::Context seekCtx{
 		settingsWrapper->setReceivesMouse(true);
 		settingsWrapper->setMouseButton([this](Input::eMouseButton button, bool down) {
 				if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-					if (m_ctx.onNavigationClick) {
-						m_ctx.onNavigationClick(Core::eViewMode::VIEW_SETTINGS);
-					}
+				if (m_ctx.onNavigationClick) {
+				m_ctx.onNavigationClick(Core::eViewMode::VIEW_SETTINGS);
 				}
-		});
+				}
+				});
 
 		controlsLayout->addChild(settingsWrapper);	
 		controlsSection->addChild(controlsLayout);
@@ -561,26 +570,24 @@ CustomSeekBar::Context seekCtx{
 			}
 		}
 
-		if (m_volumeSlider && !m_volumeSlider->sliding()) {
-			m_isUpdatingVolumeSlider = true;
+		if (m_customVolumeBar) {
 			float fraction = 0.0f;
 			if (currentVolume >= 0) {
 				fraction = static_cast<float>(currentVolume) / 100.0f;
 			}
-			m_volumeSlider->rebuild()
-				->min(0.0f)
-				->max(1.0f)
-				->val(fraction)
-				->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-							CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 16.0F}))
-				->commence();
-			m_volumeSlider->setGrow(true);
-			m_isUpdatingVolumeSlider = false;
+			m_customVolumeBar->updateProgress(fraction, true);
 		}
 	}
 
 	void PlaybackBar::updatePlayPauseState(const std::string &stateText) {
+		bool wasPlaying = m_isPlaying;
 		m_isPlaying = (stateText == "media-playback-pause");
+
+		updateMiniVisBars();
+		if (m_isPlaying && (!wasPlaying || !m_isMiniVisAnimating)) {
+			scheduleMiniVisAnimation();
+		}
+
 		if (!m_pauseBtn)
 			return;
 
@@ -605,20 +612,19 @@ CustomSeekBar::Context seekCtx{
 	}
 
 	void PlaybackBar::applyAlbumArt(const std::string &artPath) {
-		if (!m_artContainer) return;
-
-		m_artContainer->clearChildren();
-
-		m_albumArt = CImageBuilder::begin()
-			->path(std::string(artPath))
-			->fitMode(IMAGE_FIT_MODE_COVER) 
-			->rounding(20)
-			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-			->commence();
-
-		m_artContainer->addChild(m_albumArt);
-		m_artContainer->forceReposition();
-	}
+    if (!m_artContainer) return;
+    m_artContainer->clearChildren();
+    
+    m_albumArt = CImageBuilder::begin()
+        ->path(std::string(artPath))
+        ->fitMode(IMAGE_FIT_MODE_COVER)
+        ->rounding(15)
+        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+        ->commence();
+    
+    m_artContainer->addChild(m_albumArt);
+    m_artContainer->forceReposition();
+}
 
 	void PlaybackBar::updateAlbumArt(const std::string &songUri) {
 		if (m_lastSongUri == songUri) return;
@@ -632,11 +638,62 @@ CustomSeekBar::Context seekCtx{
 		}
 
 		m_ctx.runMpdCommand([this, artPath](struct mpd_connection *conn) mutable {
-			if (conn) {
+				if (conn) {
 				artPath = Utils::resolveTrackArtwork(conn, m_lastSongUri);
+				}
+				applyAlbumArt(artPath);
+				});
+	}
+
+	void PlaybackBar::updateMiniVisBars() {
+		if (m_miniVisBars.size() < 4) return;
+
+		auto palette = m_ctx.palette;
+		if (m_isPlaying) {
+			m_miniVisAnimPhase += 0.25f;
+			float phases[4] = {0.0f, 1.2f, 2.4f, 3.6f};
+			float multipliers[4] = {1.0f, 0.75f, 0.9f, 0.8f};
+
+			for (size_t i = 0; i < 4; ++i) {
+				float val = std::abs(std::sin(m_miniVisAnimPhase + phases[i])) * multipliers[i];
+				float height = 3.0f + val * 13.0f; // Height range: 3px to 16px
+				m_miniVisBars[i]->rebuild()
+					->color([palette] { return palette ? palette->m_colors.accent : CHyprColor(0.2F, 0.8F, 0.4F, 1.0F); })
+					->rounding(2)
+					->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE, CDynamicSize::HT_SIZE_ABSOLUTE, {3.0F, height}))
+					->commence();
 			}
-			applyAlbumArt(artPath);
-		});
+		} else {
+			// Static resting placeholder state when paused: unequal bars of various heights
+			float defaultHeights[4] = {12.0f, 6.0f, 15.0f, 8.0f};
+			for (size_t i = 0; i < 4; ++i) {
+				m_miniVisBars[i]->rebuild()
+					->color([palette] { return palette ? palette->m_colors.text : CHyprColor(0.6F, 0.6F, 0.6F, 1.0F); })
+					->rounding(2)
+					->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE, CDynamicSize::HT_SIZE_ABSOLUTE, {3.0F, defaultHeights[i]}))
+					->commence();
+			}
+		}
+	}
+
+	void PlaybackBar::scheduleMiniVisAnimation() {
+		if (!m_ctx.backend || m_isMiniVisAnimating) return;
+
+		m_isMiniVisAnimating = true;
+
+		m_ctx.backend->addTimer(
+			std::chrono::milliseconds(50), // ~20 FPS, virtually 0 CPU usage
+			[this](CAtomicSharedPointer<CTimer>, void *) {
+				updateMiniVisBars();
+
+				if (m_isPlaying) {
+					m_isMiniVisAnimating = false;
+					scheduleMiniVisAnimation();
+				} else {
+					m_isMiniVisAnimating = false;
+				}
+			},
+			nullptr);
 	}
 
 } // namespace UI::Components

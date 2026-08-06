@@ -35,7 +35,7 @@ CSharedPointer<CRectangleElement> TabBar::build() {
 
   // Column layout for vertical stacking of tabs
   m_tabsRow = CColumnLayoutBuilder::begin()
-      ->gap(12)
+      ->gap(0)
       ->size(CDynamicSize(
           CDynamicSize::HT_SIZE_PERCENT,
           CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
@@ -81,15 +81,15 @@ void TabBar::populateTabs() {
     // Reverting back to pill-style container with ghost border and active accent border/color
     auto pill = CRectangleBuilder::begin()
         ->color([] { return CHyprColor(0, 0, 0, 0); })
-        ->borderThickness(1)
-        ->borderColor([palette, isActive] {
-          if (isActive)
-            return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
-          return palette ? palette->m_colors.alternateBase : CHyprColor(0.18, 0.18, 0.18, 1.0);
-        })
-        ->rounding(16)
+       // ->borderThickness(1)
+       // ->borderColor([palette, isActive] {
+        //  if (isActive)
+         //   return CHyprColor(0, 0, 0, 0);
+         // return palette ? palette->m_colors.alternateBase : CHyprColor(0.18, 0.18, 0.18, 1.0);
+   //     })
+     //   ->rounding(5)
         ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                            CDynamicSize::HT_SIZE_ABSOLUTE, {0.9F, 40.0F}))
+                            CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 40.0F}))
         ->commence();
 
     pill->setReceivesMouse(true);
@@ -126,8 +126,8 @@ void TabBar::populateTabs() {
           return palette ? palette->m_colors.text : CHyprColor(1, 1, 1, 1);
         })
         ->fontFamily(std::string(fontFamily))
-        ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
-        ->align(HT_FONT_ALIGN_CENTER)
+        ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+        ->align(HT_FONT_ALIGN_LEFT)
         ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
                             CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
         ->commence();

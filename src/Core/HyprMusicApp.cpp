@@ -94,7 +94,7 @@ void HyprMusicApp::createUI() {
       CRectangleBuilder::begin()
           ->color([] { return CHyprColor(0, 0, 0, 0); })
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {0.2F, 1.0F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {0.1F, 1.0F}))
           ->commence();
 
   m_tabBar = std::make_unique<UI::Components::TabBar>(
@@ -111,8 +111,9 @@ void HyprMusicApp::createUI() {
           })
           ->rounding(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {0.8F, 1.0F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {0.9F, 1.0F}))
           ->commence();
+	 
 
   auto contentLayout =
       CColumnLayoutBuilder::begin()
@@ -533,9 +534,6 @@ void HyprMusicApp::updateStatus() {
         trackText = "Unknown track";
       }
 
-      if (state == MPD_STATE_PAUSE) {
-        trackText = "⏸ " + trackText;
-      }
     } else {
       trackText = "No currently playing songs";
       stateText = "media-playback-start";

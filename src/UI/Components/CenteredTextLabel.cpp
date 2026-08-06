@@ -40,6 +40,8 @@ CSharedPointer<CColumnLayoutElement> CenteredTextLabel::build() {
 }
 
 void CenteredTextLabel::updateText(const std::string &newText) {
+  if (m_ctx.text == newText)
+    return;
   m_ctx.text = newText;
   if (m_textElement) {
     m_textElement->rebuild()
