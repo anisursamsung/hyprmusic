@@ -40,11 +40,12 @@ CSharedPointer<CRectangleElement> CardView::build() {
         ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
         ->commence();
 
-    // Artwork Area (80% height)
+    // 1. Artwork Area (ABSOLUTE height 1.0F with setGrow(true) to fill remaining vertical space)
     auto artArea = CRectangleBuilder::begin()
         ->color([] { return CHyprColor(0, 0, 0, 0); })
-        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.80F}))
+        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 1.0F}))
         ->commence();
+    artArea->setGrow(true);
 
     if (!m_cfg.imagePath.empty()) {
         m_albumArt = CImageBuilder::begin()
@@ -59,7 +60,7 @@ CSharedPointer<CRectangleElement> CardView::build() {
     }
     leftColumn->addChild(artArea);
 
-    // Song Title Section Wrapper (20% height)
+    // 2. Song Title Section Wrapper (takes auto height + 4px margin)
     std::string textStr = m_cfg.text.empty() ? "No currently playing songs" : m_cfg.text;
     m_titleText =
         CTextBuilder::begin()
@@ -73,7 +74,7 @@ CSharedPointer<CRectangleElement> CardView::build() {
             ->align(HT_FONT_ALIGN_CENTER)
             ->noEllipsize(false)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+                                CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
             ->commence();
 
     auto titleRow =
@@ -87,7 +88,7 @@ CSharedPointer<CRectangleElement> CardView::build() {
 
     auto titleContainer = CRectangleBuilder::begin()
         ->color([] { return CHyprColor(0, 0, 0, 0); })
-        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.20F}))
+        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
         ->commence();
 
     titleContainer->addChild(titleRow);

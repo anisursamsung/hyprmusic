@@ -28,6 +28,7 @@ add_executable(hyprmusic
     src/UI/Components/CustomSeekBar.cpp
     src/UI/Components/NotificationManager.cpp
     src/UI/Components/PlaybackBar.cpp
+    src/UI/Components/PlayerViewMiniCard.cpp
     src/UI/Components/SongCard.cpp
     src/UI/Components/UIFactory.cpp
     src/UI/Components/Visualizer.cpp
