@@ -20,6 +20,7 @@ public:
         CSharedPointer<CPalette> palette;
         std::function<void(float)> onSeek;
 	CDynamicSize size = CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE, CDynamicSize::HT_SIZE_ABSOLUTE, {20.0F, 44.0F});
+        int rounding = -1; // -1 uses default palette smallRounding
     };
 
     explicit CustomSeekBar(const Context &ctx);

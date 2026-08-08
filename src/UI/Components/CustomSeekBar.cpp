@@ -9,7 +9,7 @@ CustomSeekBar::CustomSeekBar(const Context &ctx) : m_ctx(ctx) {}
 
 CSharedPointer<IElement> CustomSeekBar::build() {
     auto palette = m_ctx.palette;
-    int rounding = palette ? palette->m_vars.smallRounding : 5;
+    int rounding = m_ctx.rounding >= 0 ? m_ctx.rounding : (palette ? palette->m_vars.smallRounding : 5);
 
     // 1. Outer container track
     m_container = CButtonBuilder::begin()
@@ -41,7 +41,7 @@ CSharedPointer<IElement> CustomSeekBar::build() {
 
         if (m_fillBar) {
             auto palette = m_ctx.palette;
-            int rounding = palette ? palette->m_vars.smallRounding : 5;
+            int rounding = m_ctx.rounding >= 0 ? m_ctx.rounding : (palette ? palette->m_vars.smallRounding : 5);
             m_fillBar = m_fillBar->rebuild()
                 ->color([palette] { return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); })
                 ->rounding(rounding)
@@ -85,7 +85,7 @@ void CustomSeekBar::handleSeekInput(double localX, double totalWidth) {
 
     if (m_fillBar && m_container) {
         auto palette = m_ctx.palette;
-        int rounding = palette ? palette->m_vars.smallRounding : 5;
+        int rounding = m_ctx.rounding >= 0 ? m_ctx.rounding : (palette ? palette->m_vars.smallRounding : 5);
         m_fillBar = m_fillBar->rebuild()
             ->color([palette] { return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); })
             ->rounding(rounding)
@@ -105,7 +105,7 @@ void CustomSeekBar::updateProgress(float progress, bool /*isPlaying*/) {
 
     if (m_fillBar && m_container) {
         auto palette = m_ctx.palette;
-        int rounding = palette ? palette->m_vars.smallRounding : 5;
+        int rounding = m_ctx.rounding >= 0 ? m_ctx.rounding : (palette ? palette->m_vars.smallRounding : 5);
         m_fillBar = m_fillBar->rebuild()
             ->color([palette] { return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); })
             ->rounding(rounding)

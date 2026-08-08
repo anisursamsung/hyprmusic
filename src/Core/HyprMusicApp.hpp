@@ -14,9 +14,7 @@
 #include "../Services/YtDlpService.hpp"
 #include "../UI/Components/NotificationManager.hpp"
 #include "../UI/Components/PlaybackBar.hpp"
-#include "../UI/Components/TabBar.hpp"
 #include "../UI/Views/DatabaseView.hpp"
-#include "../UI/Views/HelpView.hpp"
 #include "../UI/Views/PlaylistsView.hpp"
 #include "../UI/Views/QueueView.hpp"
 #include "../UI/Views/SettingsView.hpp"
@@ -62,7 +60,6 @@ private:
   Services::YtDlpService m_ytDlpService;
 
   UI::Components::NotificationManager m_notificationManager;
-  std::unique_ptr<UI::Components::TabBar> m_tabBar;
   std::unique_ptr<UI::Components::PlaybackBar> m_playbackBar;
 
   std::unique_ptr<UI::Views::QueueView> m_queueView;
@@ -70,7 +67,6 @@ private:
   std::unique_ptr<UI::Views::PlaylistsView> m_playlistsView;
   std::unique_ptr<UI::Views::YtDlpView> m_ytDlpView;
   std::unique_ptr<UI::Views::SettingsView> m_settingsView;
-  std::unique_ptr<UI::Views::HelpView> m_helpView;
   std::unique_ptr<UI::Views::PlayerView> m_playerView;
 
   std::unique_ptr<UI::Views::VisualizerView> m_visualizerView;

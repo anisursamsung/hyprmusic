@@ -24,11 +24,10 @@ add_executable(hyprmusic
     src/Services/MPDManager.cpp
     src/Services/SettingsManager.cpp
     src/Services/YtDlpService.cpp
-    src/UI/Components/CenteredTextLabel.cpp
+    src/UI/Components/CardView.cpp
     src/UI/Components/CustomSeekBar.cpp
     src/UI/Components/NotificationManager.cpp
     src/UI/Components/PlaybackBar.cpp
-    src/UI/Components/TabBar.cpp
     src/UI/Components/SongCard.cpp
     src/UI/Components/UIFactory.cpp
     src/UI/Components/Visualizer.cpp
@@ -46,7 +45,6 @@ add_executable(hyprmusic
     src/UI/Dialogs/PlaylistSelectionDialog.cpp
     src/UI/Dialogs/RenamePlaylistDialog.cpp
     src/UI/Views/DatabaseView.cpp
-    src/UI/Views/HelpView.cpp
     src/UI/Views/PlaylistsView.cpp
     src/UI/Views/QueueView.cpp
     src/UI/Views/SettingsView.cpp

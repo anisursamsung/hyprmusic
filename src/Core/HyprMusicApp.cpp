@@ -89,20 +89,7 @@ void HyprMusicApp::createUI() {
   topLayout->setGrow(true);
   mainColumn->addChild(topLayout);
 
-  // Sidebar (Tab Bar container - 20% width)
-  auto sidebarContainer =
-      CRectangleBuilder::begin()
-          ->color([] { return CHyprColor(0, 0, 0, 0); })
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {0.1F, 1.0F}))
-          ->commence();
-
-  m_tabBar = std::make_unique<UI::Components::TabBar>(
-      palette, fontFamily, [this](eViewMode mode) { switchViewMode(mode); });
-  sidebarContainer->addChild(m_tabBar->build());
-  topLayout->addChild(sidebarContainer);
-
-  // Content Area Section (80% width)
+  // Content Area Section (100% width)
   auto contentSection =
       CRectangleBuilder::begin()
           ->color([palette] {
@@ -111,7 +98,7 @@ void HyprMusicApp::createUI() {
           })
           ->rounding(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {0.9F, 1.0F}))
+                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();
 	 
 
@@ -277,14 +264,6 @@ void HyprMusicApp::createUI() {
       .showNotification = [this](const std::string &msg) { showNotification(msg); }};
   m_settingsView = std::make_unique<UI::Views::SettingsView>(sCtx);
 
-  UI::Views::HelpViewContext hCtx{
-      .window = m_window,
-      .backend = m_backend,
-      .palette = palette,
-      .fontFamily = fontFamily,
-      .showNotification = [this](const std::string &msg) { showNotification(msg); }};
-  m_helpView = std::make_unique<UI::Views::HelpView>(hCtx);
-
   UI::Views::PlayerViewContext playerCtx{
       .window = m_window,
       .backend = m_backend,
@@ -299,8 +278,6 @@ void HyprMusicApp::createUI() {
       .backend = m_backend,
       .palette = palette};
   m_visualizerView = std::make_unique<UI::Views::VisualizerView>(visCtx);
-
-  m_tabBar->updateActiveTab(m_viewMode);
 }
 
 void HyprMusicApp::setupEventHandlers() {
@@ -325,8 +302,6 @@ void HyprMusicApp::switchViewMode(eViewMode mode) {
   m_dbView->resetLayout();
   m_queueView->resetLayout();
   m_settingsView->resetLayout();
-  m_helpView->resetLayout();
-  m_tabBar->updateActiveTab(m_viewMode);
   updateStatus();
 }
 
@@ -547,7 +522,7 @@ void HyprMusicApp::updateStatus() {
         m_queueView->rebuildUI(m_tabContentWrapper, conn, activeSongId);
       } else if (m_lastActiveSongId != activeSongId) {
         m_lastActiveSongId = activeSongId;
-        m_queueView->populateQueueSongs(conn, activeSongId);
+        m_queueView->setActiveSongId(activeSongId);
       }
     } else if (m_viewMode == eViewMode::VIEW_DATABASE) {
       if (!m_playlistLoaded) {
@@ -572,11 +547,6 @@ void HyprMusicApp::updateStatus() {
       if (!m_playlistLoaded) {
         m_playlistLoaded = true;
         m_settingsView->rebuildUI(m_tabContentWrapper);
-      }
-    } else if (m_viewMode == eViewMode::VIEW_HELP) {
-      if (!m_playlistLoaded) {
-        m_playlistLoaded = true;
-        m_helpView->rebuildUI(m_tabContentWrapper);
       }
     } else if (m_viewMode == eViewMode::VIEW_VISUALIZER) {
       if (!m_playlistLoaded) {

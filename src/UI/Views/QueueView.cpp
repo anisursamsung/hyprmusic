@@ -1,6 +1,7 @@
 #include "QueueView.hpp"
 #include "../Components/SongCard.hpp"
 #include "../Dialogs/ActionMenuDialog.hpp"
+#include "../../Utils/ArtworkUtils.hpp"
 #include <algorithm>
 #include <cstring>
 #include <hyprtoolkit/element/Button.hpp>
@@ -39,6 +40,20 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
     tabMainLayout->setMargin(20);
 
     m_tabContentWrapper->addChild(tabMainLayout);
+
+    auto titleHeader =
+        CTextBuilder::begin()
+            ->text("Queue")
+            ->color([palette] {
+              return palette ? palette->m_colors.text
+                             : CHyprColor(1.0, 1.0, 1.0, 1.0);
+            })
+            ->fontFamily(std::string(fontFamily))
+            ->fontSize(CFontSize(CFontSize::HT_FONT_H1))
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+            ->commence();
+    tabMainLayout->addChild(titleHeader);
 
     auto topControlsCol =
         CColumnLayoutBuilder::begin()
@@ -213,11 +228,20 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
       nullptr);
 }
 
+void QueueView::setActiveSongId(int activeSongId) {
+  m_lastActiveSongId = activeSongId;
+
+  // Deactivate all non-matching cards to guarantee single active card invariant
+  for (auto &pair : m_queueSongCards) {
+    if (pair.second) {
+      pair.second->setActive(activeSongId >= 0 && pair.first == activeSongId);
+    }
+  }
+}
+
 void QueueView::populateQueueSongs(struct mpd_connection *conn,
                                    int activeSongId) {
-  if (activeSongId >= 0) {
-    m_lastActiveSongId = activeSongId;
-  }
+  m_lastActiveSongId = activeSongId;
   if (!m_queueContentLayout)
     return;
 
@@ -232,6 +256,15 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
     std::cerr << "MPD: Failed to send list queue command" << std::endl;
     return;
   }
+
+  struct QueueSongItem {
+    int songId;
+    unsigned songPos;
+    std::string uri;
+    std::string title;
+    std::string artist;
+  };
+  std::vector<QueueSongItem> queueSongs;
 
   bool foundAny = false;
   struct mpd_song *s;
@@ -283,12 +316,20 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
       }
     }
 
-    foundAny = true;
+    queueSongs.push_back({songId, songPos, uri ? uri : "", displayTitle, displayArtist});
+    mpd_song_free(s);
+  }
+  mpd_response_finish(conn);
 
-    // ── Build card via reusable SongCard component ────────────────────────
-    std::string indexStr    = std::to_string(songPos + 1) + ". ";
-    std::string songUriStr  = uri ? uri : "";
-    bool isActive = (songId == m_lastActiveSongId);
+  for (const auto &item : queueSongs) {
+    foundAny = true;
+    int songId = item.songId;
+    std::string indexStr   = std::to_string(item.songPos + 1) + ". ";
+    std::string songUriStr = item.uri;
+    bool isActive = (activeSongId >= 0 && songId == activeSongId);
+
+    std::string cachedArt = Utils::getCachedTrackArtwork(songUriStr);
+    std::string artPath = cachedArt.empty() ? Utils::getDefaultArtworkPath() : cachedArt;
 
     auto card = std::make_shared<UI::Components::SongCard>(
         UI::Components::SongCardConfig{
@@ -296,14 +337,16 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
             .fontFamily = fontFamily,
             .rounding   = rounding,
             .cardHeight = 70.0f,
-            .title      = indexStr + displayTitle,
-            .subtitle   = displayArtist,
+            .title      = indexStr + item.title,
+            .subtitle   = item.artist,
+            .imagePath  = artPath,
             .isActive   = isActive,
             .onCardBodyClick = [this, songId] {
+              setActiveSongId(songId);
               if (m_ctx.playMpdSongId)
                 m_ctx.playMpdSongId(songId);
             },
-            .onActionClick = [this, songId, songUriStr, displayTitle] {
+            .onActionClick = [this, songId, songUriStr, displayTitle = item.title] {
               Dialogs::showActionMenuDialog(
                   {.options  = {"▶ Play", "🗑️ Remove from Queue",
                                 "📁 Add to Playlist"},
@@ -311,6 +354,7 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
                        [this, songId, songUriStr](size_t idx,
                                                   const std::string &) {
                          if (idx == 0) {
+                           setActiveSongId(songId);
                            if (m_ctx.playMpdSongId)
                              m_ctx.playMpdSongId(songId);
                          } else if (idx == 1) {
@@ -330,10 +374,43 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
 
     m_queueSongCards[songId] = card;
     m_queueContentLayout->addChild(card->build());
-
-    mpd_song_free(s);
   }
-  mpd_response_finish(conn);
+
+  // Non-blocking progressive chunked artwork resolution (5 tracks per 30ms batch)
+  if (m_ctx.backend && m_ctx.runMpdCommand && !queueSongs.empty()) {
+    auto stepState = std::make_shared<size_t>(0);
+    auto processNextChunk = [this, queueSongs, stepState](auto self) -> void {
+      if (*stepState >= queueSongs.size())
+        return;
+      m_ctx.runMpdCommand([this, queueSongs, stepState, self](struct mpd_connection *conn) {
+        size_t limit = std::min(*stepState + 5, queueSongs.size());
+        for (size_t i = *stepState; i < limit; ++i) {
+          const auto &item = queueSongs[i];
+          if (Utils::getCachedTrackArtwork(item.uri).empty()) {
+            std::string resolved = Utils::resolveTrackArtwork(conn, item.uri);
+            if (!resolved.empty()) {
+              auto it = m_queueSongCards.find(item.songId);
+              if (it != m_queueSongCards.end() && it->second) {
+                it->second->setImagePath(resolved);
+              }
+            }
+          }
+        }
+        *stepState = limit;
+        if (*stepState < queueSongs.size()) {
+          m_ctx.backend->addTimer(
+              std::chrono::milliseconds(30),
+              [self](CAtomicSharedPointer<CTimer>, void *) { self(self); },
+              nullptr);
+        }
+      });
+    };
+
+    m_ctx.backend->addTimer(
+        std::chrono::milliseconds(10),
+        [processNextChunk](CAtomicSharedPointer<CTimer>, void *) { processNextChunk(processNextChunk); },
+        nullptr);
+  }
 
   if (!foundAny) {
     auto emptyText =

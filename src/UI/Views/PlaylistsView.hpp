@@ -68,6 +68,7 @@ private:
 
   std::vector<std::string> m_currentPlaylists;
   std::unordered_map<std::string, int> m_playlistTrackCounts;
+  std::unordered_map<int, std::shared_ptr<UI::Components::SongCard>> m_playlistSongCards;
   double m_lastPlaylistsWidth = 0.0;
 };
 

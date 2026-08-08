@@ -218,6 +218,20 @@ void SettingsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper) {
   settingsMainLayout->setMargin(20);
   m_tabContentWrapper->addChild(settingsMainLayout);
 
+  auto titleHeader =
+      CTextBuilder::begin()
+          ->text("Settings")
+          ->color([palette] {
+            return palette ? palette->m_colors.text
+                           : CHyprColor(1.0, 1.0, 1.0, 1.0);
+          })
+          ->fontFamily(std::string(fontFamily))
+          ->fontSize(CFontSize(CFontSize::HT_FONT_H1))
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+          ->commence();
+  settingsMainLayout->addChild(titleHeader);
+
   auto scrollArea =
       CScrollAreaBuilder::begin()
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,

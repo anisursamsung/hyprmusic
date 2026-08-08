@@ -2,6 +2,7 @@
 #include "../Components/SongCard.hpp"
 #include "../Dialogs/ActionMenuDialog.hpp"
 #include "../Dialogs/DownloadProgressDialog.hpp"
+#include "../../Utils/ArtworkUtils.hpp"
 #include "../../Utils/ClipboardUtils.hpp"
 #include "../../Utils/FormatUtils.hpp"
 #include "../../Utils/StreamUtils.hpp"
@@ -165,7 +166,22 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();
+  tabMainLayout->setMargin(20);
   m_tabContentWrapper->addChild(tabMainLayout);
+
+  auto titleHeader =
+      CTextBuilder::begin()
+          ->text("YT-DLP")
+          ->color([palette] {
+            return palette ? palette->m_colors.text
+                           : CHyprColor(1.0, 1.0, 1.0, 1.0);
+          })
+          ->fontFamily(std::string(fontFamily))
+          ->fontSize(CFontSize(CFontSize::HT_FONT_H1))
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+          ->commence();
+  tabMainLayout->addChild(titleHeader);
 
   auto topControlsCol =
       CColumnLayoutBuilder::begin()
@@ -371,6 +387,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                 .cardHeight = 70.0f,
                 .title      = std::to_string(idx++) + ". " + itemTitle,
                 .subtitle   = subtitle,
+                .imagePath  = Utils::getDefaultArtworkPath(),
                 .isActive   = false,
                 .onCardBodyClick = triggerPlayStream,
                 .onActionClick   = [this, itemUrl, itemTitle, itemUploader,

@@ -44,6 +44,7 @@ private:
   CSharedPointer<CColumnLayoutElement> m_dbContentLayout;
 
   std::string m_searchQuery = "";
+  std::unordered_map<std::string, std::shared_ptr<UI::Components::SongCard>> m_dbSongCards;
 };
 
 } // namespace UI::Views

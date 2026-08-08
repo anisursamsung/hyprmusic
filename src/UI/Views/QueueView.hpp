@@ -38,6 +38,7 @@ public:
 
   void rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd_connection *conn, int activeSongId);
   void populateQueueSongs(struct mpd_connection *conn, int activeSongId);
+  void setActiveSongId(int activeSongId);
   void resetLayout() { m_queueContentLayout = nullptr; }
 
 private:

@@ -1,44 +1,10 @@
 #include "SongCard.hpp"
+#include "../../Utils/ArtworkUtils.hpp"
 #include <hyprtoolkit/core/Input.hpp>
 
 namespace UI::Components {
 
 SongCard::SongCard(const SongCardConfig &cfg) : m_cfg(cfg), m_active(cfg.isActive) {}
-
-// ── Private colour helpers ─────────────────────────────────────────────────
-
-void SongCard::applyTitleColor() {
-  if (!m_titleText)
-    return;
-  auto palette = m_cfg.palette;
-  bool active  = m_active;
-  m_titleText->rebuild()
-      ->color([palette, active] {
-        if (active)
-          return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
-        return palette ? palette->m_colors.text : CHyprColor(1, 1, 1, 1);
-      })
-      ->commence();
-}
-
-void SongCard::applySubtitleColor() {
-  if (!m_subtitleText)
-    return;
-  auto palette = m_cfg.palette;
-  bool active  = m_active;
-  m_subtitleText->rebuild()
-      ->color([palette, active] {
-        if (active) {
-          auto c = palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
-          return CHyprColor(c.r, c.g, c.b, 0.7);
-        }
-        auto c = palette ? palette->m_colors.text : CHyprColor(1, 1, 1, 1);
-        return CHyprColor(c.r, c.g, c.b, 0.55);
-      })
-      ->commence();
-}
-
-// ── Live setters ──────────────────────────────────────────────────────────
 
 void SongCard::setTitle(const std::string &title) {
   m_cfg.title = title;
@@ -58,10 +24,48 @@ void SongCard::setSubtitle(const std::string &subtitle) {
   }
 }
 
+void SongCard::setImagePath(const std::string &path) {
+  m_cfg.imagePath = path;
+  if (!m_artContainer)
+    return;
+  std::string defaultPath = Utils::getDefaultArtworkPath();
+  if (path.empty() || path == defaultPath)
+    return;
+
+  m_artContainer->clearChildren();
+  m_artImage = CImageBuilder::begin()
+                   ->path(std::string(path))
+                   ->fitMode(IMAGE_FIT_MODE_COVER)
+                   ->rounding(6)
+                   ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                       CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+                   ->commence();
+  m_artContainer->addChild(m_artImage);
+}
+
 void SongCard::setActive(bool active) {
   m_active = active;
-  applyTitleColor();
-  applySubtitleColor();
+  if (m_card) {
+    m_card->rebuild()
+        ->color([this] {
+          if (m_active) {
+            auto palette = m_cfg.palette;
+            auto c = palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
+            return CHyprColor(c.r, c.g, c.b, 0.12);
+          }
+          return CHyprColor(0, 0, 0, 0);
+        })
+        ->borderColor([this] {
+          auto palette = m_cfg.palette;
+          if (m_active) {
+            return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
+          }
+          auto c = palette ? palette->m_colors.text : CHyprColor(1, 1, 1, 1);
+          return CHyprColor(c.r, c.g, c.b, 0.15);
+        })
+        ->borderThickness(m_active ? 1 : 0)
+        ->commence();
+  }
 }
 
 // ── build() ───────────────────────────────────────────────────────────────
@@ -73,12 +77,23 @@ CSharedPointer<CRectangleElement> SongCard::build() {
   // ── Card container ────────────────────────────────────────────────────
   m_card =
       CRectangleBuilder::begin()
-          ->color([] { return CHyprColor(0, 0, 0, 0); })
-          ->borderColor([palette] {
+          ->color([this] {
+            if (m_active) {
+              auto palette = m_cfg.palette;
+              auto c = palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
+              return CHyprColor(c.r, c.g, c.b, 0.12);
+            }
+            return CHyprColor(0, 0, 0, 0);
+          })
+          ->borderColor([this] {
+            auto palette = m_cfg.palette;
+            if (m_active) {
+              return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
+            }
             auto c = palette ? palette->m_colors.text : CHyprColor(1, 1, 1, 1);
             return CHyprColor(c.r, c.g, c.b, 0.15);
           })
-          ->borderThickness(0)
+          ->borderThickness(m_active ? 1 : 0)
           ->rounding(m_cfg.rounding)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_ABSOLUTE,
@@ -94,7 +109,7 @@ CSharedPointer<CRectangleElement> SongCard::build() {
     });
   }
 
-  // ── Outer row: [actionBtn] [textCol] ─────────────────────────────────
+  // ── Outer row: [artContainer] [textCol] [actionBtn] ───────────────────
   auto rowLayout =
       CRowLayoutBuilder::begin()
           ->gap(14)
@@ -102,6 +117,57 @@ CSharedPointer<CRectangleElement> SongCard::build() {
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();
   rowLayout->setMargin(10);
+
+  // ── Artwork container ────────────────────────────────────────────────
+  float artSize = m_cfg.cardHeight > 20.0f ? m_cfg.cardHeight - 20.0f : 48.0f;
+  m_artContainer =
+      CRectangleBuilder::begin()
+          ->color([palette] {
+            auto c = palette ? palette->m_colors.text : CHyprColor(1, 1, 1, 1);
+            return CHyprColor(c.r, c.g, c.b, 0.08);
+          })
+          ->rounding(6)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {artSize, artSize}))
+          ->commence();
+  m_artContainer->setGrow(false);
+
+  if (m_cfg.onCardBodyClick) {
+    auto cb = m_cfg.onCardBodyClick;
+    m_artContainer->setReceivesMouse(true);
+    m_artContainer->setMouseButton([cb](Input::eMouseButton button, bool down) {
+      if (button == Input::MOUSE_BUTTON_LEFT && !down)
+        cb();
+    });
+  }
+
+  std::string defaultPath = Utils::getDefaultArtworkPath();
+  if (!m_cfg.imagePath.empty() && m_cfg.imagePath != defaultPath) {
+    m_artImage = CImageBuilder::begin()
+                     ->path(std::string(m_cfg.imagePath))
+                     ->fitMode(IMAGE_FIT_MODE_COVER)
+                     ->rounding(6)
+                     ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                         CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+                     ->commence();
+    m_artContainer->addChild(m_artImage);
+  } else {
+    auto noteIcon = CTextBuilder::begin()
+                        ->text("🎵")
+                        ->color([palette] {
+                          auto c = palette ? palette->m_colors.text : CHyprColor(1, 1, 1, 1);
+                          return CHyprColor(c.r, c.g, c.b, 0.35);
+                        })
+                        ->fontFamily(std::string(fontFamily))
+                        ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
+                        ->align(HT_FONT_ALIGN_CENTER)
+                        ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO, CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+                        ->commence();
+    noteIcon->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+    noteIcon->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+    m_artContainer->addChild(noteIcon);
+  }
+  rowLayout->addChild(m_artContainer);
 
   // ── Action button (⋮) — built here, added to row after textCol ──────────
   auto actionCb = m_cfg.onActionClick;
@@ -123,17 +189,11 @@ CSharedPointer<CRectangleElement> SongCard::build() {
   actionBtn->setGrow(false);
 
   // ── Title text ────────────────────────────────────────────────────────
-  auto palette_title = palette;
-  bool active_title  = m_active;
   m_titleText =
       CTextBuilder::begin()
           ->text(std::string(m_cfg.title))
-          ->color([palette_title, active_title] {
-            if (active_title)
-              return palette_title ? palette_title->m_colors.accent
-                                   : CHyprColor(0.2, 0.8, 0.4, 1.0);
-            return palette_title ? palette_title->m_colors.text
-                                 : CHyprColor(1, 1, 1, 1);
+          ->color([palette] {
+            return palette ? palette->m_colors.text : CHyprColor(1, 1, 1, 1);
           })
           ->fontFamily(std::string(fontFamily))
           ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -154,19 +214,11 @@ CSharedPointer<CRectangleElement> SongCard::build() {
   }
 
   // ── Subtitle (artist) text ────────────────────────────────────────────
-  auto palette_sub = palette;
-  bool active_sub  = m_active;
   m_subtitleText =
       CTextBuilder::begin()
           ->text(std::string(m_cfg.subtitle))
-          ->color([palette_sub, active_sub] {
-            if (active_sub) {
-              auto c = palette_sub ? palette_sub->m_colors.accent
-                                   : CHyprColor(0.2, 0.8, 0.4, 1.0);
-              return CHyprColor(c.r, c.g, c.b, 0.7);
-            }
-            auto c = palette_sub ? palette_sub->m_colors.text
-                                 : CHyprColor(1, 1, 1, 1);
+          ->color([palette] {
+            auto c = palette ? palette->m_colors.text : CHyprColor(1, 1, 1, 1);
             return CHyprColor(c.r, c.g, c.b, 0.55);
           })
           ->fontFamily(std::string(fontFamily))

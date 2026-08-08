@@ -12,6 +12,7 @@ namespace Utils {
  * Returns file path to the resolved image, or empty string if not found.
  */
 std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &songUri);
+std::string getCachedTrackArtwork(const std::string &songUri);
 
 std::string getDefaultArtworkPath();
 std::string getBackgroundImagePath();

@@ -2,6 +2,7 @@
 #include "../Components/SongCard.hpp"
 #include "../Components/UIFactory.hpp"
 #include "../Dialogs/ActionMenuDialog.hpp"
+#include "../../Utils/ArtworkUtils.hpp"
 #include <hyprtoolkit/element/Button.hpp>
 #include <hyprtoolkit/element/ScrollArea.hpp>
 #include <hyprtoolkit/element/Textbox.hpp>
@@ -316,25 +317,19 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
 
   std::string plName = m_selectedPlaylist;
 
-  std::unordered_set<std::string> queueUris;
-  if (conn && mpd_send_list_queue_meta(conn)) {
-    struct mpd_song *s;
-    while ((s = mpd_recv_song(conn)) != NULL) {
-      const char *uri = mpd_song_get_uri(s);
-      if (uri) {
-        queueUris.insert(std::string(uri));
-      }
-      mpd_song_free(s);
-    }
-    mpd_response_finish(conn);
-  }
+  struct PlaylistSongItem {
+    int songPos;
+    std::string uri;
+    std::string title;
+    std::string artist;
+  };
+  std::vector<PlaylistSongItem> playlistSongs;
 
   bool foundAny = false;
   if (conn && mpd_send_list_playlist_meta(conn, plName.c_str())) {
     struct mpd_song *s;
     int songPos = 0;
     while ((s = mpd_recv_song(conn)) != NULL) {
-      foundAny = true;
       const char *artist = mpd_song_get_tag(s, MPD_TAG_ARTIST, 0);
       const char *title = mpd_song_get_tag(s, MPD_TAG_TITLE, 0);
       const char *uri = mpd_song_get_uri(s);
@@ -367,10 +362,20 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
         displayArtist = "Unavailable";
       }
 
-      std::string songUriStr = uri ? uri : "";
-      bool inQueue = (!songUriStr.empty() && queueUris.find(songUriStr) != queueUris.end());
-      std::string indexStr  = std::to_string(songPos + 1) + ". ";
-      int currentPos        = songPos;
+      playlistSongs.push_back({songPos++, uri ? uri : "", displayTitle, displayArtist});
+      mpd_song_free(s);
+    }
+    mpd_response_finish(conn);
+
+    m_playlistSongCards.clear();
+    for (const auto &item : playlistSongs) {
+      foundAny = true;
+      std::string songUriStr = item.uri;
+      std::string indexStr  = std::to_string(item.songPos + 1) + ". ";
+      int currentPos        = item.songPos;
+
+      std::string cachedArt = Utils::getCachedTrackArtwork(songUriStr);
+      std::string artPath = cachedArt.empty() ? Utils::getDefaultArtworkPath() : cachedArt;
 
       // ── Build card via reusable SongCard component ────────────────────────
       auto card = std::make_shared<UI::Components::SongCard>(
@@ -379,9 +384,10 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
               .fontFamily = fontFamily,
               .rounding   = rounding,
               .cardHeight = 70.0f,
-              .title      = indexStr + displayTitle,
-              .subtitle   = displayArtist,
-              .isActive   = inQueue,
+              .title      = indexStr + item.title,
+              .subtitle   = item.artist,
+              .imagePath  = artPath,
+              .isActive   = false,
               .onCardBodyClick = [this, songUriStr] {
                 if (!songUriStr.empty() && m_ctx.playSongFromUri)
                   m_ctx.playSongFromUri(songUriStr);
@@ -434,12 +440,45 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
                     .palette      = m_ctx.palette,
                     .fontFamily   = m_ctx.fontFamily});
               }});
+      m_playlistSongCards[currentPos] = card;
       m_rightItemsLayout->addChild(card->build());
-
-      mpd_song_free(s);
-      songPos++;
     }
-    mpd_response_finish(conn);
+
+    // Non-blocking progressive chunked artwork resolution (5 tracks per 30ms batch)
+    if (m_ctx.backend && m_ctx.runMpdCommand && !playlistSongs.empty()) {
+      auto stepState = std::make_shared<size_t>(0);
+      auto processNextChunk = [this, playlistSongs, stepState](auto self) -> void {
+        if (*stepState >= playlistSongs.size())
+          return;
+        m_ctx.runMpdCommand([this, playlistSongs, stepState, self](struct mpd_connection *conn) {
+          size_t limit = std::min(*stepState + 5, playlistSongs.size());
+          for (size_t i = *stepState; i < limit; ++i) {
+            const auto &item = playlistSongs[i];
+            if (Utils::getCachedTrackArtwork(item.uri).empty()) {
+              std::string resolved = Utils::resolveTrackArtwork(conn, item.uri);
+              if (!resolved.empty()) {
+                auto it = m_playlistSongCards.find(item.songPos);
+                if (it != m_playlistSongCards.end() && it->second) {
+                  it->second->setImagePath(resolved);
+                }
+              }
+            }
+          }
+          *stepState = limit;
+          if (*stepState < playlistSongs.size()) {
+            m_ctx.backend->addTimer(
+                std::chrono::milliseconds(30),
+                [self](CAtomicSharedPointer<CTimer>, void *) { self(self); },
+                nullptr);
+          }
+        });
+      };
+
+      m_ctx.backend->addTimer(
+          std::chrono::milliseconds(10),
+          [processNextChunk](CAtomicSharedPointer<CTimer>, void *) { processNextChunk(processNextChunk); },
+          nullptr);
+    }
   }
 
   if (!foundAny) {
@@ -479,7 +518,22 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();
+  tabMainLayout->setMargin(20);
   m_tabContentWrapper->addChild(tabMainLayout);
+
+  auto titleHeader =
+      CTextBuilder::begin()
+          ->text("Playlists")
+          ->color([palette] {
+            return palette ? palette->m_colors.text
+                           : CHyprColor(1.0, 1.0, 1.0, 1.0);
+          })
+          ->fontFamily(std::string(fontFamily))
+          ->fontSize(CFontSize(CFontSize::HT_FONT_H1))
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+          ->commence();
+  tabMainLayout->addChild(titleHeader);
 
   if (!m_detailedView || m_selectedPlaylist.empty()) {
     // ==========================================

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CenteredTextLabel.hpp"
+#include "CardView.hpp"
 #include <hyprtoolkit/core/Backend.hpp>
 #include <hyprtoolkit/element/ColumnLayout.hpp>
 #include <hyprtoolkit/element/Image.hpp>
@@ -45,7 +45,7 @@ public:
 
 private:
     PlaybackBarContext m_ctx;
- std::unique_ptr<CenteredTextLabel> m_nowPlayingLabel;
+    std::unique_ptr<CardView> m_cardView;
     CSharedPointer<CTextElement> m_timeText;
     CSharedPointer<CSliderElement> m_seekBar;
     bool m_isUpdatingSeekBar = false;
@@ -58,9 +58,6 @@ private:
 void applyAlbumArt(const std::string &artPath);
 std::unique_ptr<CustomSeekBar> m_customSeekBar;
   
-  CSharedPointer<CRectangleElement> m_artContainer;
-    Hyprutils::Memory::CSharedPointer<Hyprtoolkit::CImageElement> m_albumArt;
-    
     // Set to a dummy value so the first update ALWAYS runs
     std::string m_lastSongUri = "__INIT__"; 
     bool m_isPlaying = false;

@@ -1,6 +1,7 @@
 #include "DatabaseView.hpp"
 #include "../Components/SongCard.hpp"
 #include "../Dialogs/ActionMenuDialog.hpp"
+#include "../../Utils/ArtworkUtils.hpp"
 #include <hyprtoolkit/element/Button.hpp>
 #include <hyprtoolkit/element/RowLayout.hpp>
 #include <hyprtoolkit/element/ScrollArea.hpp>
@@ -35,7 +36,22 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                 CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
             ->commence();
+    tabMainLayout->setMargin(20);
     m_tabContentWrapper->addChild(tabMainLayout);
+
+    auto titleHeader =
+        CTextBuilder::begin()
+            ->text("Database")
+            ->color([palette] {
+              return palette ? palette->m_colors.text
+                             : CHyprColor(1.0, 1.0, 1.0, 1.0);
+            })
+            ->fontFamily(std::string(fontFamily))
+            ->fontSize(CFontSize(CFontSize::HT_FONT_H1))
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+            ->commence();
+    tabMainLayout->addChild(titleHeader);
 
     auto topControlsCol =
         CColumnLayoutBuilder::begin()
@@ -261,27 +277,20 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
   int rounding = palette ? palette->m_vars.smallRounding : 5;
   std::string fontFamily = m_ctx.fontFamily;
 
-  std::unordered_set<std::string> queueUris;
-  if (conn && mpd_send_list_queue_meta(conn)) {
-    struct mpd_song *s;
-    while ((s = mpd_recv_song(conn)) != NULL) {
-      const char *uri = mpd_song_get_uri(s);
-      if (uri) {
-        queueUris.insert(std::string(uri));
-      }
-      mpd_song_free(s);
-    }
-    mpd_response_finish(conn);
-  }
-
   if (!conn || !mpd_send_list_all_meta(conn, NULL)) {
     std::cerr << "MPD: Failed to send list database command" << std::endl;
     return;
   }
 
+  struct DbSongItem {
+    std::string songUri;
+    std::string title;
+    std::string artist;
+  };
+  std::vector<DbSongItem> dbSongs;
+
   bool foundAny = false;
   struct mpd_entity *entity;
-  int trackNum = 1;
   while ((entity = mpd_recv_entity(conn)) != NULL) {
     if (mpd_entity_get_type(entity) == MPD_ENTITY_TYPE_SONG) {
       const struct mpd_song *s = mpd_entity_get_song(entity);
@@ -308,53 +317,100 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
           }
         }
 
-        foundAny = true;
-        bool inQueue = (queueUris.find(songUri) != queueUris.end());
-        std::string indexStr = std::to_string(trackNum++) + ". ";
-
-        // ── Build card via reusable SongCard component ────────────────────────
-        auto card = std::make_shared<UI::Components::SongCard>(
-            UI::Components::SongCardConfig{
-                .palette    = palette,
-                .fontFamily = fontFamily,
-                .rounding   = rounding,
-                .cardHeight = 70.0f,
-                .title      = indexStr + displayTitle,
-                .subtitle   = displayArtist,
-                .isActive   = inQueue,
-                .onCardBodyClick = [this, songUri] {
-                  if (!songUri.empty() && m_ctx.playSongFromUri)
-                    m_ctx.playSongFromUri(songUri);
-                },
-                .onActionClick = [this, songUri] {
-                  Dialogs::showActionMenuDialog({
-                      .options  = {"▶ Play", "➕ Add to Queue",
-                                   "📁 Add to Playlist"},
-                      .onSelect =
-                          [this, songUri](size_t idx, const std::string &) {
-                            if (idx == 0) {
-                              if (!songUri.empty() && m_ctx.playSongFromUri)
-                                m_ctx.playSongFromUri(songUri);
-                            } else if (idx == 1) {
-                              if (m_ctx.addSongToQueue)
-                                m_ctx.addSongToQueue(songUri);
-                            } else if (idx == 2) {
-                              if (!songUri.empty() &&
-                                  m_ctx.showPlaylistSelectionDialog)
-                                m_ctx.showPlaylistSelectionDialog(songUri);
-                            }
-                          },
-                      .parentWindow = m_ctx.window,
-                      .backend      = m_ctx.backend,
-                      .palette      = m_ctx.palette,
-                      .fontFamily   = m_ctx.fontFamily});
-                }});
-        m_dbContentLayout->addChild(card->build());
+        dbSongs.push_back({songUri, displayTitle, displayArtist});
       }
     }
     mpd_entity_free(entity);
   }
   mpd_response_finish(conn);
+
+  m_dbSongCards.clear();
+  int trackNum = 1;
+  for (const auto &item : dbSongs) {
+    foundAny = true;
+    std::string songUri = item.songUri;
+    std::string indexStr = std::to_string(trackNum++) + ". ";
+
+    std::string cachedArt = Utils::getCachedTrackArtwork(songUri);
+    std::string artPath = cachedArt.empty() ? Utils::getDefaultArtworkPath() : cachedArt;
+
+    // ── Build card via reusable SongCard component ────────────────────────
+    auto card = std::make_shared<UI::Components::SongCard>(
+        UI::Components::SongCardConfig{
+            .palette    = palette,
+            .fontFamily = fontFamily,
+            .rounding   = rounding,
+            .cardHeight = 70.0f,
+            .title      = indexStr + item.title,
+            .subtitle   = item.artist,
+            .imagePath  = artPath,
+            .isActive   = false,
+            .onCardBodyClick = [this, songUri] {
+              if (!songUri.empty() && m_ctx.playSongFromUri)
+                m_ctx.playSongFromUri(songUri);
+            },
+            .onActionClick = [this, songUri] {
+              Dialogs::showActionMenuDialog({
+                  .options  = {"▶ Play", "➕ Add to Queue",
+                               "📁 Add to Playlist"},
+                  .onSelect =
+                      [this, songUri](size_t idx, const std::string &) {
+                        if (idx == 0) {
+                          if (!songUri.empty() && m_ctx.playSongFromUri)
+                            m_ctx.playSongFromUri(songUri);
+                        } else if (idx == 1) {
+                          if (m_ctx.addSongToQueue)
+                            m_ctx.addSongToQueue(songUri);
+                        } else if (idx == 2) {
+                          if (!songUri.empty() &&
+                              m_ctx.showPlaylistSelectionDialog)
+                            m_ctx.showPlaylistSelectionDialog(songUri);
+                        }
+                      },
+                  .parentWindow = m_ctx.window,
+                  .backend      = m_ctx.backend,
+                  .palette      = m_ctx.palette,
+                  .fontFamily   = m_ctx.fontFamily});
+            }});
+    m_dbSongCards[songUri] = card;
+    m_dbContentLayout->addChild(card->build());
+  }
+
+  // Non-blocking progressive chunked artwork resolution (5 tracks per 30ms batch)
+  if (m_ctx.backend && m_ctx.runMpdCommand && !dbSongs.empty()) {
+    auto stepState = std::make_shared<size_t>(0);
+    auto processNextChunk = [this, dbSongs, stepState](auto self) -> void {
+      if (*stepState >= dbSongs.size())
+        return;
+      m_ctx.runMpdCommand([this, dbSongs, stepState, self](struct mpd_connection *conn) {
+        size_t limit = std::min(*stepState + 5, dbSongs.size());
+        for (size_t i = *stepState; i < limit; ++i) {
+          const auto &item = dbSongs[i];
+          if (Utils::getCachedTrackArtwork(item.songUri).empty()) {
+            std::string resolved = Utils::resolveTrackArtwork(conn, item.songUri);
+            if (!resolved.empty()) {
+              auto it = m_dbSongCards.find(item.songUri);
+              if (it != m_dbSongCards.end() && it->second) {
+                it->second->setImagePath(resolved);
+              }
+            }
+          }
+        }
+        *stepState = limit;
+        if (*stepState < dbSongs.size()) {
+          m_ctx.backend->addTimer(
+              std::chrono::milliseconds(30),
+              [self](CAtomicSharedPointer<CTimer>, void *) { self(self); },
+              nullptr);
+        }
+      });
+    };
+
+    m_ctx.backend->addTimer(
+        std::chrono::milliseconds(10),
+        [processNextChunk](CAtomicSharedPointer<CTimer>, void *) { processNextChunk(processNextChunk); },
+        nullptr);
+  }
 
   if (!foundAny) {
     auto emptyText =
