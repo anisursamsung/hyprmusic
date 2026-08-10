@@ -65,7 +65,7 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
         CRowLayoutBuilder::begin()
             ->gap(12)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 35.0F}))
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 40.0F}))
             ->commence();
 
     auto leftSpacer =
@@ -93,8 +93,9 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                   },
                   nullptr);
             })
+            ->multiline(false)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 32.0F}))
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 40.0F}))
             ->commence();
     searchBar->setGrow(true);
     topSearchRow->addChild(searchBar);
@@ -200,7 +201,7 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             })
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                 CDynamicSize::HT_SIZE_ABSOLUTE,
-                                {32.0F, 32.0F}))
+                                {40.0F, 40.0F}))
             ->commence();
     dbActionsBtn->setGrow(false);
     topSearchRow->addChild(dbActionsBtn);
@@ -447,12 +448,10 @@ std::vector<std::string> DatabaseView::collectMatchingSongUris(struct mpd_connec
       const char *uri = mpd_song_get_uri(s);
       if (uri) {
         std::string songUri(uri);
-        const char *artist = mpd_song_get_tag(s, MPD_TAG_ARTIST, 0);
         const char *title = mpd_song_get_tag(s, MPD_TAG_TITLE, 0);
         std::string displayTitle;
         if (title) {
-          std::string artistStr = artist ? artist : "Unknown Artist";
-          displayTitle = std::string(title) + " - " + artistStr;
+          displayTitle = std::string(title);
         } else {
           displayTitle = songUri;
         }

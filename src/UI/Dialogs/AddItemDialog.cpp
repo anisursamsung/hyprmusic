@@ -532,9 +532,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
                 ->commence();
         innerRow->setMargin(4);
 
-        std::string labelStr = song.artist.empty()
-                                   ? song.title
-                                   : (song.artist + " - " + song.title);
+        std::string labelStr = song.title.empty() ? song.artist : song.title;
         auto songText =
             CTextBuilder::begin()
                 ->text("🎵 " + labelStr)
@@ -791,9 +789,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
                 ->commence();
         innerRow->setMargin(4);
 
-        std::string labelStr = song.artist.empty()
-                                   ? song.title
-                                   : (song.artist + " - " + song.title);
+        std::string labelStr = song.title.empty() ? song.artist : song.title;
         auto songText =
             CTextBuilder::begin()
                 ->text("🎵 " + labelStr)
@@ -1348,9 +1344,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
                 ->commence();
         innerRow->setMargin(4);
 
-        std::string labelStr = song.artist.empty()
-                                   ? song.title
-                                   : (song.artist + " - " + song.title);
+        std::string labelStr = song.title.empty() ? song.artist : song.title;
         auto songText =
             CTextBuilder::begin()
                 ->text("🎵 " + labelStr)

@@ -65,6 +65,8 @@ namespace UI::Components {
 			.palette = palette,
 			.fontFamily = fontFamily,
 			.imagePath = Utils::getDefaultArtworkPath(),
+			.title = "No currently playing songs",
+			.subtitle = "",
 			.text = "No currently playing songs",
 			.onClick = [onPlayerNavClick]() {
 				onPlayerNavClick(Input::MOUSE_BUTTON_LEFT, false);
@@ -84,7 +86,7 @@ namespace UI::Components {
 		playbackSection->addChild(rightLayout);
 
 		// 1. Navigation bar section (100% width, 30% height of PlaybackSection)
-		auto navigationBar = CRectangleBuilder::begin()
+		m_navigationBar = CRectangleBuilder::begin()
 			->color([] { return CHyprColor(0, 0, 0, 0); })
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.30F}))
 			->commence();
@@ -95,65 +97,27 @@ namespace UI::Components {
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
 			->commence();
 
-		auto addNavButton = [&](const std::vector<std::string> &iconCandidates, const std::string &fallbackLabel,
+		auto addNavButton = [&](const std::string &iconName, const std::string &fallbackLabel,
 					std::function<void(Input::eMouseButton, bool)> &&onClick) {
-			auto btnContainer = CRectangleBuilder::begin()
-				->color([] { return CHyprColor(0, 0, 0, 0); })
-				->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.20F, 1.0F}))
-				->commence();
-
-			CSharedPointer<ISystemIconDescription> iconDesc;
-			auto iconFactory = m_ctx.backend->systemIcons();
-			if (iconFactory) {
-				for (const auto &iconName : iconCandidates) {
-					iconDesc = iconFactory->lookupIcon(iconName);
-					if (iconDesc)
-						break;
-				}
-			}
-
-			CSharedPointer<IElement> iconElem;
-			if (iconDesc) {
-				iconElem = CImageBuilder::begin()
-					->icon(iconDesc)
-					->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE, CDynamicSize::HT_SIZE_ABSOLUTE, {18.0F, 18.0F}))
-					->fitMode(IMAGE_FIT_MODE_CONTAIN)
-					->commence();
-			} else {
-				iconElem = CTextBuilder::begin()
-					->text(std::string(fallbackLabel))
-					->color([palette] { return palette ? palette->m_colors.text : CHyprColor(1.0, 1.0, 1.0, 1.0); })
-					->fontFamily(std::string(fontFamily))
-					->fontSize(CFontSize(CFontSize::HT_FONT_H3))
-					->align(HT_FONT_ALIGN_CENTER)
-					->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO, CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
-					->commence();
-			}
-
-			iconElem->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-			iconElem->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-			btnContainer->addChild(iconElem);
-
-			btnContainer->setReceivesMouse(true);
-			btnContainer->setMouseButton(std::move(onClick));
-			navRow->addChild(btnContainer);
+			auto res = createIconButton(iconName, fallbackLabel, 0.20F, std::move(onClick));
+			navRow->addChild(res.container);
 		};
 
 		// 1. Queue / List Icon
-		addNavButton({"music-queue-symbolic", "view-list-symbolic"}, "☰", std::move(onQueueNavClick));
+		addNavButton("music-queue-symbolic", "☰", std::move(onQueueNavClick));
 
 		// 2. Database / Library Icon
-		addNavButton({"library-music-symbolic", "library-symbolic", "system-search-symbolic", "file-search-symbolic"}, "🗄️", std::move(onDatabaseNavClick));
+		addNavButton("library-music-symbolic", "🗄️", std::move(onDatabaseNavClick));
 
 		// 3. Playlist Icon
-		addNavButton({"music-playlist-symbolic", "folder-music-symbolic", "playlist-symbolic"}, "🎶", std::move(onPlaylistNavClick));
+		addNavButton("music-playlist-symbolic", "🎶", std::move(onPlaylistNavClick));
 
-		// 4. YouTube Icon
-		addNavButton({"youtube", "youtube-music", "video-x-generic-symbolic"}, "▶️", std::move(onYtdlpNavClick));
+		// 4. YT-DLP Icon
+		addNavButton("folder-download-symbolic", "📥", std::move(onYtdlpNavClick));
 
 		// 5. Mini Visualizer Container
 		auto miniVisContainer = CRectangleBuilder::begin()
-			->color([] { return CHyprColor(0, 0, 0, 0); })
+			->color([] { return CHyprColor(0.0F, 0.0F, 0.0F, 0.0F); })
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.20F, 1.0F}))
 			->commence();
 
@@ -168,7 +132,12 @@ namespace UI::Components {
 		float defaultHeights[4] = {12.0f, 6.0f, 15.0f, 8.0f};
 		for (int i = 0; i < 4; ++i) {
 			auto bar = CRectangleBuilder::begin()
-				->color([palette] { return palette ? palette->m_colors.text : CHyprColor(0.6F, 0.6F, 0.6F, 1.0F); })
+				->color([this, palette] {
+					if (m_activeViewMode == Core::eViewMode::VIEW_VISUALIZER) {
+						return palette ? palette->m_colors.accent : CHyprColor(0.35F, 0.65F, 1.0F, 1.0F);
+					}
+					return palette ? palette->m_colors.text : CHyprColor(0.6F, 0.6F, 0.6F, 1.0F);
+				})
 				->rounding(2)
 				->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE, CDynamicSize::HT_SIZE_ABSOLUTE, {3.0F, defaultHeights[i]}))
 				->commence();
@@ -180,8 +149,8 @@ namespace UI::Components {
 		miniVisContainer->setMouseButton(onVisNavClick);
 		navRow->addChild(miniVisContainer);
 
-		navigationBar->addChild(navRow);
-		rightLayout->addChild(navigationBar);
+		m_navigationBar->addChild(navRow);
+		rightLayout->addChild(m_navigationBar);
 
 		// 2. Seek bar section (30% of PlaybackSection)
 		auto seekBarSection =
@@ -248,6 +217,8 @@ namespace UI::Components {
 		rightLayout->addChild(seekBarSection);
 
 		// 3. Controls section (40% of PlaybackSection)
+		auto iconFactory = m_ctx.backend ? m_ctx.backend->systemIcons() : nullptr;
+
 		auto controlsSection =
 			CRectangleBuilder::begin()
 			->color([palette] {
@@ -267,8 +238,6 @@ namespace UI::Components {
 			->commence();
 		controlsLayout->setMargin(8);
 
-		auto iconFactory = m_ctx.backend->systemIcons();
-
 		auto mainControlsRow = CRowLayoutBuilder::begin()
 			->gap(0)
 			->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
@@ -278,49 +247,9 @@ namespace UI::Components {
 
 		auto addControlColumn = [&](const std::string &iconName, const std::string &fallbackLabel,
 				std::function<void(Input::eMouseButton, bool)> &&onClick) {
-			auto col = CRectangleBuilder::begin()
-				->color([] { return CHyprColor(0, 0, 0, 0); })
-				->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-							CDynamicSize::HT_SIZE_PERCENT, {0.25F, 1.0F}))
-				->commence();
-
-			CSharedPointer<IElement> btn;
-			CSharedPointer<ISystemIconDescription> iconDesc;
-			if (iconFactory) {
-				iconDesc = iconFactory->lookupIcon(iconName);
-			}
-
-			if (iconDesc) {
-				btn = CImageBuilder::begin()
-					->icon(iconDesc)
-					->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-								CDynamicSize::HT_SIZE_PERCENT, {0.6F, 0.6F}))
-					->fitMode(IMAGE_FIT_MODE_CONTAIN)
-					->commence();
-			} else {
-				btn = CTextBuilder::begin()
-					->text(std::string(fallbackLabel))
-					->color([palette] {
-							return palette ? palette->m_colors.text
-							: CHyprColor(1.0, 1.0, 1.0, 1.0);
-							})
-				->fontFamily(std::string(fontFamily))
-					->fontSize(CFontSize(CFontSize::HT_FONT_H3))
-					->align(HT_FONT_ALIGN_CENTER)
-					->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-								CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
-					->interactable(true)
-					->commence();
-			}
-
-			btn->setReceivesMouse(true);
-			btn->setMouseButton(std::move(onClick));
-			btn->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-			btn->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-
-			col->addChild(btn);
-			mainControlsRow->addChild(col);
-			return btn;
+			auto res = createIconButton(iconName, fallbackLabel, 0.25F, std::move(onClick));
+			mainControlsRow->addChild(res.container);
+			return res.iconElem;
 		};
 
 		// 1. Skip Backward
@@ -357,8 +286,6 @@ namespace UI::Components {
 				->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
 							CDynamicSize::HT_SIZE_PERCENT, {0.85F, 1.0F}))
 				->commence();
-			volRow->setMargin(6);
-
 			CSharedPointer<ISystemIconDescription> iconDesc;
 			if (iconFactory) {
 				iconDesc = iconFactory->lookupIcon(m_isMuted ? "audio-volume-muted"
@@ -513,13 +440,16 @@ namespace UI::Components {
 		parentColumn->addChild(playbackSection);
 	}
 
-	void PlaybackBar::updateTrackInfo(const std::string &trackText,
+	void PlaybackBar::updateTrackInfo(const std::string &title,
+			const std::string &artist,
 			bool hasActiveTrack, unsigned elapsed,
 			unsigned total) {
 		if (m_cardView) {
-			std::string textToDisplay =
-				hasActiveTrack ? trackText : "No currently playing songs";
-			m_cardView->updateText(textToDisplay);
+			if (hasActiveTrack) {
+				m_cardView->updateInfo(title, artist);
+			} else {
+				m_cardView->updateInfo("No currently playing songs", "");
+			}
 		}
 		if (m_timeText) {
 			std::string timeStr = "0:00 / 0:00";
@@ -638,6 +568,59 @@ namespace UI::Components {
 				}
 				applyAlbumArt(artPath);
 				});
+	}
+
+	PlaybackBar::IconButtonResult PlaybackBar::createIconButton(
+		const std::string &iconName,
+		const std::string &fallbackLabel,
+		float containerWidthPct,
+		std::function<void(Input::eMouseButton, bool)> onClick) {
+
+		auto palette = m_ctx.palette;
+		std::string fontFamily = m_ctx.fontFamily;
+
+		auto btnContainer = CRectangleBuilder::begin()
+			->color([] { return CHyprColor(0.0F, 0.0F, 0.0F, 0.0F); })
+			->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {containerWidthPct, 1.0F}))
+			->commence();
+
+		CSharedPointer<IElement> iconElem;
+		CSharedPointer<ISystemIconDescription> iconDesc;
+		auto iconFactory = m_ctx.backend ? m_ctx.backend->systemIcons() : nullptr;
+		if (iconFactory && !iconName.empty()) {
+			iconDesc = iconFactory->lookupIcon(iconName);
+		}
+
+		CSharedPointer<CTextElement> textLabelElem;
+		if (iconDesc) {
+			iconElem = CImageBuilder::begin()
+				->icon(iconDesc)
+				->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.6F, 0.6F}))
+				->fitMode(IMAGE_FIT_MODE_CONTAIN)
+				->commence();
+		} else {
+			textLabelElem = CTextBuilder::begin()
+				->text(std::string(fallbackLabel))
+				->color([palette] {
+					return palette ? palette->m_colors.text : CHyprColor(1.0F, 1.0F, 1.0F, 1.0F);
+				})
+				->fontFamily(std::string(fontFamily))
+				->fontSize(CFontSize(CFontSize::HT_FONT_H3))
+				->align(HT_FONT_ALIGN_CENTER)
+				->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO, CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+				->interactable(true)
+				->commence();
+			iconElem = textLabelElem;
+		}
+
+		iconElem->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+		iconElem->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+		btnContainer->addChild(iconElem);
+
+		btnContainer->setReceivesMouse(true);
+		btnContainer->setMouseButton(std::move(onClick));
+
+		return {btnContainer, textLabelElem, iconElem};
 	}
 
 	void PlaybackBar::updateMiniVisBars() {

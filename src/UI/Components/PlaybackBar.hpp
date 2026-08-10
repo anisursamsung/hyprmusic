@@ -38,12 +38,26 @@ class PlaybackBar {
 public:
     explicit PlaybackBar(const PlaybackBarContext &ctx);
     void build(CSharedPointer<CColumnLayoutElement> parentColumn);
-    void updateTrackInfo(const std::string &trackText, bool hasActiveTrack, unsigned elapsed, unsigned total);
+    void updateTrackInfo(const std::string &title, const std::string &artist, bool hasActiveTrack, unsigned elapsed, unsigned total);
     void updateVolume(int currentVolume);
     void updatePlayPauseState(const std::string &stateText);
     void updateAlbumArt(const std::string &songUri);
 
 private:
+    struct IconButtonResult {
+        CSharedPointer<CRectangleElement> container;
+        CSharedPointer<CTextElement> textLabel;
+        CSharedPointer<IElement> iconElem;
+    };
+
+    IconButtonResult createIconButton(
+        const std::string &iconName,
+        const std::string &fallbackLabel,
+        float containerWidthPct,
+        std::function<void(Input::eMouseButton, bool)> onClick);
+
+    Core::eViewMode m_activeViewMode = Core::eViewMode::VIEW_DATABASE;
+    CSharedPointer<CRectangleElement> m_navigationBar;
     PlaybackBarContext m_ctx;
     std::unique_ptr<CardView> m_cardView;
     CSharedPointer<CTextElement> m_timeText;

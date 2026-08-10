@@ -12,8 +12,6 @@
 #include <memory>
 #include <string>
 
-#include "../Components/PlayerViewMiniCard.hpp"
-
 namespace UI::Views {
 using namespace Hyprtoolkit;
 using namespace Hyprutils::Memory;
@@ -36,7 +34,6 @@ private:
   PlayerViewContext m_ctx;
   CSharedPointer<CRectangleElement> m_tabContentWrapper;
   CSharedPointer<CImageElement> m_bgImage;
-  std::unique_ptr<UI::Components::PlayerViewMiniCard> m_miniCard;
   std::string m_lastSongUri;
 };
 

@@ -551,7 +551,7 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
         CRowLayoutBuilder::begin()
             ->gap(12)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 35.0F}))
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 40.0F}))
             ->commence();
 
     auto leftSpacer =
@@ -579,8 +579,9 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                   },
                   nullptr);
             })
+            ->multiline(false)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 32.0F}))
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 40.0F}))
             ->commence();
     searchBar->setGrow(true);
     topSearchRow->addChild(searchBar);
@@ -596,7 +597,7 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                 m_ctx.showCreatePlaylistDialog();
             })
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 32.0F}))
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 40.0F}))
             ->commence();
     createPlBtn->setGrow(false);
     topSearchRow->addChild(createPlBtn);

@@ -447,7 +447,8 @@ void HyprMusicApp::updateStatus() {
     return;
   }
 
-  std::string trackText = "No currently playing songs";
+  std::string trackTitle = "No currently playing songs";
+  std::string trackArtist = "";
   std::string stateText = "media-playback-start";
   std::string currentSongUri = ""; 
   int activeSongId = -1;
@@ -482,35 +483,37 @@ void HyprMusicApp::updateStatus() {
 
         std::string storedTitle, storedUploader;
         if (title && strlen(title) > 0) {
-          std::string artistStr = artist ? artist : "Unknown Artist";
-          trackText = std::string(title) + " - " + artistStr;
+          trackTitle = title;
+          trackArtist = artist ? artist : "Unknown Artist";
         } else if (uri && m_ytDlpService.getUrlTitle(uri, storedTitle, storedUploader)) {
-          trackText = "Stream (" + storedTitle + ")";
-          if (!storedUploader.empty()) {
-            trackText += " - " + storedUploader;
-          }
+          trackTitle = "Stream (" + storedTitle + ")";
+          trackArtist = storedUploader.empty() ? "" : storedUploader;
         } else if (uri) {
           std::string uriStr(uri);
           if (uriStr.find("googlevideo.com") != std::string::npos ||
               uriStr.find("http://") == 0 || uriStr.find("https://") == 0) {
             if (uriStr.length() > 50) {
-              trackText = "🌐 Stream (" + uriStr.substr(0, 35) + "...)";
+              trackTitle = "🌐 Stream (" + uriStr.substr(0, 35) + "...)";
             } else {
-              trackText = uriStr;
+              trackTitle = uriStr;
             }
           } else {
-            trackText = uriStr;
+            trackTitle = uriStr;
           }
+          trackArtist = "";
         } else {
-          trackText = "Unknown track";
+          trackTitle = "Unknown track";
+          trackArtist = "";
         }
         mpd_song_free(song);
       } else {
-        trackText = "Unknown track";
+        trackTitle = "Unknown track";
+        trackArtist = "";
       }
 
     } else {
-      trackText = "No currently playing songs";
+      trackTitle = "No currently playing songs";
+      trackArtist = "";
       stateText = "media-playback-start";
     }
 
@@ -558,7 +561,7 @@ void HyprMusicApp::updateStatus() {
         m_playlistLoaded = true;
         m_playerView->rebuildUI(m_tabContentWrapper, conn);
       }
-      m_playerView->updateTrackInfo(trackText, hasActiveTrack, elapsed, total, currentSongUri);
+      m_playerView->updateTrackInfo(trackTitle, hasActiveTrack, elapsed, total, currentSongUri);
     }
 
     mpd_status_free(status);
@@ -566,7 +569,7 @@ void HyprMusicApp::updateStatus() {
 
   mpd_connection_free(conn);
 
-  m_playbackBar->updateTrackInfo(trackText, hasActiveTrack, elapsed, total);
+  m_playbackBar->updateTrackInfo(trackTitle, trackArtist, hasActiveTrack, elapsed, total);
   m_playbackBar->updatePlayPauseState(stateText);
   m_playbackBar->updateVolume(currentVolume);
   m_playbackBar->updateAlbumArt(currentSongUri);

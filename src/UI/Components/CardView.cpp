@@ -60,11 +60,13 @@ CSharedPointer<CRectangleElement> CardView::build() {
     }
     leftColumn->addChild(artArea);
 
-    // 2. Song Title Section Wrapper (takes auto height + 4px margin)
-    std::string textStr = m_cfg.text.empty() ? "No currently playing songs" : m_cfg.text;
+    // 2. Song Title & Subtitle Section Wrapper
+    std::string titleStr = m_cfg.title.empty() ? (m_cfg.text.empty() ? "No currently playing songs" : m_cfg.text) : m_cfg.title;
+    std::string subStr = m_cfg.subtitle;
+
     m_titleText =
         CTextBuilder::begin()
-            ->text(std::string(textStr))
+            ->text(std::string(titleStr))
             ->color([palette] {
                 return palette ? palette->m_colors.text
                                : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -77,21 +79,37 @@ CSharedPointer<CRectangleElement> CardView::build() {
                                 CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
             ->commence();
 
-    auto titleRow =
-        CRowLayoutBuilder::begin()
-            ->gap(0)
+    m_subtitleText =
+        CTextBuilder::begin()
+            ->text(std::string(subStr))
+            ->color([palette] {
+                if (!palette) return CHyprColor(0.7, 0.7, 0.7, 1.0);
+                return palette->m_colors.text.mix(palette->m_colors.alternateBase, 0.4);
+            })
+            ->fontFamily(std::string(fontFamily))
+            ->fontSize(CFontSize(CFontSize::HT_FONT_SMALL))
+            ->align(HT_FONT_ALIGN_CENTER)
+            ->noEllipsize(false)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                 CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
             ->commence();
-    titleRow->setMargin(4);
-    titleRow->addChild(m_titleText);
+
+    auto textCol =
+        CColumnLayoutBuilder::begin()
+            ->gap(2)
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+            ->commence();
+    textCol->setMargin(4);
+    textCol->addChild(m_titleText);
+    textCol->addChild(m_subtitleText);
 
     auto titleContainer = CRectangleBuilder::begin()
         ->color([] { return CHyprColor(0, 0, 0, 0); })
         ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
         ->commence();
 
-    titleContainer->addChild(titleRow);
+    titleContainer->addChild(textCol);
     leftColumn->addChild(titleContainer);
 
     m_root->addChild(leftColumn);
@@ -107,14 +125,24 @@ void CardView::updateImage(const std::string &imagePath) {
     }
 }
 
-void CardView::updateText(const std::string &text) {
-    m_cfg.text = text;
-    std::string textStr = text.empty() ? "No currently playing songs" : text;
+void CardView::updateInfo(const std::string &title, const std::string &subtitle) {
+    m_cfg.title = title;
+    m_cfg.subtitle = subtitle;
+    std::string titleStr = title.empty() ? "No currently playing songs" : title;
     if (m_titleText) {
         m_titleText->rebuild()
-            ->text(std::string(textStr))
+            ->text(std::string(titleStr))
             ->commence();
     }
+    if (m_subtitleText) {
+        m_subtitleText->rebuild()
+            ->text(std::string(subtitle))
+            ->commence();
+    }
+}
+
+void CardView::updateText(const std::string &text) {
+    updateInfo(text, "");
 }
 
 void CardView::setOnClick(std::function<void()> onClick) {

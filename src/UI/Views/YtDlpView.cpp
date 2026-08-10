@@ -195,7 +195,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
       CRowLayoutBuilder::begin()
           ->gap(8)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 35.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 40.0F}))
           ->commence();
 
   auto leftSpacer =
@@ -214,8 +214,9 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
           ->onTextEdited([this](CSharedPointer<CTextboxElement>, const std::string &text) {
             m_searchTitle = text;
           })
+          ->multiline(false)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 32.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 40.0F}))
           ->commence();
   titleInput->setGrow(true);
   topSearchRow->addChild(titleInput);
@@ -234,7 +235,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                       })
                       ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                           CDynamicSize::HT_SIZE_ABSOLUTE,
-                                          {32.0F, 32.0F}))
+                                          {40.0F, 40.0F}))
                       ->commence();
   pasteBtn->setGrow(false);
   topSearchRow->addChild(pasteBtn);
@@ -260,8 +261,9 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
           ->onTextEdited([this](CSharedPointer<CTextboxElement>, const std::string &text) {
             m_resultCount = text;
           })
+          ->multiline(false)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {45.0F, 32.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {45.0F, 40.0F}))
           ->commence();
   countInput->setGrow(false);
   topSearchRow->addChild(countInput);
@@ -273,7 +275,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                        ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
                        ->onMainClick([this](CSharedPointer<CButtonElement>) { triggerSearch(); })
                        ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                           CDynamicSize::HT_SIZE_ABSOLUTE, {95.0F, 32.0F}))
+                                           CDynamicSize::HT_SIZE_ABSOLUTE, {100.0F, 40.0F}))
                        ->commence();
   submitBtn->setGrow(false);
   topSearchRow->addChild(submitBtn);

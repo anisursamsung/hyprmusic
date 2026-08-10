@@ -3,6 +3,8 @@
 #include <hyprtoolkit/element/RowLayout.hpp>
 #include <hyprtoolkit/element/ScrollArea.hpp>
 #include <hyprtoolkit/element/Textbox.hpp>
+#include <algorithm>
+#include <cctype>
 #include <vector>
 
 namespace UI::Views {
@@ -10,12 +12,25 @@ namespace UI::Views {
 using namespace Hyprtoolkit;
 using namespace Hyprutils::Memory;
 
+static bool matchesFilter(const std::string &label, const std::string &configKey, const std::string &filter) {
+  if (filter.empty()) return true;
+  auto toLower = [](std::string s) {
+    for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return s;
+  };
+  std::string f = toLower(filter);
+  return toLower(label).find(f) != std::string::npos || toLower(configKey).find(f) != std::string::npos;
+}
+
 SettingsView::SettingsView(const SettingsViewContext &ctx) : m_ctx(ctx) {}
 
 void SettingsView::addSettingRow(const std::string &label,
                                  const std::string &configKey,
                                  bool isDirectory) {
   if (!m_settingsContentLayout)
+    return;
+
+  if (!m_searchFilter.empty() && !matchesFilter(label, configKey, m_searchFilter))
     return;
 
   auto palette = m_ctx.palette;
@@ -30,7 +45,7 @@ void SettingsView::addSettingRow(const std::string &label,
           })
           ->rounding(rounding)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 50.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 60.0F}))
           ->commence();
 
   auto rowLayout = CRowLayoutBuilder::begin()
@@ -84,7 +99,7 @@ void SettingsView::addSettingRow(const std::string &label,
             m_pendingSettings[configKey] = text;
           })
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {0.98F, 30.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {0.98F, 40.0F}))
           ->commence();
   cell1->addChild(inputTextbox);
   rowLayout->addChild(cell1);
@@ -120,6 +135,9 @@ void SettingsView::addSwitchSettingRow(const std::string &label,
   if (!m_settingsContentLayout)
     return;
 
+  if (!m_searchFilter.empty() && !matchesFilter(label, configKey, m_searchFilter))
+    return;
+
   auto palette = m_ctx.palette;
   std::string fontFamily = m_ctx.fontFamily;
   int rounding = palette ? palette->m_vars.smallRounding : 5;
@@ -132,7 +150,7 @@ void SettingsView::addSwitchSettingRow(const std::string &label,
           })
           ->rounding(rounding)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 50.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 60.0F}))
           ->commence();
 
   auto rowLayout = CRowLayoutBuilder::begin()
@@ -186,7 +204,7 @@ void SettingsView::addSwitchSettingRow(const std::string &label,
           ->items(std::move(comboItems))
           ->currentItem(currentIdx)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {0.98F, 30.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {0.98F, 40.0F}))
           ->onChanged([this, configKey](
                           CSharedPointer<CComboboxElement>,
                           size_t idx) {
@@ -197,6 +215,34 @@ void SettingsView::addSwitchSettingRow(const std::string &label,
   rowLayout->addChild(cell1);
 
   m_settingsContentLayout->addChild(rowItem);
+}
+
+void SettingsView::populateSettingsRows() {
+  if (!m_settingsContentLayout)
+    return;
+
+  m_settingsContentLayout->clearChildren();
+
+  addSectionHeader("📁 Directories & Files");
+  addSettingRow("Music Directory", "music_directory", true);
+  addSettingRow("Playlist Directory", "playlist_directory", true);
+  addSettingRow("Database File", "db_file", false);
+  addSettingRow("Log File", "log_file", false);
+  addSettingRow("PID File", "pid_file", false);
+  addSettingRow("State File", "state_file", false);
+  addSettingRow("Sticker File", "sticker_file", false);
+
+  addSectionHeader("🌐 Network");
+  addSettingRow("Bind Address", "bind_to_address", false);
+  addSettingRow("Port", "port", false);
+
+  addSectionHeader("⚙️ Playback & Daemon Behavior");
+  addSwitchSettingRow("Restore Paused on Start", "restore_paused");
+  addSwitchSettingRow("Auto Update Database", "auto_update");
+
+  addSectionHeader("🔊 Audio Output");
+  addSwitchSettingRow("PipeWire Sound Server (Pulse)", "audio_output_pulse");
+  addSwitchSettingRow("Visualizer FIFO (/tmp/mpd.fifo)", "audio_output_fifo");
 }
 
 void SettingsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper) {
@@ -232,12 +278,28 @@ void SettingsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper) {
           ->commence();
   settingsMainLayout->addChild(titleHeader);
 
+  // Standalone Search Textbox below header (no background rectangle, no search icon)
+  auto searchInput =
+      CTextboxBuilder::begin()
+          ->placeholder("Search settings...")
+          ->defaultText(std::string(m_searchFilter))
+          ->onTextEdited([this](CSharedPointer<CTextboxElement>, const std::string &text) {
+            m_searchFilter = text;
+            populateSettingsRows();
+          })
+          ->multiline(false)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 40.0F}))
+          ->commence();
+  settingsMainLayout->addChild(searchInput);
+
   auto scrollArea =
       CScrollAreaBuilder::begin()
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.90F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 1.0F}))
           ->scrollY(true)
           ->commence();
+  scrollArea->setGrow(true);
   settingsMainLayout->addChild(scrollArea);
 
   m_settingsContentLayout =
@@ -249,26 +311,7 @@ void SettingsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper) {
   m_settingsContentLayout->setMargin(5);
   scrollArea->addChild(m_settingsContentLayout);
 
-  addSectionHeader("📁 Directories & Files");
-  addSettingRow("Music Directory", "music_directory", true);
-  addSettingRow("Playlist Directory", "playlist_directory", true);
-  addSettingRow("Database File", "db_file", false);
-  addSettingRow("Log File", "log_file", false);
-  addSettingRow("PID File", "pid_file", false);
-  addSettingRow("State File", "state_file", false);
-  addSettingRow("Sticker File", "sticker_file", false);
-
-  addSectionHeader("🌐 Network");
-  addSettingRow("Bind Address", "bind_to_address", false);
-  addSettingRow("Port", "port", false);
-
-  addSectionHeader("⚙️ Playback & Daemon Behavior");
-  addSwitchSettingRow("Restore Paused on Start", "restore_paused");
-  addSwitchSettingRow("Auto Update Database", "auto_update");
-
-  addSectionHeader("🔊 Audio Output");
-  addSwitchSettingRow("PipeWire Sound Server (Pulse)", "audio_output_pulse");
-  addSwitchSettingRow("Visualizer FIFO (/tmp/mpd.fifo)", "audio_output_fifo");
+  populateSettingsRows();
 
   auto bottomRow =
       CRowLayoutBuilder::begin()

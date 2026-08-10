@@ -38,12 +38,14 @@ private:
   void addSettingRow(const std::string &label, const std::string &configKey, bool isDirectory);
   void addSectionHeader(const std::string &title);
   void addSwitchSettingRow(const std::string &label, const std::string &configKey);
+  void populateSettingsRows();
 
   SettingsViewContext m_ctx;
   CSharedPointer<CRectangleElement> m_tabContentWrapper;
   CSharedPointer<CColumnLayoutElement> m_settingsContentLayout;
 
   std::unordered_map<std::string, std::string> m_pendingSettings;
+  std::string m_searchFilter;
 };
 
 } // namespace UI::Views
