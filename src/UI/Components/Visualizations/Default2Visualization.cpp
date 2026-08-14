@@ -39,8 +39,8 @@ CSharedPointer<IElement> Default2Visualization::build(CSharedPointer<CPalette> p
 
     auto bar = CRectangleBuilder::begin()
                    ->color([palette] {
-                     return palette ? palette->m_colors.accent
-                                    : CHyprColor(0.2, 0.8, 0.4, 1.0);
+                     return palette ? palette->m_colors.text
+                                    : CHyprColor(1.0, 1.0, 1.0, 1.0);
                    })
                    ->rounding(4)
                    ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,

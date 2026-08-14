@@ -80,8 +80,8 @@ void PlaylistsView::layoutPlaylists() {
           CRectangleBuilder::begin()
               ->color([palette, isSelected] {
                 if (isSelected) {
-                  return palette ? palette->m_colors.accent
-                                 : CHyprColor(0.2, 0.8, 0.4, 1.0);
+                  return palette ? palette->m_colors.text
+                                 : CHyprColor(1.0, 1.0, 1.0, 1.0);
                 }
                 return palette ? palette->m_colors.alternateBase
                                : CHyprColor(0.18, 0.18, 0.18, 1.0);
@@ -132,8 +132,8 @@ void PlaylistsView::layoutPlaylists() {
                 if (isSelected) {
                   auto altBase = palette ? palette->m_colors.alternateBase
                                          : CHyprColor(0.18, 0.18, 0.18, 1.0);
-                  auto acc = palette ? palette->m_colors.accent
-                                     : CHyprColor(0.2, 0.8, 0.4, 1.0);
+                  auto acc = palette ? palette->m_colors.text
+                                     : CHyprColor(1.0, 1.0, 1.0, 1.0);
                   return altBase.mix(acc, 0.25);
                 }
                 auto txt = palette ? palette->m_colors.text
@@ -678,8 +678,8 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
         CTextBuilder::begin()
             ->text(std::string("📁 " + plName))
             ->color([palette] {
-              return palette ? palette->m_colors.accent
-                             : CHyprColor(0.2, 0.8, 0.4, 1.0);
+              return palette ? palette->m_colors.text
+                             : CHyprColor(1.0, 1.0, 1.0, 1.0);
             })
             ->fontFamily(std::string(fontFamily))
             ->fontSize(CFontSize(CFontSize::HT_FONT_H2))

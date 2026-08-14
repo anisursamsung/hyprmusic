@@ -50,7 +50,7 @@ void SongCard::setActive(bool active) {
         ->color([this] {
           if (m_active) {
             auto palette = m_cfg.palette;
-            auto c = palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
+            auto c = palette ? palette->m_colors.text : CHyprColor(1.0, 1.0, 1.0, 1.0);
             return CHyprColor(c.r, c.g, c.b, 0.12);
           }
           return CHyprColor(0, 0, 0, 0);
@@ -58,7 +58,7 @@ void SongCard::setActive(bool active) {
         ->borderColor([this] {
           auto palette = m_cfg.palette;
           if (m_active) {
-            return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
+            return palette ? palette->m_colors.text : CHyprColor(1.0, 1.0, 1.0, 1.0);
           }
           auto c = palette ? palette->m_colors.text : CHyprColor(1, 1, 1, 1);
           return CHyprColor(c.r, c.g, c.b, 0.15);
@@ -80,7 +80,7 @@ CSharedPointer<CRectangleElement> SongCard::build() {
           ->color([this] {
             if (m_active) {
               auto palette = m_cfg.palette;
-              auto c = palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
+              auto c = palette ? palette->m_colors.text : CHyprColor(1.0, 1.0, 1.0, 1.0);
               return CHyprColor(c.r, c.g, c.b, 0.12);
             }
             return CHyprColor(0, 0, 0, 0);
@@ -88,7 +88,7 @@ CSharedPointer<CRectangleElement> SongCard::build() {
           ->borderColor([this] {
             auto palette = m_cfg.palette;
             if (m_active) {
-              return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
+              return palette ? palette->m_colors.text : CHyprColor(1.0, 1.0, 1.0, 1.0);
             }
             auto c = palette ? palette->m_colors.text : CHyprColor(1, 1, 1, 1);
             return CHyprColor(c.r, c.g, c.b, 0.15);

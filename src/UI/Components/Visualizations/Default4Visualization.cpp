@@ -36,7 +36,7 @@ CSharedPointer<IElement> Default4Visualization::build(CSharedPointer<CPalette> p
                    ->commence();
 
     // Create a smooth transition from Accent to Alternate Base
-    CHyprColor color1 = palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
+    CHyprColor color1 = palette ? palette->m_colors.text : CHyprColor(1.0, 1.0, 1.0, 1.0);
     CHyprColor color2 = palette ? palette->m_colors.text : CHyprColor(1.0, 1.0, 1.0, 1.0);
     float mixRatio = static_cast<float>(i) / (HORIZONTAL_BAR_COUNT - 1);
     CHyprColor mixedColor = color1.mix(color2, mixRatio);

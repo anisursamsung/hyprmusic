@@ -54,7 +54,8 @@ private:
         const std::string &iconName,
         const std::string &fallbackLabel,
         float containerWidthPct,
-        std::function<void(Input::eMouseButton, bool)> onClick);
+        std::function<void(Input::eMouseButton, bool)> onClick,
+        float fontScale = 1.4f);
 
     Core::eViewMode m_activeViewMode = Core::eViewMode::VIEW_DATABASE;
     CSharedPointer<CRectangleElement> m_navigationBar;
@@ -68,7 +69,7 @@ private:
     CSharedPointer<IElement> m_volIcon;
     bool m_isMuted = false;
     int m_lastUnmutedVolume = 70;
-    void updateVolumeIconState(bool muted);
+    void updateVolumeIconState(bool muted, int vol = -1);
 void applyAlbumArt(const std::string &artPath);
 std::unique_ptr<CustomSeekBar> m_customSeekBar;
   

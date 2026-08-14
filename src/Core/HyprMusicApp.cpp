@@ -449,7 +449,7 @@ void HyprMusicApp::updateStatus() {
 
   std::string trackTitle = "No currently playing songs";
   std::string trackArtist = "";
-  std::string stateText = "media-playback-start";
+  std::string stateText = "media-playback-start-symbolic";
   std::string currentSongUri = ""; 
   int activeSongId = -1;
   unsigned currentQueueVersion = 0;
@@ -468,7 +468,7 @@ void HyprMusicApp::updateStatus() {
     m_isPlaying = (state == MPD_STATE_PLAY);
 
     if (state == MPD_STATE_PLAY || state == MPD_STATE_PAUSE) {
-      stateText = (state == MPD_STATE_PLAY) ? "media-playback-pause" : "media-playback-start";
+      stateText = (state == MPD_STATE_PLAY) ? "media-playback-pause-symbolic" : "media-playback-start-symbolic";
       elapsed = mpd_status_get_elapsed_time(status);
       total = mpd_status_get_total_time(status);
       hasActiveTrack = true;
@@ -514,7 +514,7 @@ void HyprMusicApp::updateStatus() {
     } else {
       trackTitle = "No currently playing songs";
       trackArtist = "";
-      stateText = "media-playback-start";
+      stateText = "media-playback-start-symbolic";
     }
 
     if (m_viewMode == eViewMode::VIEW_QUEUE) {

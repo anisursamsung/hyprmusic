@@ -51,8 +51,8 @@ void NotificationManager::showNotification(const std::string &msg) {
   CHyprColor textColor = (msg.find("Already") != std::string::npos ||
                           msg.find("❌") != std::string::npos)
                              ? CHyprColor(0.95, 0.4, 0.4, 1.0)
-                             : (palette ? palette->m_colors.accent
-                                        : CHyprColor(0.2, 0.85, 0.45, 1.0));
+                             : (palette ? palette->m_colors.text
+                                        : CHyprColor(1.0, 1.0, 1.0, 1.0));
 
   auto root =
       CRectangleBuilder::begin()

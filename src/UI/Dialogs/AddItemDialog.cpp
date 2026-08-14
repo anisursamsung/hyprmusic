@@ -102,8 +102,8 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
         CTextBuilder::begin()
             ->text(std::string(headerTitle))
             ->color([palette] {
-              return palette ? palette->m_colors.accent
-                             : CHyprColor(0.2, 0.8, 0.4, 1.0);
+              return palette ? palette->m_colors.text
+                             : CHyprColor(1.0, 1.0, 1.0, 1.0);
             })
             ->fontFamily(std::string(fontFamily))
             ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
@@ -311,8 +311,8 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
     auto addBtn = CTextBuilder::begin()
                       ->text("➕")
                       ->color([palette] {
-                        return palette ? palette->m_colors.accent
-                                       : CHyprColor(0.2, 0.8, 0.4, 1.0);
+                        return palette ? palette->m_colors.text
+                                       : CHyprColor(1.0, 1.0, 1.0, 1.0);
                       })
                       ->fontFamily(std::string(fontFamily))
                       ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
@@ -563,8 +563,8 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
             CTextBuilder::begin()
                 ->text("➕")
                 ->color([palette] {
-                  return palette ? palette->m_colors.accent
-                                 : CHyprColor(0.2, 0.8, 0.4, 1.0);
+                  return palette ? palette->m_colors.text
+                                 : CHyprColor(1.0, 1.0, 1.0, 1.0);
                 })
                 ->fontFamily(std::string(fontFamily))
                 ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -820,8 +820,8 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
             CTextBuilder::begin()
                 ->text("➕")
                 ->color([palette] {
-                  return palette ? palette->m_colors.accent
-                                 : CHyprColor(0.2, 0.8, 0.4, 1.0);
+                  return palette ? palette->m_colors.text
+                                 : CHyprColor(1.0, 1.0, 1.0, 1.0);
                 })
                 ->fontFamily(std::string(fontFamily))
                 ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -1063,8 +1063,8 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
             CTextBuilder::begin()
                 ->text("➕")
                 ->color([palette] {
-                  return palette ? palette->m_colors.accent
-                                 : CHyprColor(0.2, 0.8, 0.4, 1.0);
+                  return palette ? palette->m_colors.text
+                                 : CHyprColor(1.0, 1.0, 1.0, 1.0);
                 })
                 ->fontFamily(std::string(fontFamily))
                 ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -1375,8 +1375,8 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
             CTextBuilder::begin()
                 ->text("➕")
                 ->color([palette] {
-                  return palette ? palette->m_colors.accent
-                                 : CHyprColor(0.2, 0.8, 0.4, 1.0);
+                  return palette ? palette->m_colors.text
+                                 : CHyprColor(1.0, 1.0, 1.0, 1.0);
                 })
                 ->fontFamily(std::string(fontFamily))
                 ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))

@@ -19,7 +19,7 @@ CSharedPointer<IElement> CustomSeekBar::build() {
     // 2. Inner fill progress bar
     m_fillBar = CRectangleBuilder::begin()
         ->color([palette] {
-            return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0);
+            return palette ? palette->m_colors.text : CHyprColor(1.0, 1.0, 1.0, 1.0);
         })
         ->rounding(rounding)
         ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.0F, 1.0F}))
@@ -43,7 +43,7 @@ CSharedPointer<IElement> CustomSeekBar::build() {
             auto palette = m_ctx.palette;
             int rounding = m_ctx.rounding >= 0 ? m_ctx.rounding : (palette ? palette->m_vars.smallRounding : 5);
             m_fillBar = m_fillBar->rebuild()
-                ->color([palette] { return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); })
+                ->color([palette] { return palette ? palette->m_colors.text : CHyprColor(1.0, 1.0, 1.0, 1.0); })
                 ->rounding(rounding)
                 ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {pct, 1.0F}))
                 ->commence();
@@ -87,7 +87,7 @@ void CustomSeekBar::handleSeekInput(double localX, double totalWidth) {
         auto palette = m_ctx.palette;
         int rounding = m_ctx.rounding >= 0 ? m_ctx.rounding : (palette ? palette->m_vars.smallRounding : 5);
         m_fillBar = m_fillBar->rebuild()
-            ->color([palette] { return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); })
+            ->color([palette] { return palette ? palette->m_colors.text : CHyprColor(1.0, 1.0, 1.0, 1.0); })
             ->rounding(rounding)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {pct, 1.0F}))
             ->commence();
@@ -107,7 +107,7 @@ void CustomSeekBar::updateProgress(float progress, bool /*isPlaying*/) {
         auto palette = m_ctx.palette;
         int rounding = m_ctx.rounding >= 0 ? m_ctx.rounding : (palette ? palette->m_vars.smallRounding : 5);
         m_fillBar = m_fillBar->rebuild()
-            ->color([palette] { return palette ? palette->m_colors.accent : CHyprColor(0.2, 0.8, 0.4, 1.0); })
+            ->color([palette] { return palette ? palette->m_colors.text : CHyprColor(1.0, 1.0, 1.0, 1.0); })
             ->rounding(rounding)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {m_currentProgress, 1.0F}))
             ->commence();

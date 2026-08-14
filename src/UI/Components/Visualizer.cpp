@@ -150,7 +150,7 @@ void Visualizer::readerThreadFunc(std::shared_ptr<VisualizerSharedData> sharedDa
 CSharedPointer<IElement> Visualizer::build() {
   m_container =
       CRectangleBuilder::begin()
-          ->color([] { return CHyprColor(0, 0, 0, 0.85f); }) 
+          ->color([] { return CHyprColor(0, 0, 0, 0); }) 
           ->rounding(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT,

@@ -114,8 +114,8 @@ void showPlaylistSelectionDialog(const PlaylistSelectionContext &ctx) {
     auto iconText = CTextBuilder::begin()
                         ->text("📁")
                         ->color([palette] {
-                          return palette ? palette->m_colors.accent
-                                         : CHyprColor(0.2, 0.8, 0.4, 1.0);
+                          return palette ? palette->m_colors.text
+                                         : CHyprColor(1.0, 1.0, 1.0, 1.0);
                         })
                         ->fontFamily(std::string(fontFamily))
                         ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
