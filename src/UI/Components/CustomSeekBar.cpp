@@ -14,7 +14,9 @@ CSharedPointer<IElement> CustomSeekBar::build() {
     // 1. Outer container track
     m_container = CButtonBuilder::begin()
          ->label("")
-                ->size(std::move(m_ctx.size))
+         ->noBg(true)
+         ->noBorder(true)
+         ->size(std::move(m_ctx.size))
          ->commence();
     // 2. Inner fill progress bar
     m_fillBar = CRectangleBuilder::begin()

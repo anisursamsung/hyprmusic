@@ -92,10 +92,7 @@ void HyprMusicApp::createUI() {
   // Content Area Section (100% width)
   auto contentSection =
       CRectangleBuilder::begin()
-          ->color([palette] {
-            return palette ? palette->m_colors.background
-                           : CHyprColor(0.15, 0.15, 0.15, 1.0);
-          })
+          ->color([] { return CHyprColor(0, 0, 0, 0); })
           ->rounding(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
