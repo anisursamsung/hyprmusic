@@ -1,5 +1,6 @@
 #include "PlaylistSelectionDialog.hpp"
 #include "../Components/UIFactory.hpp"
+#include "../Components/IconProvider.hpp"
 #include "../../Utils/StreamUtils.hpp"
 #include <hyprtoolkit/element/ColumnLayout.hpp>
 #include <hyprtoolkit/element/Rectangle.hpp>
@@ -112,7 +113,7 @@ void showPlaylistSelectionDialog(const PlaylistSelectionContext &ctx) {
     plRow->setMargin(6);
 
     auto iconText = CTextBuilder::begin()
-                        ->text("📁")
+                        ->text(Components::IconProvider::getIcon(Components::IconType::FOLDER))
                         ->color([palette] {
                           return palette ? palette->m_colors.text
                                          : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -168,7 +169,7 @@ void showPlaylistSelectionDialog(const PlaylistSelectionContext &ctx) {
               songUri.rfind("https://", 0) == 0) {
             if (songUri.find("youtube.com") != std::string::npos ||
                 songUri.find("youtu.be") != std::string::npos) {
-              safeNotify("⏳ Resolving YouTube stream...");
+              safeNotify(Components::IconProvider::getIcon(Components::IconType::LOADING) + " Resolving YouTube stream...");
 
               std::string resTitle = "Stream Track";
               std::string resUploader = "";
@@ -179,7 +180,7 @@ void showPlaylistSelectionDialog(const PlaylistSelectionContext &ctx) {
                   ctx.ytDlpService->setUrlTitle(realUrl, resTitle, resUploader);
                 }
               } else {
-                safeNotify("❌ Failed to resolve stream");
+                safeNotify(Components::IconProvider::getIcon(Components::IconType::CROSS) + " Failed to resolve stream");
                 return;
               }
             }

@@ -1,4 +1,5 @@
 #include "PlaybackBar.hpp"
+#include "IconProvider.hpp"
 #include "../../Utils/FormatUtils.hpp"
 #include <algorithm>
 #include <cmath>
@@ -8,10 +9,7 @@
 namespace UI::Components {
 
 	static std::string getVolumeFallbackEmoji(bool muted, int vol) {
-		if (muted || vol == 0) return "🔇";
-		if (vol > 0 && vol <= 33) return "🔈";
-		if (vol > 33 && vol <= 66) return "🔉";
-		return "🔊";
+		return IconProvider::getVolumeIcon(muted, vol);
 	}
 
 	PlaybackBar::PlaybackBar(const PlaybackBarContext &ctx) : m_ctx(ctx) {}
@@ -111,16 +109,16 @@ namespace UI::Components {
 		};
 
 		// 1. Queue / List Icon
-		addNavButton("music-queue-symbolic", "☰", std::move(onQueueNavClick));
+		addNavButton("music-queue-symbolic", IconProvider::getIcon(IconType::NAV_QUEUE), std::move(onQueueNavClick));
 
 		// 2. Database / Library Icon
-		addNavButton("library-music-symbolic", "🗄️", std::move(onDatabaseNavClick));
+		addNavButton("library-music-symbolic", IconProvider::getIcon(IconType::NAV_DATABASE), std::move(onDatabaseNavClick));
 
 		// 3. Playlist Icon
-		addNavButton("music-playlist-symbolic", "🎶", std::move(onPlaylistNavClick));
+		addNavButton("music-playlist-symbolic", IconProvider::getIcon(IconType::NAV_PLAYLIST), std::move(onPlaylistNavClick));
 
 		// 4. YT-DLP Icon
-		addNavButton("network-transmission-symbolic", "🌐", std::move(onYtdlpNavClick));
+		addNavButton("network-transmission-symbolic", IconProvider::getIcon(IconType::NAV_YTDLP), std::move(onYtdlpNavClick));
 
 		// 5. Mini Visualizer Container
 		auto miniVisContainer = CRectangleBuilder::begin()
@@ -257,21 +255,21 @@ namespace UI::Components {
 		};
 
 		// 1. Skip Backward
-		addControlColumn("media-skip-backward-symbolic", "⏮", 1.5f, [this](Input::eMouseButton button, bool down) {
+		addControlColumn("media-skip-backward-symbolic", IconProvider::getIcon(IconType::PREV_TRACK), 1.5f, [this](Input::eMouseButton button, bool down) {
 				if (button == Input::MOUSE_BUTTON_LEFT && !down) {
 				if (m_ctx.prevTrack) m_ctx.prevTrack();
 				}
 				});
 
 		// 2. Play / Pause
-		m_pauseBtn = addControlColumn("media-playback-start-symbolic", "▶", 1.9f, [this](Input::eMouseButton button, bool down) {
+		m_pauseBtn = addControlColumn("media-playback-start-symbolic", IconProvider::getIcon(IconType::PLAY), 1.9f, [this](Input::eMouseButton button, bool down) {
 				if (button == Input::MOUSE_BUTTON_LEFT && !down) {
 				if (m_ctx.togglePlayPause) m_ctx.togglePlayPause();
 				}
 				});
 
 		// 3. Skip Forward
-		addControlColumn("media-skip-forward-symbolic", "⏭", 1.5f, [this](Input::eMouseButton button, bool down) {
+		addControlColumn("media-skip-forward-symbolic", IconProvider::getIcon(IconType::NEXT_TRACK), 1.5f, [this](Input::eMouseButton button, bool down) {
 				if (button == Input::MOUSE_BUTTON_LEFT && !down) {
 				if (m_ctx.nextTrack) m_ctx.nextTrack();
 				}
@@ -394,7 +392,7 @@ namespace UI::Components {
 		settingsBg->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
 
 		CSharedPointer<IElement> settingsIconBtn = CTextBuilder::begin()
-			->text("⚙")
+			->text(IconProvider::getIcon(IconType::SETTINGS))
 			->color([palette] {
 					return palette ? palette->m_colors.text
 					: CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -501,7 +499,7 @@ namespace UI::Components {
 
 		auto textBtn = Hyprutils::Memory::dynamicPointerCast<CTextElement>(m_pauseBtn);
 		if (textBtn) {
-			textBtn->rebuild()->text(std::string(m_isPlaying ? "⏸" : "▶"))->commence();
+			textBtn->rebuild()->text(IconProvider::getIcon(m_isPlaying ? IconType::PAUSE : IconType::PLAY))->commence();
 		}
 	}
 

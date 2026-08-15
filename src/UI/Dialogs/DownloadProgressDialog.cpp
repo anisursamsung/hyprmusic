@@ -1,4 +1,5 @@
 #include "DownloadProgressDialog.hpp"
+#include "../Components/IconProvider.hpp"
 #include "../Components/UIFactory.hpp"
 #include "../../Utils/StreamUtils.hpp"
 #include <hyprtoolkit/element/Button.hpp>
@@ -64,7 +65,7 @@ void showDownloadProgressDialog(const DownloadProgressContext &ctx) {
           ->commence();
   cardLayout->setMargin(12);
 
-  auto headerText = Components::UIFactory::createHeader("📥 Downloading Track", palette, fontFamily);
+  auto headerText = Components::UIFactory::createHeader(Components::IconProvider::getIcon(Components::IconType::DOWNLOAD) + " Downloading Track", palette, fontFamily);
   cardLayout->addChild(headerText);
 
   std::string trackTitleStr = ctx.title.empty() ? ctx.url : ctx.title;
@@ -86,7 +87,7 @@ void showDownloadProgressDialog(const DownloadProgressContext &ctx) {
 
   auto statusText =
       CTextBuilder::begin()
-          ->text(std::string("⏳ Initializing download..."))
+          ->text(Components::IconProvider::getIcon(Components::IconType::LOADING) + " Initializing download...")
           ->color([palette] {
             return palette ? palette->m_colors.text
                            : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -188,7 +189,7 @@ void showDownloadProgressDialog(const DownloadProgressContext &ctx) {
         ctx.backend->addTimer(
             std::chrono::milliseconds(1),
             [statusText, actionBtn](CAtomicSharedPointer<CTimer>, void *) {
-              statusText->rebuild()->text(std::string("❌ Failed to launch yt-dlp process"))->commence();
+              statusText->rebuild()->text(Components::IconProvider::getIcon(Components::IconType::CROSS) + " Failed to launch yt-dlp process")->commence();
               actionBtn->rebuild()->label(std::string("Close"))->commence();
             },
             nullptr);
@@ -237,7 +238,7 @@ void showDownloadProgressDialog(const DownloadProgressContext &ctx) {
           ctx.backend->addTimer(
               std::chrono::milliseconds(1),
               [statusText, progressBar](CAtomicSharedPointer<CTimer>, void *) {
-                statusText->rebuild()->text(std::string("⏳ Converting audio to MP3..."))->commence();
+                statusText->rebuild()->text(Components::IconProvider::getIcon(Components::IconType::LOADING) + " Converting audio to MP3...")->commence();
                 progressBar->rebuild()->val(0.92f)->commence();
               },
               nullptr);
@@ -247,7 +248,7 @@ void showDownloadProgressDialog(const DownloadProgressContext &ctx) {
           ctx.backend->addTimer(
               std::chrono::milliseconds(1),
               [statusText, progressBar](CAtomicSharedPointer<CTimer>, void *) {
-                statusText->rebuild()->text(std::string("🖼️ Embedding thumbnail & metadata..."))->commence();
+                statusText->rebuild()->text(Components::IconProvider::getIcon(Components::IconType::MUSIC_NOTE) + " Embedding thumbnail & metadata...")->commence();
                 progressBar->rebuild()->val(0.98f)->commence();
               },
               nullptr);
@@ -269,11 +270,11 @@ void showDownloadProgressDialog(const DownloadProgressContext &ctx) {
             std::string displayTitle = ctx.title.empty() ? "track" : "'" + ctx.title + "'";
             if (isSuccess) {
               progressBar->rebuild()->val(1.0f)->commence();
-              statusText->rebuild()->text(std::string("✅ Download completed!"))->commence();
+              statusText->rebuild()->text(Components::IconProvider::getIcon(Components::IconType::CHECK) + " Download completed!")->commence();
               actionBtn->rebuild()->label(std::string("Done"))->commence();
 
               if (ctx.showNotification) {
-                ctx.showNotification("✅ Download completed: " + displayTitle);
+                ctx.showNotification(Components::IconProvider::getIcon(Components::IconType::CHECK) + " Download completed: " + displayTitle);
               }
               if (ctx.runMpdCommand) {
                 ctx.runMpdCommand([](struct mpd_connection *conn) {
@@ -283,10 +284,10 @@ void showDownloadProgressDialog(const DownloadProgressContext &ctx) {
                 });
               }
             } else {
-              statusText->rebuild()->text(std::string("❌ Download failed. Check yt-dlp & formats."))->commence();
+              statusText->rebuild()->text(Components::IconProvider::getIcon(Components::IconType::CROSS) + " Download failed. Check yt-dlp & formats.")->commence();
               actionBtn->rebuild()->label(std::string("Close"))->commence();
               if (ctx.showNotification) {
-                ctx.showNotification("❌ Download failed: " + displayTitle);
+                ctx.showNotification(Components::IconProvider::getIcon(Components::IconType::CROSS) + " Download failed: " + displayTitle);
               }
             }
           },

@@ -1,4 +1,5 @@
 #include "RenamePlaylistDialog.hpp"
+#include "../Components/IconProvider.hpp"
 #include "../Components/UIFactory.hpp"
 #include <hyprtoolkit/element/ColumnLayout.hpp>
 #include <hyprtoolkit/element/Rectangle.hpp>
@@ -48,7 +49,7 @@ void showRenamePlaylistDialog(const RenamePlaylistContext &ctx) {
           ->commence();
   cardLayout->setMargin(15);
 
-  auto headerText = Components::UIFactory::createHeader("✏️ Rename Playlist", palette, fontFamily);
+  auto headerText = Components::UIFactory::createHeader(Components::IconProvider::getIcon(Components::IconType::EDIT) + " Rename Playlist", palette, fontFamily);
   cardLayout->addChild(headerText);
 
   auto nameInput = Components::UIFactory::createSearchInput(

@@ -1,4 +1,5 @@
 #include "AddItemDialog.hpp"
+#include "../Components/IconProvider.hpp"
 #include "../../MPDClient.hpp"
 #include "../../Utils/ClipboardUtils.hpp"
 #include "../../Utils/StreamUtils.hpp"
@@ -95,8 +96,8 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
             ->commence();
 
     std::string headerTitle = (ctx.targetType == AddItemTargetType::QUEUE)
-                                  ? "➕ Add Item to Queue"
-                                  : "➕ Add Item to Playlist";
+                                  ? Components::IconProvider::getIcon(Components::IconType::ADD) + " Add Item to Queue"
+                                  : Components::IconProvider::getIcon(Components::IconType::ADD) + " Add Item to Playlist";
 
     auto headerText =
         CTextBuilder::begin()
@@ -163,19 +164,19 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
       cardLayout->addChild(optionCard);
     };
 
-    addOption("📻 Add Stream", [showAddStream]() { (*showAddStream)(); });
+    addOption(Components::IconProvider::getIcon(Components::IconType::STREAM) + " Add Stream", [showAddStream]() { (*showAddStream)(); });
 
-    addOption("🎵 Add from Database",
+    addOption(Components::IconProvider::getIcon(Components::IconType::MUSIC_NOTE) + " Add from Database",
               [showDatabaseSelector]() { (*showDatabaseSelector)(); });
 
     if (ctx.targetType == AddItemTargetType::PLAYLIST) {
-      addOption("📋 Add from Queue",
+      addOption(Components::IconProvider::getIcon(Components::IconType::NAV_QUEUE) + " Add from Queue",
                 [showQueueSelector]() { (*showQueueSelector)(); });
     }
 
     std::string plTitle = (ctx.targetType == AddItemTargetType::QUEUE)
-                              ? "📁 Add from Playlist"
-                              : "📁 Add from Another Playlist";
+                              ? Components::IconProvider::getIcon(Components::IconType::FOLDER) + " Add from Playlist"
+                              : Components::IconProvider::getIcon(Components::IconType::FOLDER) + " Add from Another Playlist";
     addOption(plTitle, [showPlaylistSelector]() { (*showPlaylistSelector)(); });
 
     auto cancelBtn =
@@ -290,7 +291,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
     inputRow->addChild(urlInput);
 
     auto pasteBtn = CButtonBuilder::begin()
-                        ->label("📋")
+                        ->label(Components::IconProvider::getIcon(Components::IconType::PASTE))
                         ->alignText(HT_FONT_ALIGN_CENTER)
                         ->fontFamily(std::string(fontFamily))
                         ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -309,7 +310,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
     inputRow->addChild(pasteBtn);
 
     auto addBtn = CTextBuilder::begin()
-                      ->text("➕")
+                      ->text(Components::IconProvider::getIcon(Components::IconType::ADD))
                       ->color([palette] {
                         return palette ? palette->m_colors.text
                                        : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -535,7 +536,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
         std::string labelStr = song.title.empty() ? song.artist : song.title;
         auto songText =
             CTextBuilder::begin()
-                ->text("🎵 " + labelStr)
+                ->text(Components::IconProvider::getIcon(Components::IconType::MUSIC_NOTE) + " " + labelStr)
                 ->color([palette] {
                   return palette ? palette->m_colors.text
                                  : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -561,7 +562,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
 
         auto addBtn =
             CTextBuilder::begin()
-                ->text("➕")
+                ->text(Components::IconProvider::getIcon(Components::IconType::ADD))
                 ->color([palette] {
                   return palette ? palette->m_colors.text
                                  : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -792,7 +793,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
         std::string labelStr = song.title.empty() ? song.artist : song.title;
         auto songText =
             CTextBuilder::begin()
-                ->text("🎵 " + labelStr)
+                ->text(Components::IconProvider::getIcon(Components::IconType::MUSIC_NOTE) + " " + labelStr)
                 ->color([palette] {
                   return palette ? palette->m_colors.text
                                  : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -818,7 +819,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
 
         auto addBtn =
             CTextBuilder::begin()
-                ->text("➕")
+                ->text(Components::IconProvider::getIcon(Components::IconType::ADD))
                 ->color([palette] {
                   return palette ? palette->m_colors.text
                                  : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -1035,7 +1036,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
 
         auto plText =
             CTextBuilder::begin()
-                ->text("📁 " + plName)
+                ->text(Components::IconProvider::getIcon(Components::IconType::FOLDER) + " " + plName)
                 ->color([palette] {
                   return palette ? palette->m_colors.text
                                  : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -1061,7 +1062,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
 
         auto addBtn =
             CTextBuilder::begin()
-                ->text("➕")
+                ->text(Components::IconProvider::getIcon(Components::IconType::ADD))
                 ->color([palette] {
                   return palette ? palette->m_colors.text
                                  : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -1347,7 +1348,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
         std::string labelStr = song.title.empty() ? song.artist : song.title;
         auto songText =
             CTextBuilder::begin()
-                ->text("🎵 " + labelStr)
+                ->text(Components::IconProvider::getIcon(Components::IconType::MUSIC_NOTE) + " " + labelStr)
                 ->color([palette] {
                   return palette ? palette->m_colors.text
                                  : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -1373,7 +1374,7 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
 
         auto addBtn =
             CTextBuilder::begin()
-                ->text("➕")
+                ->text(Components::IconProvider::getIcon(Components::IconType::ADD))
                 ->color([palette] {
                   return palette ? palette->m_colors.text
                                  : CHyprColor(1.0, 1.0, 1.0, 1.0);

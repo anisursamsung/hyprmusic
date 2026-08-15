@@ -1,4 +1,5 @@
 #include "CreatePlaylistDialog.hpp"
+#include "../Components/IconProvider.hpp"
 #include "../Components/UIFactory.hpp"
 #include <hyprtoolkit/element/ColumnLayout.hpp>
 #include <hyprtoolkit/element/Rectangle.hpp>
@@ -48,7 +49,7 @@ void showCreatePlaylistDialog(const CreatePlaylistContext &ctx) {
           ->commence();
   cardLayout->setMargin(15);
 
-  auto headerText = Components::UIFactory::createHeader("➕ Create New Playlist", palette, fontFamily);
+  auto headerText = Components::UIFactory::createHeader(Components::IconProvider::getIcon(Components::IconType::ADD) + " Create New Playlist", palette, fontFamily);
   cardLayout->addChild(headerText);
 
   auto nameInput = Components::UIFactory::createSearchInput(

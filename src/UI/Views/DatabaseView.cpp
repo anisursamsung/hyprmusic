@@ -1,4 +1,5 @@
 #include "DatabaseView.hpp"
+#include "../Components/IconProvider.hpp"
 #include "../Components/SongCard.hpp"
 #include "../Dialogs/ActionMenuDialog.hpp"
 #include "../../Utils/ArtworkUtils.hpp"
@@ -108,8 +109,10 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
             ->onMainClick([this](CSharedPointer<CButtonElement>) {
               Dialogs::showActionMenuDialog({
-                  .options = {"▶ Play All", "➕ Add All to Queue",
-                              "🔄 Update Database", "🔍 Rescan Database"},
+                  .options = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play All",
+                              Components::IconProvider::getIcon(Components::IconType::ADD) + " Add All to Queue",
+                              Components::IconProvider::getIcon(Components::IconType::UPDATE_DB) + " Update Database",
+                              Components::IconProvider::getIcon(Components::IconType::RESCAN_DB) + " Rescan Database"},
                   .onSelect =
                       [this](size_t idx, const std::string &) {
                         if (idx == 0) { // ▶ Play All
@@ -242,7 +245,7 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
   auto loadingText =
       CTextBuilder::begin()
-          ->text(std::string("⏳ Loading Database..."))
+          ->text(Components::IconProvider::getIcon(Components::IconType::LOADING) + " Loading Database...")
           ->color([palette] {
             return palette ? palette->m_colors.text
                            : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -358,8 +361,9 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
             },
             .onActionClick = [this, songUri] {
               Dialogs::showActionMenuDialog({
-                  .options  = {"▶ Play", "➕ Add to Queue",
-                               "📁 Add to Playlist"},
+                  .options  = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play",
+                               Components::IconProvider::getIcon(Components::IconType::ADD) + " Add to Queue",
+                               Components::IconProvider::getIcon(Components::IconType::FOLDER) + " Add to Playlist"},
                   .onSelect =
                       [this, songUri](size_t idx, const std::string &) {
                         if (idx == 0) {

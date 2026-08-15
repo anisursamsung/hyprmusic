@@ -1,4 +1,5 @@
 #include "YtDlpView.hpp"
+#include "../Components/IconProvider.hpp"
 #include "../Components/SongCard.hpp"
 #include "../Dialogs/ActionMenuDialog.hpp"
 #include "../Dialogs/DownloadProgressDialog.hpp"
@@ -222,7 +223,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
   topSearchRow->addChild(titleInput);
 
   auto pasteBtn = CButtonBuilder::begin()
-                      ->label("📋")
+                      ->label(Components::IconProvider::getIcon(Components::IconType::PASTE))
                       ->alignText(HT_FONT_ALIGN_CENTER)
                       ->fontFamily(std::string(fontFamily))
                       ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -269,7 +270,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
   topSearchRow->addChild(countInput);
 
   auto submitBtn = CButtonBuilder::begin()
-                       ->label("🔍 Search")
+                       ->label(Components::IconProvider::getIcon(Components::IconType::SEARCH) + " Search")
                        ->alignText(HT_FONT_ALIGN_CENTER)
                        ->fontFamily(std::string(fontFamily))
                        ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -313,7 +314,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
   if (m_searching) {
     auto searchingText =
         CTextBuilder::begin()
-            ->text(std::string("⏳ Searching YouTube with yt-dlp..."))
+            ->text(Components::IconProvider::getIcon(Components::IconType::LOADING) + " Searching YouTube with yt-dlp...")
             ->color([palette] {
               return palette ? palette->m_colors.text
                              : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -349,7 +350,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
         auto triggerPlayStream = [this, itemUrl, itemTitle, itemUploader]() {
           if (m_ctx.showNotification)
-            m_ctx.showNotification("⏳ Resolving stream link with yt-dlp...");
+            m_ctx.showNotification(Components::IconProvider::getIcon(Components::IconType::LOADING) + " Resolving stream link with yt-dlp...");
 
           std::thread([this, itemUrl, itemTitle, itemUploader]() {
             std::string realUrl = extractDirectStreamUrl(itemUrl);
@@ -395,9 +396,11 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                 .onActionClick   = [this, itemUrl, itemTitle, itemUploader,
                                     triggerPlayStream] {
                   Dialogs::showActionMenuDialog({
-                      .options  = {"▶ Play Stream", "➕ Add Stream to Queue",
-                                   "📁 Add Stream to Playlist", "🔗 Copy Link",
-                                   "📥 Download to Database"},
+                      .options  = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play Stream",
+                                   Components::IconProvider::getIcon(Components::IconType::ADD) + " Add Stream to Queue",
+                                   Components::IconProvider::getIcon(Components::IconType::FOLDER) + " Add Stream to Playlist",
+                                   Components::IconProvider::getIcon(Components::IconType::COPY) + " Copy Link",
+                                   Components::IconProvider::getIcon(Components::IconType::DOWNLOAD) + " Download to Database"},
                       .onSelect =
                           [this, itemUrl, itemTitle, itemUploader,
                            triggerPlayStream](size_t idx,
@@ -407,7 +410,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                             } else if (idx == 1) {
                               if (m_ctx.showNotification)
                                 m_ctx.showNotification(
-                                    "⏳ Resolving stream link with yt-dlp...");
+                                    Components::IconProvider::getIcon(Components::IconType::LOADING) + " Resolving stream link with yt-dlp...");
                               std::thread([this, itemUrl, itemTitle,
                                            itemUploader]() {
                                 std::string realUrl =
@@ -469,12 +472,10 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                                       [this,
                                        ok](CAtomicSharedPointer<CTimer>,
                                            void *) {
-                                        if (m_ctx.showNotification)
-                                          m_ctx.showNotification(
-                                              ok ? "📋 Copied direct stream "
-                                                   "link to clipboard!"
-                                                 : "❌ Failed to copy stream "
-                                                   "link");
+                                         if (m_ctx.showNotification)
+                                           m_ctx.showNotification(
+                                               ok ? Components::IconProvider::getIcon(Components::IconType::COPY) + " Copied direct stream link to clipboard!"
+                                                  : Components::IconProvider::getIcon(Components::IconType::CROSS) + " Failed to copy stream link");
                                       },
                                       nullptr);
                               }).detach();

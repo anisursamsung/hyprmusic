@@ -1,4 +1,5 @@
 #include "SettingsView.hpp"
+#include "../Components/IconProvider.hpp"
 #include <hyprtoolkit/element/Button.hpp>
 #include <hyprtoolkit/element/RowLayout.hpp>
 #include <hyprtoolkit/element/ScrollArea.hpp>
@@ -223,7 +224,7 @@ void SettingsView::populateSettingsRows() {
 
   m_settingsContentLayout->clearChildren();
 
-  addSectionHeader("📁 Directories & Files");
+  addSectionHeader(Components::IconProvider::getIcon(Components::IconType::FOLDER) + " Directories & Files");
   addSettingRow("Music Directory", "music_directory", true);
   addSettingRow("Playlist Directory", "playlist_directory", true);
   addSettingRow("Database File", "db_file", false);
@@ -232,15 +233,15 @@ void SettingsView::populateSettingsRows() {
   addSettingRow("State File", "state_file", false);
   addSettingRow("Sticker File", "sticker_file", false);
 
-  addSectionHeader("🌐 Network");
+  addSectionHeader(Components::IconProvider::getIcon(Components::IconType::NETWORK) + " Network");
   addSettingRow("Bind Address", "bind_to_address", false);
   addSettingRow("Port", "port", false);
 
-  addSectionHeader("⚙️ Playback & Daemon Behavior");
+  addSectionHeader(Components::IconProvider::getIcon(Components::IconType::SETTINGS) + " Playback & Daemon Behavior");
   addSwitchSettingRow("Restore Paused on Start", "restore_paused");
   addSwitchSettingRow("Auto Update Database", "auto_update");
 
-  addSectionHeader("🔊 Audio Output");
+  addSectionHeader(Components::IconProvider::getIcon(Components::IconType::VOLUME_HIGH) + " Audio Output");
   addSwitchSettingRow("PipeWire Sound Server (Pulse)", "audio_output_pulse");
   addSwitchSettingRow("Visualizer FIFO (/tmp/mpd.fifo)", "audio_output_fifo");
 }
@@ -322,7 +323,7 @@ void SettingsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper) {
 
   auto saveBtn =
       CButtonBuilder::begin()
-          ->label("💾 Save & Restart MPD")
+          ->label(Components::IconProvider::getIcon(Components::IconType::SAVE) + " Save & Restart MPD")
           ->alignText(HT_FONT_ALIGN_CENTER)
           ->fontFamily(std::string(fontFamily))
           ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))

@@ -1,4 +1,5 @@
 #include "PlaylistsView.hpp"
+#include "../Components/IconProvider.hpp"
 #include "../Components/SongCard.hpp"
 #include "../Components/UIFactory.hpp"
 #include "../Dialogs/ActionMenuDialog.hpp"
@@ -178,7 +179,10 @@ void PlaylistsView::layoutPlaylists() {
               ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
               ->onMainClick([this, plName](CSharedPointer<CButtonElement>) {
                 Dialogs::showActionMenuDialog({
-                    .options = {"▶ Play", "➕ Add to Queue", "✏️ Rename", "🗑️ Delete"},
+                    .options = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play",
+                                Components::IconProvider::getIcon(Components::IconType::ADD) + " Add to Queue",
+                                Components::IconProvider::getIcon(Components::IconType::EDIT) + " Rename",
+                                Components::IconProvider::getIcon(Components::IconType::REMOVE) + " Delete"},
                     .onSelect =
                         [this, plName](size_t idx, const std::string &) {
                           if (idx == 0) { // ▶ Play
@@ -400,9 +404,11 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
               },
               .onActionClick = [this, plName, currentPos, songUriStr] {
                 Dialogs::showActionMenuDialog({
-                    .options  = {"▶ Play", "➕ Add to Queue",
-                                 "📋 Copy to Playlist", "↔ Move to Playlist",
-                                 "🗑️ Remove"},
+                    .options  = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play",
+                                 Components::IconProvider::getIcon(Components::IconType::ADD) + " Add to Queue",
+                                 Components::IconProvider::getIcon(Components::IconType::COPY) + " Copy to Playlist",
+                                 Components::IconProvider::getIcon(Components::IconType::MOVE) + " Move to Playlist",
+                                 Components::IconProvider::getIcon(Components::IconType::REMOVE) + " Remove"},
                     .onSelect =
                         [this, plName, currentPos,
                          songUriStr](size_t idx, const std::string &) {
@@ -592,7 +598,7 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto createPlBtn =
         CButtonBuilder::begin()
-            ->label("➕ Create Playlist")
+            ->label(Components::IconProvider::getIcon(Components::IconType::ADD) + " Create Playlist")
             ->alignText(HT_FONT_ALIGN_CENTER)
             ->fontFamily(std::string(fontFamily))
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -680,7 +686,7 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto plTitle =
         CTextBuilder::begin()
-            ->text(std::string("📁 " + plName))
+            ->text(std::string(Components::IconProvider::getIcon(Components::IconType::FOLDER) + " " + plName))
             ->color([palette] {
               return palette ? palette->m_colors.text
                              : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -696,7 +702,7 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto addTrackBtn =
         CButtonBuilder::begin()
-            ->label("➕ Add Item")
+            ->label(Components::IconProvider::getIcon(Components::IconType::ADD) + " Add Item")
             ->alignText(HT_FONT_ALIGN_CENTER)
             ->fontFamily(std::string(fontFamily))
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -718,7 +724,10 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
             ->onMainClick([this, plName](CSharedPointer<CButtonElement>) {
               Dialogs::showActionMenuDialog({
-                  .options = {"▶ Play", "➕ Add to Queue", "✏️ Rename", "🗑️ Delete"},
+                  .options = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play",
+                              Components::IconProvider::getIcon(Components::IconType::ADD) + " Add to Queue",
+                              Components::IconProvider::getIcon(Components::IconType::EDIT) + " Rename",
+                              Components::IconProvider::getIcon(Components::IconType::REMOVE) + " Delete"},
                   .onSelect =
                       [this, plName](size_t idx, const std::string &) {
                         if (idx == 0) { // ▶ Play

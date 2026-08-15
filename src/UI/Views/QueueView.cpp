@@ -1,4 +1,5 @@
 #include "QueueView.hpp"
+#include "../Components/IconProvider.hpp"
 #include "../Components/SongCard.hpp"
 #include "../Dialogs/ActionMenuDialog.hpp"
 #include "../../Utils/ArtworkUtils.hpp"
@@ -110,7 +111,7 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto addItemBtn =
         CButtonBuilder::begin()
-            ->label("➕ Add Item")
+            ->label(Components::IconProvider::getIcon(Components::IconType::ADD) + " Add Item")
             ->alignText(HT_FONT_ALIGN_CENTER)
             ->fontFamily(std::string(fontFamily))
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -132,8 +133,9 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
             ->onMainClick([this](CSharedPointer<CButtonElement>) {
               Dialogs::showActionMenuDialog(
-                  {.options = {"▶ Play All", "🔀 Shuffle Queue",
-                               "🗑️ Clear Queue"},
+                  {.options = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play All",
+                               Components::IconProvider::getIcon(Components::IconType::SHUFFLE) + " Shuffle Queue",
+                               Components::IconProvider::getIcon(Components::IconType::REMOVE) + " Clear Queue"},
                    .onSelect =
                        [this](size_t idx, const std::string &) {
                          if (idx == 0) { // ▶ Play All
@@ -203,7 +205,7 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
   auto loadingText =
       CTextBuilder::begin()
-          ->text(std::string("⏳ Loading Queue..."))
+          ->text(Components::IconProvider::getIcon(Components::IconType::LOADING) + " Loading Queue...")
           ->color([palette] {
             return palette ? palette->m_colors.text
                            : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -295,7 +297,7 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
       if (uriStr.find("googlevideo.com") != std::string::npos ||
           uriStr.find("http://") == 0 || uriStr.find("https://") == 0) {
         displayTitle = uriStr.length() > 50
-                           ? "🌐 Stream (" + uriStr.substr(0, 35) + "...)"
+                           ? Components::IconProvider::getIcon(Components::IconType::STREAM) + " Stream (" + uriStr.substr(0, 35) + "...)"
                            : uriStr;
       } else {
         displayTitle = uriStr;
@@ -355,8 +357,9 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
             },
             .onActionClick = [this, songId, songUriStr, displayTitle = item.title] {
               Dialogs::showActionMenuDialog(
-                  {.options  = {"▶ Play", "🗑️ Remove from Queue",
-                                "📁 Add to Playlist"},
+                  {.options  = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play",
+                                Components::IconProvider::getIcon(Components::IconType::REMOVE) + " Remove from Queue",
+                                Components::IconProvider::getIcon(Components::IconType::FOLDER) + " Add to Playlist"},
                    .onSelect =
                        [this, songId, songUriStr](size_t idx,
                                                   const std::string &) {
