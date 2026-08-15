@@ -325,6 +325,8 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
   }
   mpd_response_finish(conn);
 
+  std::vector<DbSongItem> uncachedSongs;
+
   m_dbSongCards.clear();
   int trackNum = 1;
   for (const auto &item : dbSongs) {
@@ -334,6 +336,10 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
 
     std::string cachedArt = Utils::getCachedTrackArtwork(songUri);
     std::string artPath = cachedArt.empty() ? Utils::getDefaultArtworkPath() : cachedArt;
+
+    if (cachedArt.empty() && !songUri.empty()) {
+      uncachedSongs.push_back(item);
+    }
 
     // ── Build card via reusable SongCard component ────────────────────────
     auto card = std::make_shared<UI::Components::SongCard>(
@@ -377,30 +383,28 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
     m_dbContentLayout->addChild(card->build());
   }
 
-  // Non-blocking progressive chunked artwork resolution (5 tracks per 30ms batch)
-  if (m_ctx.backend && m_ctx.runMpdCommand && !dbSongs.empty()) {
+  // Non-blocking progressive micro-batched artwork resolution (2 tracks per 15ms batch for uncached items only)
+  if (m_ctx.backend && m_ctx.runMpdCommand && !uncachedSongs.empty()) {
     auto stepState = std::make_shared<size_t>(0);
-    auto processNextChunk = [this, dbSongs, stepState](auto self) -> void {
-      if (*stepState >= dbSongs.size())
+    auto processNextChunk = [this, uncachedSongs, stepState](auto self) -> void {
+      if (*stepState >= uncachedSongs.size())
         return;
-      m_ctx.runMpdCommand([this, dbSongs, stepState, self](struct mpd_connection *conn) {
-        size_t limit = std::min(*stepState + 5, dbSongs.size());
+      m_ctx.runMpdCommand([this, uncachedSongs, stepState, self](struct mpd_connection *conn) {
+        size_t limit = std::min(*stepState + 2, uncachedSongs.size());
         for (size_t i = *stepState; i < limit; ++i) {
-          const auto &item = dbSongs[i];
-          if (Utils::getCachedTrackArtwork(item.songUri).empty()) {
-            std::string resolved = Utils::resolveTrackArtwork(conn, item.songUri);
-            if (!resolved.empty()) {
-              auto it = m_dbSongCards.find(item.songUri);
-              if (it != m_dbSongCards.end() && it->second) {
-                it->second->setImagePath(resolved);
-              }
+          const auto &item = uncachedSongs[i];
+          std::string resolved = Utils::resolveTrackArtwork(conn, item.songUri);
+          if (!resolved.empty()) {
+            auto it = m_dbSongCards.find(item.songUri);
+            if (it != m_dbSongCards.end() && it->second) {
+              it->second->setImagePath(resolved);
             }
           }
         }
         *stepState = limit;
-        if (*stepState < dbSongs.size()) {
+        if (*stepState < uncachedSongs.size()) {
           m_ctx.backend->addTimer(
-              std::chrono::milliseconds(30),
+              std::chrono::milliseconds(15),
               [self](CAtomicSharedPointer<CTimer>, void *) { self(self); },
               nullptr);
         }
@@ -408,7 +412,7 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
     };
 
     m_ctx.backend->addTimer(
-        std::chrono::milliseconds(10),
+        std::chrono::milliseconds(5),
         [processNextChunk](CAtomicSharedPointer<CTimer>, void *) { processNextChunk(processNextChunk); },
         nullptr);
   }

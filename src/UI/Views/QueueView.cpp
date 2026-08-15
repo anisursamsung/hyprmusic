@@ -322,6 +322,8 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
   }
   mpd_response_finish(conn);
 
+  std::vector<QueueSongItem> uncachedSongs;
+
   for (const auto &item : queueSongs) {
     foundAny = true;
     int songId = item.songId;
@@ -331,6 +333,10 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
 
     std::string cachedArt = Utils::getCachedTrackArtwork(songUriStr);
     std::string artPath = cachedArt.empty() ? Utils::getDefaultArtworkPath() : cachedArt;
+
+    if (cachedArt.empty() && !songUriStr.empty()) {
+      uncachedSongs.push_back(item);
+    }
 
     auto card = std::make_shared<UI::Components::SongCard>(
         UI::Components::SongCardConfig{
@@ -377,30 +383,28 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
     m_queueContentLayout->addChild(card->build());
   }
 
-  // Non-blocking progressive chunked artwork resolution (5 tracks per 30ms batch)
-  if (m_ctx.backend && m_ctx.runMpdCommand && !queueSongs.empty()) {
+  // Non-blocking progressive micro-batched artwork resolution (2 tracks per 15ms batch for uncached items only)
+  if (m_ctx.backend && m_ctx.runMpdCommand && !uncachedSongs.empty()) {
     auto stepState = std::make_shared<size_t>(0);
-    auto processNextChunk = [this, queueSongs, stepState](auto self) -> void {
-      if (*stepState >= queueSongs.size())
+    auto processNextChunk = [this, uncachedSongs, stepState](auto self) -> void {
+      if (*stepState >= uncachedSongs.size())
         return;
-      m_ctx.runMpdCommand([this, queueSongs, stepState, self](struct mpd_connection *conn) {
-        size_t limit = std::min(*stepState + 5, queueSongs.size());
+      m_ctx.runMpdCommand([this, uncachedSongs, stepState, self](struct mpd_connection *conn) {
+        size_t limit = std::min(*stepState + 2, uncachedSongs.size());
         for (size_t i = *stepState; i < limit; ++i) {
-          const auto &item = queueSongs[i];
-          if (Utils::getCachedTrackArtwork(item.uri).empty()) {
-            std::string resolved = Utils::resolveTrackArtwork(conn, item.uri);
-            if (!resolved.empty()) {
-              auto it = m_queueSongCards.find(item.songId);
-              if (it != m_queueSongCards.end() && it->second) {
-                it->second->setImagePath(resolved);
-              }
+          const auto &item = uncachedSongs[i];
+          std::string resolved = Utils::resolveTrackArtwork(conn, item.uri);
+          if (!resolved.empty()) {
+            auto it = m_queueSongCards.find(item.songId);
+            if (it != m_queueSongCards.end() && it->second) {
+              it->second->setImagePath(resolved);
             }
           }
         }
         *stepState = limit;
-        if (*stepState < queueSongs.size()) {
+        if (*stepState < uncachedSongs.size()) {
           m_ctx.backend->addTimer(
-              std::chrono::milliseconds(30),
+              std::chrono::milliseconds(15),
               [self](CAtomicSharedPointer<CTimer>, void *) { self(self); },
               nullptr);
         }
@@ -408,7 +412,7 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
     };
 
     m_ctx.backend->addTimer(
-        std::chrono::milliseconds(10),
+        std::chrono::milliseconds(5),
         [processNextChunk](CAtomicSharedPointer<CTimer>, void *) { processNextChunk(processNextChunk); },
         nullptr);
   }
