@@ -340,20 +340,11 @@ void PlayerView::updateTrackInfo(const std::string &trackText, bool hasActiveTra
         artPath = Utils::getDefaultArtworkPath();
       }
       m_currentArtPath = artPath;
-      if (m_bgImage && m_tabContentWrapper) {
-        m_tabContentWrapper->removeChild(m_bgImage);
-        m_bgImage = CImageBuilder::begin()
-                        ->path(std::string(artPath))
-                        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                            CDynamicSize::HT_SIZE_PERCENT,
-                                            {1.0F, 1.0F}))
-                        ->rounding(0)
-                        ->fitMode(IMAGE_FIT_MODE_COVER)
-                        ->sync(true)
-                        ->commence();
-        m_bgImage->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-        m_bgImage->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-        m_tabContentWrapper->addChild(m_bgImage);
+      if (m_bgImage) {
+        m_bgImage->rebuild()
+            ->path(std::string(artPath))
+            ->sync(true)
+            ->commence();
       }
     }
 
