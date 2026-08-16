@@ -1,4 +1,5 @@
 #include "PlayerView.hpp"
+#include "../Components/IconProvider.hpp"
 #include "../../Utils/ArtworkUtils.hpp"
 #include <cstdio>
 #include <cstring>
@@ -62,16 +63,60 @@ void PlayerView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd
     m_tabContentWrapper->addChild(m_bgImage);
   }
 
-  // 2. Dark Vignette Overlay
-  auto vignette = CRectangleBuilder::begin()
-                      ->color([] { return CHyprColor(0.0F, 0.0F, 0.0F, 0.55F); })
-                      ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                          CDynamicSize::HT_SIZE_PERCENT,
-                                          {1.0F, 1.0F}))
-                      ->commence();
-  vignette->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-  vignette->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-  m_tabContentWrapper->addChild(vignette);
+  // 2. More Details Toggle Box (40px square rectangle with rounding 20 & centered icon)
+  m_infoBtnContainer =
+      CRectangleBuilder::begin()
+          ->color([palette] {
+            return palette ? palette->m_colors.background
+                           : CHyprColor(0.10F, 0.10F, 0.14F, 0.85F);
+          })
+          ->rounding(20)
+          ->borderThickness(1)
+          ->borderColor([palette] {
+            return palette ? palette->m_colors.text.mix(palette->m_colors.background, 0.85)
+                           : CHyprColor(1.0F, 1.0F, 1.0F, 0.15F);
+          })
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                              CDynamicSize::HT_SIZE_ABSOLUTE,
+                              {40.0F, 40.0F}))
+          ->commence();
+
+  m_infoBtnContainer->setReceivesMouse(true);
+  m_infoBtnContainer->setMouseButton([this](Input::eMouseButton button, bool down) {
+    if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+      setDetailsCardVisible(!m_detailsVisible);
+    }
+  });
+
+  std::string btnIcon = Components::IconProvider::getIcon(
+      m_detailsVisible ? Components::IconType::CHEVRON_UP : Components::IconType::CHEVRON_DOWN);
+
+  m_infoIconText =
+      CTextBuilder::begin()
+          ->text(std::string(btnIcon))
+          ->color([palette] {
+            return palette ? palette->m_colors.text
+                           : CHyprColor(1.0F, 1.0F, 1.0F, 1.0F);
+          })
+          ->fontFamily(std::string(fontFamily))
+          ->fontSize(CFontSize(CFontSize::HT_FONT_H2))
+          ->align(HT_FONT_ALIGN_CENTER)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                              CDynamicSize::HT_SIZE_ABSOLUTE,
+                              {24.0F, 24.0F}))
+          ->commence();
+
+  m_infoIconText->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  m_infoIconText->setPositionFlag(IElement::HT_POSITION_FLAG_HCENTER, true);
+  m_infoIconText->setPositionFlag(IElement::HT_POSITION_FLAG_VCENTER, true);
+  m_infoIconText->setAbsolutePosition(Hyprutils::Math::Vector2D(0.0, 0.0));
+  m_infoBtnContainer->addChild(m_infoIconText);
+
+  m_infoBtnContainer->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  m_infoBtnContainer->setPositionFlag(IElement::HT_POSITION_FLAG_HCENTER, true);
+  m_infoBtnContainer->setPositionFlag(IElement::HT_POSITION_FLAG_TOP, true);
+  m_infoBtnContainer->setAbsolutePosition(Hyprutils::Math::Vector2D(0.0, 16.0));
+  m_tabContentWrapper->addChild(m_infoBtnContainer);
 
   // 3. Floating Glassmorphism Song Details Card Box
   m_detailsCard =
@@ -200,8 +245,24 @@ void PlayerView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd
   cardCol->addChild(m_timeText);
 
   m_detailsCard->addChild(cardCol);
-  m_tabContentWrapper->addChild(m_detailsCard);
 
+  setDetailsCardVisible(m_detailsVisible);
+}
+
+void PlayerView::setDetailsCardVisible(bool visible) {
+  m_detailsVisible = visible;
+  if (m_infoIconText) {
+    std::string iconStr = Components::IconProvider::getIcon(
+        m_detailsVisible ? Components::IconType::CHEVRON_UP : Components::IconType::CHEVRON_DOWN);
+    m_infoIconText->rebuild()->text(std::string(iconStr))->commence();
+  }
+  if (!m_tabContentWrapper || !m_detailsCard)
+    return;
+
+  m_tabContentWrapper->removeChild(m_detailsCard);
+  if (m_detailsVisible) {
+    m_tabContentWrapper->addChild(m_detailsCard);
+  }
   m_tabContentWrapper->forceReposition();
 }
 

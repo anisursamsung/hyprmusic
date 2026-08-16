@@ -5,6 +5,7 @@
 #include <hyprtoolkit/element/Rectangle.hpp>
 #include <hyprtoolkit/element/Text.hpp>
 #include <hyprtoolkit/element/Image.hpp>
+#include <hyprtoolkit/element/Button.hpp>
 #include <hyprtoolkit/palette/Palette.hpp>
 #include <hyprtoolkit/window/Window.hpp>
 #include <mpd/client.h>
@@ -29,11 +30,15 @@ public:
   explicit PlayerView(const PlayerViewContext &ctx);
   void rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd_connection *conn);
   void updateTrackInfo(const std::string &trackText, bool hasActiveTrack, unsigned elapsed, unsigned total, const std::string &songUri);
+  void setDetailsCardVisible(bool visible);
+  bool isDetailsCardVisible() const { return m_detailsVisible; }
   
 private:
   PlayerViewContext m_ctx;
   CSharedPointer<CRectangleElement> m_tabContentWrapper;
   CSharedPointer<CImageElement> m_bgImage;
+  CSharedPointer<CRectangleElement> m_infoBtnContainer;
+  CSharedPointer<CTextElement> m_infoIconText;
   CSharedPointer<CRectangleElement> m_detailsCard;
   CSharedPointer<CTextElement> m_titleText;
   CSharedPointer<CTextElement> m_artistAlbumText;
@@ -43,6 +48,7 @@ private:
   CSharedPointer<CTextElement> m_timeText;
   std::string m_lastSongUri;
   std::string m_currentArtPath;
+  bool m_detailsVisible = false;
 };
 
 } // namespace UI::Views

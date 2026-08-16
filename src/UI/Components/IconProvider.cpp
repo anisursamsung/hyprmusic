@@ -83,6 +83,11 @@ std::string IconProvider::getIcon(IconType type) {
     return "⚲";
   case IconType::SAVE:
     return "⭳";
+  case IconType::CHEVRON_DOWN:
+  case IconType::DETAILS:
+    return "⌄";
+  case IconType::CHEVRON_UP:
+    return "⌃";
   }
 
   // Fallback icon if type is unrecognized internally

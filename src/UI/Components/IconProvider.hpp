@@ -46,7 +46,10 @@ enum class IconType {
   REFRESH,
   UPDATE_DB,
   RESCAN_DB,
-  SAVE
+  SAVE,
+  CHEVRON_DOWN,
+  CHEVRON_UP,
+  DETAILS
 };
 
 class IconProvider {
