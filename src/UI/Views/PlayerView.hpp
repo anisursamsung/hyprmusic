@@ -34,7 +34,15 @@ private:
   PlayerViewContext m_ctx;
   CSharedPointer<CRectangleElement> m_tabContentWrapper;
   CSharedPointer<CImageElement> m_bgImage;
+  CSharedPointer<CRectangleElement> m_detailsCard;
+  CSharedPointer<CTextElement> m_titleText;
+  CSharedPointer<CTextElement> m_artistAlbumText;
+  CSharedPointer<CTextElement> m_yearGenreText;
+  CSharedPointer<CTextElement> m_qualityText;
+  CSharedPointer<CTextElement> m_trackDiscText;
+  CSharedPointer<CTextElement> m_timeText;
   std::string m_lastSongUri;
+  std::string m_currentArtPath;
 };
 
 } // namespace UI::Views

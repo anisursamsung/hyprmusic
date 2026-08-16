@@ -1,4 +1,25 @@
+/*
+ * CardView Layout Nesting Hierarchy:
+ *
+ * m_root (CRectangleElement)
+ *  └── cardColumn (CColumnLayoutElement)
+ *       ├── artContainer (CRectangleElement)
+ *       │    └── m_albumArt (CImageElement)
+ *       │
+ *       └── textContainer (CRectangleElement)
+ *            └── textColumn (CColumnLayoutElement)
+ *                 ├── m_titleText (CTextElement)
+ *                 └── m_subtitleText (CTextElement)
+ *
+ * Flow:
+ * - Root Container (m_root) contains cardColumn.
+ * - cardColumn stacks artContainer on top and textContainer on the bottom.
+ * - artContainer wraps m_albumArt.
+ * - textContainer wraps textColumn (which holds m_titleText and m_subtitleText).
+ */
+
 #include "CardView.hpp"
+#include "../../Utils/ArtworkUtils.hpp"
 #include <hyprtoolkit/element/ColumnLayout.hpp>
 #include <hyprtoolkit/element/Image.hpp>
 #include <hyprtoolkit/element/Rectangle.hpp>
@@ -35,30 +56,31 @@ CSharedPointer<CRectangleElement> CardView::build() {
         });
     }
 
-    auto leftColumn = CColumnLayoutBuilder::begin()
+    auto cardColumn = CColumnLayoutBuilder::begin()
         ->gap(0)
         ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
         ->commence();
 
     // 1. Artwork Area (ABSOLUTE height 1.0F with setGrow(true) to fill remaining vertical space)
-    auto artArea = CRectangleBuilder::begin()
+    m_artContainer = CRectangleBuilder::begin()
         ->color([] { return CHyprColor(0, 0, 0, 0); })
         ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 1.0F}))
         ->commence();
-    artArea->setGrow(true);
+    m_artContainer->setGrow(true);
 
-    if (!m_cfg.imagePath.empty()) {
-        m_albumArt = CImageBuilder::begin()
-            ->path(std::string(m_cfg.imagePath))
-            ->fitMode(IMAGE_FIT_MODE_COVER)
-            ->rounding(8)
-            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.90F, 0.90F}))
-            ->commence();
-        m_albumArt->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-        m_albumArt->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-        artArea->addChild(m_albumArt);
-    }
-    leftColumn->addChild(artArea);
+    std::string artPath = m_cfg.imagePath.empty() ? Utils::getDefaultArtworkPath() : m_cfg.imagePath;
+
+    m_albumArt = CImageBuilder::begin()
+        ->path(std::string(artPath))
+        ->fitMode(IMAGE_FIT_MODE_COVER)
+        ->rounding(8)
+        ->sync(true)
+        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.90F, 0.90F}))
+        ->commence();
+    m_albumArt->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+    m_albumArt->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+    m_artContainer->addChild(m_albumArt);
+    cardColumn->addChild(m_artContainer);
 
     // 2. Song Title & Subtitle Section Wrapper
     std::string titleStr = m_cfg.title.empty() ? (m_cfg.text.empty() ? "No currently playing songs" : m_cfg.text) : m_cfg.title;
@@ -94,34 +116,47 @@ CSharedPointer<CRectangleElement> CardView::build() {
                                 CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
             ->commence();
 
-    auto textCol =
+    auto textColumn =
         CColumnLayoutBuilder::begin()
             ->gap(2)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                 CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
             ->commence();
-    textCol->setMargin(4);
-    textCol->addChild(m_titleText);
-    textCol->addChild(m_subtitleText);
+    textColumn->setMargin(4);
+    textColumn->addChild(m_titleText);
+    textColumn->addChild(m_subtitleText);
 
-    auto titleContainer = CRectangleBuilder::begin()
+    auto textContainer = CRectangleBuilder::begin()
         ->color([] { return CHyprColor(0, 0, 0, 0); })
-        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_AUTO, {1.0F, 0.35F}))
         ->commence();
 
-    titleContainer->addChild(textCol);
-    leftColumn->addChild(titleContainer);
+    textContainer->addChild(textColumn);
+    cardColumn->addChild(textContainer);
 
-    m_root->addChild(leftColumn);
+    m_root->addChild(cardColumn);
+    m_root->forceReposition();
     return m_root;
 }
 
 void CardView::updateImage(const std::string &imagePath) {
     m_cfg.imagePath = imagePath;
-    if (m_albumArt) {
-        m_albumArt->rebuild()
-            ->path(std::string(imagePath))
+    if (m_artContainer) {
+        m_artContainer->clearChildren();
+        std::string artPath = imagePath.empty() ? Utils::getDefaultArtworkPath() : imagePath;
+        m_albumArt = CImageBuilder::begin()
+            ->path(std::string(artPath))
+            ->fitMode(IMAGE_FIT_MODE_COVER)
+            ->rounding(8)
+            ->sync(true)
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {0.90F, 0.90F}))
             ->commence();
+        m_albumArt->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+        m_albumArt->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+        m_artContainer->addChild(m_albumArt);
+        if (m_root) {
+            m_root->forceReposition();
+        }
     }
 }
 

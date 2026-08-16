@@ -4,10 +4,10 @@
 #include "../UI/Dialogs/PlaylistSelectionDialog.hpp"
 #include "../UI/Dialogs/RenamePlaylistDialog.hpp"
 #include "../Utils/StreamUtils.hpp"
-#include <xkbcommon/xkbcommon-keysyms.h>
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 namespace Core {
 
@@ -23,10 +23,10 @@ void HyprMusicApp::run() {
   createWindow();
   createUI();
   setupEventHandlers();
-  updateStatus();
-  setupTimer();
   std::cout << "Starting HyprMusic..." << std::endl;
   m_window->open();
+  updateStatus();
+  setupTimer();
   m_backend->enterLoop();
 }
 
@@ -97,7 +97,6 @@ void HyprMusicApp::createUI() {
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
           ->commence();
-	 
 
   auto contentLayout =
       CColumnLayoutBuilder::begin()
@@ -122,22 +121,25 @@ void HyprMusicApp::createUI() {
       .backend = m_backend,
       .palette = palette,
       .fontFamily = fontFamily,
-      .runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
-        Services::MPDManager::runMpdCommand(cmd);
-      },
-      .togglePlayPause = [this] {
-        Services::MPDManager::togglePlayPause([this] { updateStatus(); });
-      },
-      .prevTrack = [this] {
-        Services::MPDManager::prevTrack([this] { updateStatus(); });
-      },
-      .nextTrack = [this] {
-        Services::MPDManager::nextTrack([this] { updateStatus(); });
-      },
-      .onNavigationClick = [this](eViewMode mode) {
-        switchViewMode(mode);
-      }};
+      .runMpdCommand =
+          [](const std::function<void(struct mpd_connection *)> &cmd) {
+            Services::MPDManager::runMpdCommand(cmd);
+          },
+      .togglePlayPause =
+          [this] {
+            Services::MPDManager::togglePlayPause([this] { updateStatus(); });
+          },
+      .prevTrack =
+          [this] {
+            Services::MPDManager::prevTrack([this] { updateStatus(); });
+          },
+      .nextTrack =
+          [this] {
+            Services::MPDManager::nextTrack([this] { updateStatus(); });
+          },
+      .onNavigationClick = [this](eViewMode mode) { switchViewMode(mode); }};
   m_playbackBar = std::make_unique<UI::Components::PlaybackBar>(pCtx);
+  m_playbackBar->setActiveViewMode(m_viewMode);
   m_playbackBar->build(mainColumn);
 
   // Notification Manager Init
@@ -150,18 +152,22 @@ void HyprMusicApp::createUI() {
       .palette = palette,
       .fontFamily = fontFamily,
       .ytDlpService = &m_ytDlpService,
-      .runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
-        Services::MPDManager::runMpdCommand(cmd);
-      },
-      .playMpdSongId = [this](int songId) {
-        Services::MPDManager::playSongId(songId, [this] { updateStatus(); });
-      },
-      .removeSongFromQueue = [this](int songId) {
-        Services::MPDManager::removeSongFromQueue(songId, [this] { updateStatus(); });
-      },
-      .showPlaylistSelectionDialog = [this](const std::string &uri) {
-        showPlaylistSelectionDialog(uri);
-      },
+      .runMpdCommand =
+          [](const std::function<void(struct mpd_connection *)> &cmd) {
+            Services::MPDManager::runMpdCommand(cmd);
+          },
+      .playMpdSongId =
+          [this](int songId) {
+            Services::MPDManager::playSongId(songId,
+                                             [this] { updateStatus(); });
+          },
+      .removeSongFromQueue =
+          [this](int songId) {
+            Services::MPDManager::removeSongFromQueue(
+                songId, [this] { updateStatus(); });
+          },
+      .showPlaylistSelectionDialog =
+          [this](const std::string &uri) { showPlaylistSelectionDialog(uri); },
       .showQueueAddItemDialog = [this] { showQueueAddItemDialog(); }};
   m_queueView = std::make_unique<UI::Views::QueueView>(qCtx);
 
@@ -170,23 +176,26 @@ void HyprMusicApp::createUI() {
       .backend = m_backend,
       .palette = palette,
       .fontFamily = fontFamily,
-      .runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
-        Services::MPDManager::runMpdCommand(cmd);
-      },
-      .playSongFromUri = [this](const std::string &uri) {
-        Services::MPDManager::playSongFromUri(
-            uri, [this](const std::string &msg) { showNotification(msg); },
-            [this] { updateStatus(); });
-      },
-      .addSongToQueue = [this](const std::string &uri) {
-        Services::MPDManager::addSongToQueue(
-            uri, [this](const std::string &msg) { showNotification(msg); },
-            [this] { updateStatus(); });
-      },
-      .showPlaylistSelectionDialog = [this](const std::string &uri) {
-        showPlaylistSelectionDialog(uri);
-      },
-      .showNotification = [this](const std::string &msg) { showNotification(msg); }};
+      .runMpdCommand =
+          [](const std::function<void(struct mpd_connection *)> &cmd) {
+            Services::MPDManager::runMpdCommand(cmd);
+          },
+      .playSongFromUri =
+          [this](const std::string &uri) {
+            Services::MPDManager::playSongFromUri(
+                uri, [this](const std::string &msg) { showNotification(msg); },
+                [this] { updateStatus(); });
+          },
+      .addSongToQueue =
+          [this](const std::string &uri) {
+            Services::MPDManager::addSongToQueue(
+                uri, [this](const std::string &msg) { showNotification(msg); },
+                [this] { updateStatus(); });
+          },
+      .showPlaylistSelectionDialog =
+          [this](const std::string &uri) { showPlaylistSelectionDialog(uri); },
+      .showNotification =
+          [this](const std::string &msg) { showNotification(msg); }};
   m_dbView = std::make_unique<UI::Views::DatabaseView>(dbCtx);
 
   UI::Views::PlaylistsViewContext plCtx{
@@ -195,26 +204,35 @@ void HyprMusicApp::createUI() {
       .palette = palette,
       .fontFamily = fontFamily,
       .ytDlpService = &m_ytDlpService,
-      .runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
-        Services::MPDManager::runMpdCommand(cmd);
-      },
-      .playSongFromUri = [this](const std::string &uri) {
-        Services::MPDManager::playSongFromUri(
-            uri, [this](const std::string &msg) { showNotification(msg); },
-            [this] { updateStatus(); });
-      },
-      .addSongToQueue = [this](const std::string &uri) {
-        Services::MPDManager::addSongToQueue(
-            uri, [this](const std::string &msg) { showNotification(msg); },
-            [this] { updateStatus(); });
-      },
-      .showRenameDialog = [this](const std::string &oldName) { showRenameDialog(oldName); },
+      .runMpdCommand =
+          [](const std::function<void(struct mpd_connection *)> &cmd) {
+            Services::MPDManager::runMpdCommand(cmd);
+          },
+      .playSongFromUri =
+          [this](const std::string &uri) {
+            Services::MPDManager::playSongFromUri(
+                uri, [this](const std::string &msg) { showNotification(msg); },
+                [this] { updateStatus(); });
+          },
+      .addSongToQueue =
+          [this](const std::string &uri) {
+            Services::MPDManager::addSongToQueue(
+                uri, [this](const std::string &msg) { showNotification(msg); },
+                [this] { updateStatus(); });
+          },
+      .showRenameDialog =
+          [this](const std::string &oldName) { showRenameDialog(oldName); },
       .showCreatePlaylistDialog = [this] { showCreatePlaylistDialog(); },
-      .showPlaylistAddItemDialog = [this](const std::string &plName) { showPlaylistAddItemDialog(plName); },
-      .showPlaylistSelectionDialog = [this](const std::string &uri, int pos) {
-        showPlaylistSelectionDialog(uri, pos);
-      },
-      .showNotification = [this](const std::string &msg) { showNotification(msg); },
+      .showPlaylistAddItemDialog =
+          [this](const std::string &plName) {
+            showPlaylistAddItemDialog(plName);
+          },
+      .showPlaylistSelectionDialog =
+          [this](const std::string &uri, int pos) {
+            showPlaylistSelectionDialog(uri, pos);
+          },
+      .showNotification =
+          [this](const std::string &msg) { showNotification(msg); },
       .updateStatus = [this] { updateStatus(); }};
   m_playlistsView = std::make_unique<UI::Views::PlaylistsView>(plCtx);
 
@@ -224,23 +242,26 @@ void HyprMusicApp::createUI() {
       .palette = palette,
       .fontFamily = fontFamily,
       .ytDlpService = &m_ytDlpService,
-      .runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
-        Services::MPDManager::runMpdCommand(cmd);
-      },
-      .playSongFromUri = [this](const std::string &uri) {
-        Services::MPDManager::playSongFromUri(
-            uri, [this](const std::string &msg) { showNotification(msg); },
-            [this] { updateStatus(); });
-      },
-      .addSongToQueue = [this](const std::string &uri) {
-        Services::MPDManager::addSongToQueue(
-            uri, [this](const std::string &msg) { showNotification(msg); },
-            [this] { updateStatus(); });
-      },
-      .showPlaylistSelectionDialog = [this](const std::string &uri) {
-        showPlaylistSelectionDialog(uri);
-      },
-      .showNotification = [this](const std::string &msg) { showNotification(msg); },
+      .runMpdCommand =
+          [](const std::function<void(struct mpd_connection *)> &cmd) {
+            Services::MPDManager::runMpdCommand(cmd);
+          },
+      .playSongFromUri =
+          [this](const std::string &uri) {
+            Services::MPDManager::playSongFromUri(
+                uri, [this](const std::string &msg) { showNotification(msg); },
+                [this] { updateStatus(); });
+          },
+      .addSongToQueue =
+          [this](const std::string &uri) {
+            Services::MPDManager::addSongToQueue(
+                uri, [this](const std::string &msg) { showNotification(msg); },
+                [this] { updateStatus(); });
+          },
+      .showPlaylistSelectionDialog =
+          [this](const std::string &uri) { showPlaylistSelectionDialog(uri); },
+      .showNotification =
+          [this](const std::string &msg) { showNotification(msg); },
       .updateStatus = [this] { updateStatus(); },
       .getMusicDirectory = [this] { return getMusicDirectory(); }};
   m_ytDlpView = std::make_unique<UI::Views::YtDlpView>(ytCtx);
@@ -251,14 +272,16 @@ void HyprMusicApp::createUI() {
       .palette = palette,
       .fontFamily = fontFamily,
       .mpdSettings = m_mpdSettings,
-      .saveSettings = [this](const std::unordered_map<std::string, std::string> &newSet) {
-        for (const auto &[k, v] : newSet) {
-          m_mpdSettings[k] = v;
-        }
-        Services::SettingsManager::saveMpdConfig(
-            Services::SettingsManager::getMpdConfPath(), m_mpdSettings);
-      },
-      .showNotification = [this](const std::string &msg) { showNotification(msg); }};
+      .saveSettings =
+          [this](const std::unordered_map<std::string, std::string> &newSet) {
+            for (const auto &[k, v] : newSet) {
+              m_mpdSettings[k] = v;
+            }
+            Services::SettingsManager::saveMpdConfig(
+                Services::SettingsManager::getMpdConfPath(), m_mpdSettings);
+          },
+      .showNotification =
+          [this](const std::string &msg) { showNotification(msg); }};
   m_settingsView = std::make_unique<UI::Views::SettingsView>(sCtx);
 
   UI::Views::PlayerViewContext playerCtx{
@@ -266,14 +289,14 @@ void HyprMusicApp::createUI() {
       .backend = m_backend,
       .palette = palette,
       .fontFamily = fontFamily,
-      .runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
-        Services::MPDManager::runMpdCommand(cmd);
-      }};
+      .runMpdCommand =
+          [](const std::function<void(struct mpd_connection *)> &cmd) {
+            Services::MPDManager::runMpdCommand(cmd);
+          }};
   m_playerView = std::make_unique<UI::Views::PlayerView>(playerCtx);
 
-  UI::Views::VisualizerViewContext visCtx{
-      .backend = m_backend,
-      .palette = palette};
+  UI::Views::VisualizerViewContext visCtx{.backend = m_backend,
+                                          .palette = palette};
   m_visualizerView = std::make_unique<UI::Views::VisualizerView>(visCtx);
 }
 
@@ -292,6 +315,9 @@ void HyprMusicApp::switchViewMode(eViewMode mode) {
     m_visualizerView->destroyVisualizer();
   }
   m_viewMode = mode;
+  if (m_playbackBar) {
+    m_playbackBar->setActiveViewMode(mode);
+  }
   m_playlistLoaded = false;
   m_playlistsView->setSelectedPlaylist("");
   m_playlistsView->setDetailedView(false);
@@ -313,23 +339,26 @@ void HyprMusicApp::showRenameDialog(const std::string &oldName) {
       .backend = m_backend,
       .palette = m_palette,
       .fontFamily = m_fontFamily,
-      .runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
-        Services::MPDManager::runMpdCommand(cmd);
-      },
-      .onRenamed = [this](const std::string &oldPl, const std::string &newPl) {
-        if (m_playlistsView->getSelectedPlaylist() == oldPl) {
-          m_playlistsView->setSelectedPlaylist(newPl);
-        }
-        m_backend->addTimer(
-            std::chrono::milliseconds(100),
-            [this](CAtomicSharedPointer<CTimer>, void *) {
-              Services::MPDManager::runMpdCommand([this](struct mpd_connection *conn) {
-                m_playlistsView->rebuildLeftItems(conn);
-                m_playlistsView->rebuildRightItems(conn);
-              });
-            },
-            nullptr);
-      }};
+      .runMpdCommand =
+          [](const std::function<void(struct mpd_connection *)> &cmd) {
+            Services::MPDManager::runMpdCommand(cmd);
+          },
+      .onRenamed =
+          [this](const std::string &oldPl, const std::string &newPl) {
+            if (m_playlistsView->getSelectedPlaylist() == oldPl) {
+              m_playlistsView->setSelectedPlaylist(newPl);
+            }
+            m_backend->addTimer(
+                std::chrono::milliseconds(100),
+                [this](CAtomicSharedPointer<CTimer>, void *) {
+                  Services::MPDManager::runMpdCommand(
+                      [this](struct mpd_connection *conn) {
+                        m_playlistsView->rebuildLeftItems(conn);
+                        m_playlistsView->rebuildRightItems(conn);
+                      });
+                },
+                nullptr);
+          }};
   UI::Dialogs::showRenamePlaylistDialog(ctx);
 }
 
@@ -339,27 +368,30 @@ void HyprMusicApp::showCreatePlaylistDialog() {
       .backend = m_backend,
       .palette = m_palette,
       .fontFamily = m_fontFamily,
-      .runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
-        Services::MPDManager::runMpdCommand(cmd);
-      },
-      .showNotification = [this](const std::string &msg) { showNotification(msg); },
-      .onCreated = [this](const std::string &plName) {
-        m_playlistsView->setSelectedPlaylist(plName);
-        m_playlistsView->setDetailedView(true);
-        m_playlistLoaded = false;
-        m_backend->addTimer(
-            std::chrono::milliseconds(100),
-            [this, plName](CAtomicSharedPointer<CTimer>, void *) {
-              showNotification("Created " + plName);
-              updateStatus();
-            },
-            nullptr);
-      }};
+      .runMpdCommand =
+          [](const std::function<void(struct mpd_connection *)> &cmd) {
+            Services::MPDManager::runMpdCommand(cmd);
+          },
+      .showNotification =
+          [this](const std::string &msg) { showNotification(msg); },
+      .onCreated =
+          [this](const std::string &plName) {
+            m_playlistsView->setSelectedPlaylist(plName);
+            m_playlistsView->setDetailedView(true);
+            m_playlistLoaded = false;
+            m_backend->addTimer(
+                std::chrono::milliseconds(100),
+                [this, plName](CAtomicSharedPointer<CTimer>, void *) {
+                  showNotification("Created " + plName);
+                  updateStatus();
+                },
+                nullptr);
+          }};
   UI::Dialogs::showCreatePlaylistDialog(ctx);
 }
 
 void HyprMusicApp::showPlaylistSelectionDialog(const std::string &songUri,
-                                                int moveFromSongPos) {
+                                               int moveFromSongPos) {
   UI::Dialogs::PlaylistSelectionContext ctx{
       .songUri = songUri,
       .moveFromSongPos = moveFromSongPos,
@@ -369,23 +401,27 @@ void HyprMusicApp::showPlaylistSelectionDialog(const std::string &songUri,
       .palette = m_palette,
       .fontFamily = m_fontFamily,
       .ytDlpService = &m_ytDlpService,
-      .runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
-        Services::MPDManager::runMpdCommand(cmd);
-      },
-      .showNotification = [this](const std::string &msg) { showNotification(msg); },
-      .onPlaylistUpdated = [this] {
-        m_backend->addTimer(
-            std::chrono::milliseconds(100),
-            [this](CAtomicSharedPointer<CTimer>, void *) {
-              updateStatus();
-              if (m_viewMode == eViewMode::VIEW_PLAYLISTS) {
-                Services::MPDManager::runMpdCommand([this](struct mpd_connection *conn) {
-                  m_playlistsView->rebuildRightItems(conn);
-                });
-              }
-            },
-            nullptr);
-      }};
+      .runMpdCommand =
+          [](const std::function<void(struct mpd_connection *)> &cmd) {
+            Services::MPDManager::runMpdCommand(cmd);
+          },
+      .showNotification =
+          [this](const std::string &msg) { showNotification(msg); },
+      .onPlaylistUpdated =
+          [this] {
+            m_backend->addTimer(
+                std::chrono::milliseconds(100),
+                [this](CAtomicSharedPointer<CTimer>, void *) {
+                  updateStatus();
+                  if (m_viewMode == eViewMode::VIEW_PLAYLISTS) {
+                    Services::MPDManager::runMpdCommand(
+                        [this](struct mpd_connection *conn) {
+                          m_playlistsView->rebuildRightItems(conn);
+                        });
+                  }
+                },
+                nullptr);
+          }};
   UI::Dialogs::showPlaylistSelectionDialog(ctx);
 }
 
@@ -396,10 +432,13 @@ void HyprMusicApp::showQueueAddItemDialog() {
   ctx.backend = m_backend;
   ctx.palette = m_palette;
   ctx.fontFamily = m_fontFamily;
-  ctx.runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
-    Services::MPDManager::runMpdCommand(cmd);
+  ctx.runMpdCommand =
+      [](const std::function<void(struct mpd_connection *)> &cmd) {
+        Services::MPDManager::runMpdCommand(cmd);
+      };
+  ctx.showNotification = [this](const std::string &msg) {
+    showNotification(msg);
   };
-  ctx.showNotification = [this](const std::string &msg) { showNotification(msg); };
   ctx.addSongToQueue = [this](const std::string &uri) {
     Services::MPDManager::addSongToQueue(
         uri, [this](const std::string &m) { showNotification(m); },
@@ -417,10 +456,13 @@ void HyprMusicApp::showPlaylistAddItemDialog(const std::string &playlistName) {
   ctx.backend = m_backend;
   ctx.palette = m_palette;
   ctx.fontFamily = m_fontFamily;
-  ctx.runMpdCommand = [](const std::function<void(struct mpd_connection *)> &cmd) {
-    Services::MPDManager::runMpdCommand(cmd);
+  ctx.runMpdCommand =
+      [](const std::function<void(struct mpd_connection *)> &cmd) {
+        Services::MPDManager::runMpdCommand(cmd);
+      };
+  ctx.showNotification = [this](const std::string &msg) {
+    showNotification(msg);
   };
-  ctx.showNotification = [this](const std::string &msg) { showNotification(msg); };
   ctx.addSongToQueue = [this](const std::string &uri) {
     Services::MPDManager::addSongToQueue(
         uri, [this](const std::string &m) { showNotification(m); },
@@ -447,7 +489,7 @@ void HyprMusicApp::updateStatus() {
   std::string trackTitle = "No currently playing songs";
   std::string trackArtist = "";
   std::string stateText = "media-playback-start-symbolic";
-  std::string currentSongUri = ""; 
+  std::string currentSongUri = "";
   int activeSongId = -1;
   unsigned currentQueueVersion = 0;
   int currentVolume = -1;
@@ -465,7 +507,8 @@ void HyprMusicApp::updateStatus() {
     m_isPlaying = (state == MPD_STATE_PLAY);
 
     if (state == MPD_STATE_PLAY || state == MPD_STATE_PAUSE) {
-      stateText = (state == MPD_STATE_PLAY) ? "media-playback-pause-symbolic" : "media-playback-start-symbolic";
+      stateText = (state == MPD_STATE_PLAY) ? "media-playback-pause-symbolic"
+                                            : "media-playback-start-symbolic";
       elapsed = mpd_status_get_elapsed_time(status);
       total = mpd_status_get_total_time(status);
       hasActiveTrack = true;
@@ -482,7 +525,8 @@ void HyprMusicApp::updateStatus() {
         if (title && strlen(title) > 0) {
           trackTitle = title;
           trackArtist = artist ? artist : "Unknown Artist";
-        } else if (uri && m_ytDlpService.getUrlTitle(uri, storedTitle, storedUploader)) {
+        } else if (uri && m_ytDlpService.getUrlTitle(uri, storedTitle,
+                                                     storedUploader)) {
           trackTitle = "Stream (" + storedTitle + ")";
           trackArtist = storedUploader.empty() ? "" : storedUploader;
         } else if (uri) {
@@ -558,7 +602,8 @@ void HyprMusicApp::updateStatus() {
         m_playlistLoaded = true;
         m_playerView->rebuildUI(m_tabContentWrapper, conn);
       }
-      m_playerView->updateTrackInfo(trackTitle, hasActiveTrack, elapsed, total, currentSongUri);
+      m_playerView->updateTrackInfo(trackTitle, hasActiveTrack, elapsed, total,
+                                    currentSongUri);
     }
 
     mpd_status_free(status);
@@ -566,7 +611,8 @@ void HyprMusicApp::updateStatus() {
 
   mpd_connection_free(conn);
 
-  m_playbackBar->updateTrackInfo(trackTitle, trackArtist, hasActiveTrack, elapsed, total);
+  m_playbackBar->updateTrackInfo(trackTitle, trackArtist, hasActiveTrack,
+                                 elapsed, total);
   m_playbackBar->updatePlayPauseState(stateText);
   m_playbackBar->updateVolume(currentVolume);
   m_playbackBar->updateAlbumArt(currentSongUri);

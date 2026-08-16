@@ -5,17 +5,19 @@
 
 namespace UI::Components {
 
-class Default2Visualization : public IVisualization {
+using namespace Hyprtoolkit;
+using namespace Hyprutils::Memory;
+
+class StereoMirrorWaveVisualization : public IVisualization {
 public:
   CSharedPointer<IElement> build(CSharedPointer<CPalette> palette) override;
-  void update(const std::vector<float>& spectrum) override;
+  bool update(const std::vector<float>& spectrum) override;
 
 private:
   CSharedPointer<CRectangleElement> m_container;
   std::vector<CSharedPointer<CRectangleElement>> m_bars;
-  
-  // Track last heights to prevent UI thread spam (The Delta Gate)
   std::vector<float> m_lastHeights;
+  std::vector<float> m_velocities;
 };
 
 } // namespace UI::Components

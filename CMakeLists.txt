@@ -33,10 +33,12 @@ add_executable(hyprmusic
     src/UI/Components/UIFactory.cpp
     src/UI/Components/Visualizer.cpp
     src/UI/Views/VisualizerView.cpp
-    src/UI/Components/Visualizations/Default1Visualization.cpp
-    src/UI/Components/Visualizations/Default2Visualization.cpp
- src/UI/Components/Visualizations/Default3Visualization.cpp
- src/UI/Components/Visualizations/Default4Visualization.cpp
+    src/UI/Components/Visualizations/RainbowSpectrumVisualization.cpp
+    src/UI/Components/Visualizations/PeakHoldNeonVisualization.cpp
+    src/UI/Components/Visualizations/LiquidWavyVisualization.cpp
+    src/UI/Components/Visualizations/StereoMirrorWaveVisualization.cpp
+    src/UI/Components/Visualizations/CircularRadialVisualization.cpp
+    src/UI/Components/Visualizations/DotMatrixVisualization.cpp
 
 
     src/UI/Dialogs/ActionMenuDialog.cpp

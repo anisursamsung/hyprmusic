@@ -128,12 +128,13 @@ void SettingsManager::saveMpdConfig(
 
   auto fifoIt = settings.find("audio_output_fifo");
   if (fifoIt != settings.end() && fifoIt->second == "yes") {
-    file << "\n# Optional: Visualizer output\n"
+    file << "\n# Visualizer output\n"
          << "audio_output {\n"
          << "    type                    \"fifo\"\n"
          << "    name                    \"my_fifo\"\n"
          << "    path                    \"/tmp/mpd.fifo\"\n"
          << "    format                  \"44100:16:2\"\n"
+         << "    always_on               \"yes\"\n"
          << "}\n";
   }
   file.close();

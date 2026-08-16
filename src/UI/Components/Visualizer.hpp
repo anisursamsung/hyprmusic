@@ -45,6 +45,7 @@ private:
   std::vector<std::shared_ptr<IVisualization>> m_visualizations;
   size_t m_currentIndex = 0;
 
+  std::vector<float> m_spectrumBuffer;
   std::shared_ptr<VisualizerSharedData> m_sharedData;
 };
 

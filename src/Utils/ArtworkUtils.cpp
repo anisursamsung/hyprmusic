@@ -8,6 +8,8 @@
 #include <cstdlib>
 #include <unordered_map>
 
+#include <iostream>
+
 namespace Utils {
 
 std::string getBackgroundImagePath() {
@@ -105,8 +107,18 @@ std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &
 
   std::string rawPath = "";
   if (!imgBytes.empty()) {
-    // Generate a unique filename per track using a hash of the URI
-    std::string tmpPath = "/tmp/hyprmusic_art_" + std::to_string(std::hash<std::string>{}(songUri)) + ".bin";
+    std::string ext = ".jpg";
+    if (imgBytes.size() >= 4) {
+      if (imgBytes[0] == 0x89 && imgBytes[1] == 'P' && imgBytes[2] == 'N' && imgBytes[3] == 'G') {
+        ext = ".png";
+      } else if (imgBytes[0] == 'R' && imgBytes[1] == 'I' && imgBytes[2] == 'F' && imgBytes[3] == 'F') {
+        ext = ".webp";
+      } else if (imgBytes[0] == 0xFF && imgBytes[1] == 0xD8) {
+        ext = ".jpg";
+      }
+    }
+
+    std::string tmpPath = "/tmp/hyprmusic_art_" + std::to_string(std::hash<std::string>{}(songUri)) + ext;
     std::ofstream ofs(tmpPath, std::ios::binary);
     if (ofs) {
       ofs.write(reinterpret_cast<const char *>(imgBytes.data()), imgBytes.size());
@@ -145,12 +157,15 @@ std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &
     } catch (...) {}
   }
 
-  // 4. Default artwork fallback
+  // 4. Cache valid non-default artwork; fallback to default if missing
+  if (!rawPath.empty() && rawPath != getDefaultArtworkPath()) {
+    s_artworkCache[songUri] = rawPath;
+  }
+  
   if (rawPath.empty()) {
     rawPath = getDefaultArtworkPath();
   }
 
-  s_artworkCache[songUri] = rawPath;
   return rawPath;
 }
 

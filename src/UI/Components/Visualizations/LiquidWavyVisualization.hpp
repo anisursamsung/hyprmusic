@@ -5,15 +5,19 @@
 
 namespace UI::Components {
 
-class Default4Visualization : public IVisualization {
+using namespace Hyprtoolkit;
+using namespace Hyprutils::Memory;
+
+class LiquidWavyVisualization : public IVisualization {
 public:
   CSharedPointer<IElement> build(CSharedPointer<CPalette> palette) override;
-  void update(const std::vector<float>& spectrum) override;
+  bool update(const std::vector<float>& spectrum) override;
 
 private:
   CSharedPointer<CRectangleElement> m_container;
   std::vector<CSharedPointer<CRectangleElement>> m_bars;
-  std::vector<float> m_lastWidths;
+  std::vector<float> m_heights;
+  std::vector<float> m_velocities;
 };
 
 } // namespace UI::Components

@@ -41,6 +41,7 @@ private:
     CardViewConfig m_cfg;
 
     CSharedPointer<CRectangleElement> m_root;
+    CSharedPointer<CRectangleElement> m_artContainer;
     CSharedPointer<CImageElement> m_albumArt;
     CSharedPointer<CTextElement> m_titleText;
     CSharedPointer<CTextElement> m_subtitleText;

@@ -1,13 +1,17 @@
-#include "Default3Visualization.hpp"
+#include "CircularRadialVisualization.hpp"
 #include <hyprtoolkit/element/RowLayout.hpp>
 #include <algorithm>
 #include <cmath>
 
 namespace UI::Components {
 
-const int RAINBOW_BAR_COUNT = 16;
+using namespace Hyprtoolkit;
+using namespace Hyprutils::Memory;
 
-CSharedPointer<IElement> Default3Visualization::build(CSharedPointer<CPalette> palette) {
+const int RADIAL_BAR_COUNT = 20;
+
+CSharedPointer<IElement> CircularRadialVisualization::build(CSharedPointer<CPalette> palette) {
+  (void)palette;
   m_container = CRectangleBuilder::begin()
                     ->color([] { return CHyprColor(0, 0, 0, 0); })
                     ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
@@ -16,30 +20,31 @@ CSharedPointer<IElement> Default3Visualization::build(CSharedPointer<CPalette> p
                     ->commence();
 
   auto barRow = CRowLayoutBuilder::begin()
-                    ->gap(8)
+                    ->gap(4)
                     ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                         CDynamicSize::HT_SIZE_PERCENT,
                                         {1.0F, 1.0F}))
                     ->commence();
-  barRow->setMargin(20);
+  barRow->setMargin(25);
 
   m_bars.clear();
   m_lastHeights.clear();
+  m_velocities.clear();
 
-  for (int i = 0; i < RAINBOW_BAR_COUNT; ++i) {
+  for (int i = 0; i < RADIAL_BAR_COUNT; ++i) {
     auto col = CRectangleBuilder::begin()
                    ->color([] { return CHyprColor(0, 0, 0, 0); })
                    ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                                        CDynamicSize::HT_SIZE_PERCENT,
-                                       {1.0f / RAINBOW_BAR_COUNT, 1.0F}))
+                                       {1.0f / RADIAL_BAR_COUNT, 1.0F}))
                    ->commence();
 
-    // Generate a static rainbow gradient across the bars using Sine waves
-    float freq = 0.3f;
-    float r = std::sin(freq * i + 0.0f) * 0.5f + 0.5f;
-    float g = std::sin(freq * i + 2.0f) * 0.5f + 0.5f;
-    float b = std::sin(freq * i + 4.0f) * 0.5f + 0.5f;
-    CHyprColor barColor(r, g, b, 1.0f);
+    // Cosmic Palette: Amber Gold -> Electric Magenta -> Cosmic Cyan
+    float norm = static_cast<float>(i) / static_cast<float>(RADIAL_BAR_COUNT - 1);
+    float r = 1.0f - 0.7f * norm;
+    float g = 0.3f + 0.6f * std::sin(norm * M_PI);
+    float b = 0.2f + 0.8f * norm;
+    CHyprColor barColor(r, g, b, 0.9F);
 
     auto bar = CRectangleBuilder::begin()
                    ->color([barColor] { return barColor; })
@@ -51,10 +56,11 @@ CSharedPointer<IElement> Default3Visualization::build(CSharedPointer<CPalette> p
 
     bar->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
     bar->setPositionFlag(IElement::HT_POSITION_FLAG_HCENTER, true);
-    bar->setPositionFlag(IElement::HT_POSITION_FLAG_BOTTOM, true);
+    bar->setPositionFlag(IElement::HT_POSITION_FLAG_VCENTER, true);
 
     m_bars.push_back(bar);
     m_lastHeights.push_back(0.05f);
+    m_velocities.push_back(0.0f);
 
     col->addChild(bar);
     barRow->addChild(col);
@@ -64,28 +70,38 @@ CSharedPointer<IElement> Default3Visualization::build(CSharedPointer<CPalette> p
   return m_container;
 }
 
-void Default3Visualization::update(const std::vector<float>& spectrum) {
-  if (m_bars.empty() || spectrum.empty()) return;
+bool CircularRadialVisualization::update(const std::vector<float>& spectrum) {
+  if (m_bars.empty() || spectrum.empty()) return false;
 
-  int binsPerBar = spectrum.size() / RAINBOW_BAR_COUNT;
+  int binsPerBar = std::max(1, static_cast<int>(spectrum.size()) / RADIAL_BAR_COUNT);
+  bool updated = false;
 
-  for (size_t i = 0; i < m_bars.size(); ++i) {
+  for (int i = 0; i < RADIAL_BAR_COUNT; ++i) {
     float sum = 0.0f;
     for (int j = 0; j < binsPerBar; ++j) {
-      sum += spectrum[i * binsPerBar + j];
+      int idx = i * binsPerBar + j;
+      if (idx < static_cast<int>(spectrum.size())) {
+        sum += spectrum[idx];
+      }
     }
-    float h = std::clamp(sum / binsPerBar, 0.05f, 1.0f);
+    float targetH = std::clamp((sum / binsPerBar) * 0.90f, 0.05f, 0.48f);
 
-    // Delta Gate: Extremely lightweight!
-    if (std::abs(h - m_lastHeights[i]) > 0.02f) {
-      m_lastHeights[i] = h;
+    // Dynamic Pulsing Physics
+    float force = (targetH - m_lastHeights[i]) * 0.45f;
+    m_velocities[i] = (m_velocities[i] + force) * 0.72f;
+    float newH = std::clamp(m_lastHeights[i] + m_velocities[i], 0.05f, 0.48f);
+
+    if (std::abs(newH - m_lastHeights[i]) > 0.025f) {
+      m_lastHeights[i] = newH;
       m_bars[i]->rebuild()
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
                               CDynamicSize::HT_SIZE_PERCENT,
-                              {1.0F, h}))
+                              {1.0F, m_lastHeights[i] * 2.0f}))
           ->commence();
+      updated = true;
     }
   }
+  return updated;
 }
 
 } // namespace UI::Components

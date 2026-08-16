@@ -1,8 +1,10 @@
 #include "Visualizer.hpp"
-#include "Visualizations/Default1Visualization.hpp"
-#include "Visualizations/Default2Visualization.hpp"
-#include "Visualizations/Default3Visualization.hpp" 
-#include "Visualizations/Default4Visualization.hpp"
+#include "Visualizations/RainbowSpectrumVisualization.hpp"
+#include "Visualizations/PeakHoldNeonVisualization.hpp"
+#include "Visualizations/LiquidWavyVisualization.hpp"
+#include "Visualizations/StereoMirrorWaveVisualization.hpp"
+#include "Visualizations/CircularRadialVisualization.hpp"
+#include "Visualizations/DotMatrixVisualization.hpp"
 #include <cmath>
 #include <fcntl.h>
 #include <unistd.h>
@@ -12,17 +14,19 @@
 
 namespace UI::Components {
 
-const int BARS_COUNT = 64;
+const int BARS_COUNT = 32;
 const int SAMPLES_PER_FRAME = 512;
 
 Visualizer::Visualizer(CSharedPointer<IBackend> backend, CSharedPointer<CPalette> palette)
     : m_backend(backend), m_palette(palette) {
-    m_visualizations.push_back(std::make_shared<Default3Visualization>());
-  m_visualizations.push_back(std::make_shared<Default4Visualization>());
- m_visualizations.push_back(std::make_shared<Default1Visualization>());
-  m_visualizations.push_back(std::make_shared<Default2Visualization>());
+  m_visualizations.push_back(std::make_shared<RainbowSpectrumVisualization>());
+  m_visualizations.push_back(std::make_shared<PeakHoldNeonVisualization>());
+  m_visualizations.push_back(std::make_shared<LiquidWavyVisualization>());
+  m_visualizations.push_back(std::make_shared<StereoMirrorWaveVisualization>());
+  m_visualizations.push_back(std::make_shared<CircularRadialVisualization>());
+  m_visualizations.push_back(std::make_shared<DotMatrixVisualization>());
 
-
+  m_spectrumBuffer.resize(BARS_COUNT, 0.0f);
   m_sharedData = std::make_shared<VisualizerSharedData>();
   m_sharedData->smoothedSpectrum.resize(BARS_COUNT, 0.0f);
   
@@ -36,40 +40,50 @@ Visualizer::~Visualizer() {
 }
 
 void Visualizer::readerThreadFunc(std::shared_ptr<VisualizerSharedData> sharedData) {
-  // ---> MATH BOTTLENECK FIX: PRE-COMPUTE LOOKUP TABLES <---
-  // Calculate the Hanning window and all Sine/Cosine angles exactly ONCE.
+  // ---> HIGH PERFORMANCE OPTIMIZATION: FLAT CONTIGUOUS LOOKUP TABLES <---
   std::vector<float> window(SAMPLES_PER_FRAME);
   for (int n = 0; n < SAMPLES_PER_FRAME; ++n) {
     window[n] = 0.5f * (1.0f - std::cos(2.0f * M_PI * n / (SAMPLES_PER_FRAME - 1)));
   }
 
-  std::vector<std::vector<float>> cosTable(BARS_COUNT, std::vector<float>(SAMPLES_PER_FRAME));
-  std::vector<std::vector<float>> sinTable(BARS_COUNT, std::vector<float>(SAMPLES_PER_FRAME));
+  std::vector<float> cosTable(BARS_COUNT * SAMPLES_PER_FRAME);
+  std::vector<float> sinTable(BARS_COUNT * SAMPLES_PER_FRAME);
 
   for (int k = 0; k < BARS_COUNT; ++k) {
     float freqIndex = std::pow(static_cast<float>(k) / BARS_COUNT, 2.0f) * (SAMPLES_PER_FRAME / 2.0f);
+    int offset = k * SAMPLES_PER_FRAME;
     for (int n = 0; n < SAMPLES_PER_FRAME; ++n) {
       float angle = 2.0f * M_PI * freqIndex * n / SAMPLES_PER_FRAME;
-      cosTable[k][n] = std::cos(angle);
-      sinTable[k][n] = std::sin(angle);
+      cosTable[offset + n] = std::cos(angle);
+      sinTable[offset + n] = std::sin(angle);
     }
   }
-  // --------------------------------------------------------
 
   sharedData->fifoFd = open("/tmp/mpd.fifo", O_RDWR | O_NONBLOCK);
-  if (sharedData->fifoFd < 0) {
-    std::cerr << "Visualizer: Failed to open /tmp/mpd.fifo" << std::endl;
-    return;
+  if (sharedData->fifoFd >= 0) {
+    // Initial flush: dump any stale data sitting in the pipe
+    char discard[4096];
+    while (read(sharedData->fifoFd, discard, sizeof(discard)) > 0) {}
   }
-
-  // Initial flush: dump any stale data sitting in the pipe from before the app launched
-  char discard[4096];
-  while (read(sharedData->fifoFd, discard, sizeof(discard)) > 0) {}
 
   const int bytesPerSample = 2 * 2; 
   int bytesToRead = SAMPLES_PER_FRAME * bytesPerSample;
 
+  // ---> ZERO HEAP ALLOCATIONS PER FRAME <---
+  std::vector<int16_t> tempBuffer(SAMPLES_PER_FRAME * 2);
+  std::vector<int16_t> finalBuffer(SAMPLES_PER_FRAME * 2);
+  std::vector<float> currentSpectrum(BARS_COUNT, 0.0f);
+  std::vector<float> monoSamples(SAMPLES_PER_FRAME, 0.0f);
+
   while (sharedData->running) {
+    if (sharedData->fifoFd < 0) {
+      sharedData->fifoFd = open("/tmp/mpd.fifo", O_RDWR | O_NONBLOCK);
+      if (sharedData->fifoFd < 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        continue;
+      }
+    }
+
     struct pollfd pfd;
     pfd.fd = sharedData->fifoFd;
     pfd.events = POLLIN;
@@ -77,54 +91,60 @@ void Visualizer::readerThreadFunc(std::shared_ptr<VisualizerSharedData> sharedDa
     int ret = poll(&pfd, 1, 50);
 
     if (ret > 0 && (pfd.revents & POLLIN)) {
-      std::vector<int16_t> tempBuffer(SAMPLES_PER_FRAME * 2);
-      std::vector<int16_t> finalBuffer(SAMPLES_PER_FRAME * 2);
       int lastBytesRead = 0;
+      bool eofOrError = false;
 
-      // THE FIX: Rapidly drain the pipe to clear the backlog, keeping ONLY the very last chunk.
-      // This prevents the thread from locking the UI while processing stale data.
+      // Flush / Drain the pipe completely in one microsecond pass (ncmpcpp style).
+      // This dumps any accumulated backlog instantly without running DFT/locks for intermediate chunks.
       while (true) {
         int br = read(sharedData->fifoFd, tempBuffer.data(), bytesToRead);
         if (br > 0) {
           finalBuffer = tempBuffer;
           lastBytesRead = br;
+        } else if (br == 0) {
+          eofOrError = true;
+          break;
         } else {
-          // br == -1 (EAGAIN) meaning the pipe is now completely empty and we caught up to live time
-          break; 
+          if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            eofOrError = true;
+          }
+          break; // Pipe is now completely drained!
         }
       }
 
-      // Only perform the math on the absolute newest frame
+      if (eofOrError) {
+        close(sharedData->fifoFd);
+        sharedData->fifoFd = -1;
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        continue;
+      }
+
       if (lastBytesRead > 0) {
         int samplesRead = lastBytesRead / bytesPerSample;
-        // Safety bound to prevent array overflow on partial reads
         if (samplesRead > SAMPLES_PER_FRAME) samplesRead = SAMPLES_PER_FRAME;
 
-        std::vector<float> currentSpectrum(BARS_COUNT, 0.0f);
-        std::vector<float> monoSamples(samplesRead);
-        
         for (int i = 0; i < samplesRead; ++i) {
           float left = finalBuffer[i * 2] / 32768.0f;
           float right = finalBuffer[i * 2 + 1] / 32768.0f;
-          monoSamples[i] = (left + right) / 2.0f;
+          monoSamples[i] = (left + right) * 0.5f;
         }
 
-        // ---> FAST ARRAY LOOKUPS <---
+        // Fast contiguous array lookups
         for (int k = 0; k < BARS_COUNT; ++k) {
           float re = 0.0f;
           float im = 0.0f;
+          int offset = k * SAMPLES_PER_FRAME;
           
           for (int n = 0; n < samplesRead; ++n) {
             float val = monoSamples[n] * window[n];
-            re += val * cosTable[k][n];
-            im -= val * sinTable[k][n];
+            re += val * cosTable[offset + n];
+            im -= val * sinTable[offset + n];
           }
           
-          float magnitude = std::sqrt(re * re + im * im) / (samplesRead / 4.0f);
+          float magnitude = std::sqrt(re * re + im * im) / (samplesRead * 0.25f);
           currentSpectrum[k] = std::clamp(magnitude * 2.5f, 0.0f, 1.0f);
         }
 
-        // Lock exactly ONCE per update cycle, entirely eliminating UI thread starvation
         std::lock_guard<std::mutex> lock(sharedData->dataMutex);
         for (int i = 0; i < BARS_COUNT; ++i) {
           if (currentSpectrum[i] > sharedData->smoothedSpectrum[i]) {
@@ -144,6 +164,7 @@ void Visualizer::readerThreadFunc(std::shared_ptr<VisualizerSharedData> sharedDa
 
   if (sharedData->fifoFd >= 0) {
     close(sharedData->fifoFd);
+    sharedData->fifoFd = -1;
   }
 }
 
@@ -189,22 +210,24 @@ void Visualizer::scheduleUpdate() {
   std::weak_ptr<Visualizer> weakThis = weak_from_this();
 
   m_backend->addTimer(
-      std::chrono::milliseconds(16), 
+      std::chrono::milliseconds(33), // ~30 FPS light update loop
       [weakThis](CAtomicSharedPointer<CTimer>, void *) {
         auto sharedThis = weakThis.lock();
         if (!sharedThis || !sharedThis->m_sharedData->running) return;
 
-        std::vector<float> snapshot;
         {
           std::lock_guard<std::mutex> lock(sharedThis->m_sharedData->dataMutex);
-          snapshot = sharedThis->m_sharedData->smoothedSpectrum;
+          sharedThis->m_spectrumBuffer = sharedThis->m_sharedData->smoothedSpectrum;
         }
 
+        bool changed = false;
         if (!sharedThis->m_visualizations.empty()) {
-            sharedThis->m_visualizations[sharedThis->m_currentIndex]->update(snapshot);
+          changed = sharedThis->m_visualizations[sharedThis->m_currentIndex]->update(sharedThis->m_spectrumBuffer);
         }
         
-        sharedThis->m_container->forceReposition();
+        if (changed) {
+          sharedThis->m_container->forceReposition();
+        }
         sharedThis->scheduleUpdate();
       },
       nullptr);
