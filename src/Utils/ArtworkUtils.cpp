@@ -65,6 +65,136 @@ std::string getCachedTrackArtwork(const std::string &songUri) {
   return "";
 }
 
+static std::vector<uint8_t> extractEmbeddedArtworkFromLocalFile(const std::string &filePath) {
+  std::vector<uint8_t> result;
+  std::string path = filePath;
+  if (path.rfind("file://", 0) == 0) {
+    path = path.substr(7);
+  }
+
+  if (!std::filesystem::exists(path) || std::filesystem::is_directory(path)) {
+    return result;
+  }
+
+  std::ifstream ifs(path, std::ios::binary);
+  if (!ifs)
+    return result;
+
+  ifs.seekg(0, std::ios::end);
+  std::streamsize fileSize = ifs.tellg();
+  ifs.seekg(0, std::ios::beg);
+
+  std::size_t readSize = static_cast<std::size_t>(std::min<std::streamsize>(fileSize, 2097152));
+  if (readSize < 10)
+    return result;
+
+  std::vector<uint8_t> buffer(readSize);
+  ifs.read(reinterpret_cast<char *>(buffer.data()), readSize);
+
+  // 1. ID3v2 APIC/PIC extraction (MP3/AIFF)
+  if (buffer.size() >= 10 && buffer[0] == 'I' && buffer[1] == 'D' && buffer[2] == '3') {
+    uint32_t tagSize = ((buffer[6] & 0x7F) << 21) | ((buffer[7] & 0x7F) << 14) |
+                       ((buffer[8] & 0x7F) << 7) | (buffer[9] & 0x7F);
+    std::size_t limit = std::min<std::size_t>(buffer.size(), tagSize + 10);
+    std::size_t idx = 10;
+
+    while (idx + 10 < limit) {
+      if (buffer[idx] == 0)
+        break;
+
+      std::string frameId(reinterpret_cast<char *>(&buffer[idx]), 4);
+      uint32_t frameSize = (buffer[idx + 4] << 24) | (buffer[idx + 5] << 16) |
+                           (buffer[idx + 6] << 8) | buffer[idx + 7];
+      idx += 10;
+
+      if (idx + frameSize > limit)
+        break;
+
+      if (frameId == "APIC" && frameSize > 10) {
+        std::size_t p = idx + 1;
+        while (p < idx + frameSize && buffer[p] != 0)
+          p++;
+        if (p < idx + frameSize)
+          p++;
+        if (p < idx + frameSize)
+          p++;
+        while (p < idx + frameSize && buffer[p] != 0)
+          p++;
+        if (p < idx + frameSize)
+          p++;
+
+        if (p < idx + frameSize) {
+          result.assign(buffer.begin() + p, buffer.begin() + idx + frameSize);
+          return result;
+        }
+      }
+      idx += frameSize;
+    }
+  }
+
+  // 2. FLAC METADATA_BLOCK_PICTURE (block type 6)
+  if (buffer.size() >= 4 && buffer[0] == 'f' && buffer[1] == 'L' && buffer[2] == 'a' && buffer[3] == 'C') {
+    std::size_t idx = 4;
+    while (idx + 4 < buffer.size()) {
+      bool isLast = (buffer[idx] & 0x80) != 0;
+      uint8_t type = buffer[idx] & 0x7F;
+      uint32_t blockSize = (buffer[idx + 1] << 16) | (buffer[idx + 2] << 8) | buffer[idx + 3];
+      idx += 4;
+
+      if (idx + blockSize > buffer.size())
+        break;
+
+      if (type == 6 && blockSize > 32) {
+        std::size_t p = idx + 4;
+        if (p + 4 <= idx + blockSize) {
+          uint32_t mimeLen = (buffer[p] << 24) | (buffer[p + 1] << 16) | (buffer[p + 2] << 8) | buffer[p + 3];
+          p += 4 + mimeLen;
+        }
+        if (p + 4 <= idx + blockSize) {
+          uint32_t descLen = (buffer[p] << 24) | (buffer[p + 1] << 16) | (buffer[p + 2] << 8) | buffer[p + 3];
+          p += 4 + descLen;
+        }
+        p += 16;
+        if (p + 4 <= idx + blockSize) {
+          uint32_t dataLen = (buffer[p] << 24) | (buffer[p + 1] << 16) | (buffer[p + 2] << 8) | buffer[p + 3];
+          p += 4;
+          if (p + dataLen <= idx + blockSize) {
+            result.assign(buffer.begin() + p, buffer.begin() + p + dataLen);
+            return result;
+          }
+        }
+      }
+
+      if (isLast)
+        break;
+      idx += blockSize;
+    }
+  }
+
+  // 3. General Magic Header scan for embedded JPEG or PNG image bytes
+  for (std::size_t i = 0; i + 8 < buffer.size(); ++i) {
+    if (buffer[i] == 0xFF && buffer[i + 1] == 0xD8 && buffer[i + 2] == 0xFF) {
+      for (std::size_t j = i + 4; j + 1 < buffer.size(); ++j) {
+        if (buffer[j] == 0xFF && buffer[j + 1] == 0xD9) {
+          result.assign(buffer.begin() + i, buffer.begin() + j + 2);
+          return result;
+        }
+      }
+    }
+    if (buffer[i] == 0x89 && buffer[i + 1] == 'P' && buffer[i + 2] == 'N' && buffer[i + 3] == 'G' &&
+        buffer[i + 4] == 0x0D && buffer[i + 5] == 0x0A && buffer[i + 6] == 0x1A && buffer[i + 7] == 0x0A) {
+      for (std::size_t j = i + 8; j + 12 <= buffer.size(); ++j) {
+        if (buffer[j + 4] == 'I' && buffer[j + 5] == 'E' && buffer[j + 6] == 'N' && buffer[j + 7] == 'D') {
+          result.assign(buffer.begin() + i, buffer.begin() + j + 12);
+          return result;
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &songUri) {
   if (songUri.empty())
     return getDefaultArtworkPath();
@@ -109,6 +239,17 @@ std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &
       if (mpd_connection_get_error(conn) != MPD_ERROR_SUCCESS) {
         mpd_connection_clear_error(conn);
       }
+    }
+  }
+
+  // 3. Fallback: Directly extract embedded cover art from local file if MPD picture read returned empty
+  if (imgBytes.empty()) {
+    std::string checkPath = songUri;
+    if (checkPath.rfind("file://", 0) == 0) {
+      checkPath = checkPath.substr(7);
+    }
+    if (std::filesystem::exists(checkPath)) {
+      imgBytes = extractEmbeddedArtworkFromLocalFile(checkPath);
     }
   }
 
