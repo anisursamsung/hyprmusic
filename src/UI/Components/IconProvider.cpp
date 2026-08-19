@@ -1,8 +1,10 @@
 #include "IconProvider.hpp"
+#include "EmbeddedFont.hpp"
 #include <fontconfig/fontconfig.h>
 #include <pango/pangocairo.h>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <vector>
 
@@ -14,13 +16,37 @@ void IconProvider::registerCustomFont() {
   if (g_fontRegistered)
     return;
 
-  std::vector<std::filesystem::path> candidatePaths;
+  FcConfig *config = FcConfigGetCurrent();
+  if (!config) {
+    config = FcInitLoadConfigAndFonts();
+    FcConfigSetCurrent(config);
+  }
 
-  // 1. Check relative to current working directory
+  // 1. Primary: Load in-memory embedded font compiled into the binary
+  std::filesystem::path tempDir = std::filesystem::temp_directory_path();
+  std::filesystem::path fontPath = tempDir / "hyprmusic_embedded_font.ttf";
+
+  try {
+    std::ofstream ofs(fontPath, std::ios::binary);
+    if (ofs) {
+      ofs.write(reinterpret_cast<const char *>(g_hyprmusicFontData), g_hyprmusicFontDataLen);
+      ofs.close();
+
+      std::string absPathStr = std::filesystem::absolute(fontPath).string();
+      if (FcConfigAppFontAddFile(config, reinterpret_cast<const FcChar8 *>(absPathStr.c_str())) == FcTrue) {
+        FcConfigBuildFonts(config);
+        pango_cairo_font_map_set_default(NULL);
+        g_fontRegistered = true;
+        return;
+      }
+    }
+  } catch (...) {}
+
+  // 2. Fallback: Disk candidate paths
+  std::vector<std::filesystem::path> candidatePaths;
   candidatePaths.push_back(std::filesystem::current_path() / "assets/fonts/hyprmusic.ttf");
   candidatePaths.push_back(std::filesystem::current_path() / "../assets/fonts/hyprmusic.ttf");
 
-  // 2. Check relative to executable location via /proc/self/exe
   try {
     std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
     std::filesystem::path exeDir = exePath.parent_path();
@@ -28,21 +54,6 @@ void IconProvider::registerCustomFont() {
     candidatePaths.push_back(exeDir / "../assets/fonts/hyprmusic.ttf");
     candidatePaths.push_back(exeDir / "fonts/hyprmusic.ttf");
   } catch (...) {}
-
-  // 3. Fallback system installation paths
-  candidatePaths.push_back("/usr/share/hyprmusic/assets/fonts/hyprmusic.ttf");
-  candidatePaths.push_back("/usr/local/share/hyprmusic/assets/fonts/hyprmusic.ttf");
-
-  const char *homeEnv = std::getenv("HOME");
-  if (homeEnv) {
-    candidatePaths.push_back(std::filesystem::path(homeEnv) / ".local/share/fonts/hyprmusic.ttf");
-  }
-
-  FcConfig *config = FcConfigGetCurrent();
-  if (!config) {
-    config = FcInitLoadConfigAndFonts();
-    FcConfigSetCurrent(config);
-  }
 
   for (const auto &path : candidatePaths) {
     if (std::filesystem::exists(path)) {

@@ -26,6 +26,7 @@ add_executable(hyprmusic
     src/Services/YtDlpService.cpp
     src/UI/Components/CardView.cpp
     src/UI/Components/CustomSeekBar.cpp
+    src/UI/Components/EmbeddedFont.cpp
     src/UI/Components/IconProvider.cpp
     src/UI/Components/NotificationManager.cpp
     src/UI/Components/PlaybackBar.cpp
