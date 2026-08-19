@@ -51,6 +51,7 @@ A dedicated Hyprland frontend for the Media Player Daemon (MPD) on Linux, built 
 ![screenshot4](assets/Screenshot4.png)
 ![screenshot5](assets/Screenshot5.png)
 ![screenshot6](assets/Screenshot6.png)
+![screenshot7](assets/Screenshot7.png)
 
 
 
