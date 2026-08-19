@@ -1,29 +1,25 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD_DIR="${SCRIPT_DIR}/build"
-BIN_DIR="${HOME}/.local/bin"
-APP_DIR="${HOME}/.local/share/applications"
+INSTALL_PREFIX="${1:-${HOME}/.local}"
 
-# Ensure user directories exist (~/.local/bin and ~/.local/share/applications)
-mkdir -p "${BIN_DIR}" "${APP_DIR}" "${BUILD_DIR}"
+echo "==> Configuring hyprmusic..."
+cmake -B "${SCRIPT_DIR}/build" -S "${SCRIPT_DIR}" \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}"
 
 echo "==> Building hyprmusic..."
-cd "${BUILD_DIR}"
-cmake "${SCRIPT_DIR}" -DCMAKE_INSTALL_PREFIX="${HOME}/.local"
-make -j$(nproc 2>/dev/null || echo 1)
+cmake --build "${SCRIPT_DIR}/build" -j$(nproc 2>/dev/null || echo 1)
 
-echo "==> Installing binary and desktop file to ~/.local..."
-cp -f "${BUILD_DIR}/hyprmusic" "${BIN_DIR}/hyprmusic"
+echo "==> Installing hyprmusic to ${INSTALL_PREFIX}..."
+cmake --install "${SCRIPT_DIR}/build"
 
-if [ -f "${SCRIPT_DIR}/hyprmusic.desktop" ]; then
-    cp -f "${SCRIPT_DIR}/hyprmusic.desktop" "${APP_DIR}/hyprmusic.desktop"
+if command -v update-desktop-database &>/dev/null; then
     echo "==> Updating desktop MIME database..."
-    update-desktop-database "${APP_DIR}" 2>/dev/null || true
+    update-desktop-database "${INSTALL_PREFIX}/share/applications" 2>/dev/null || true
 fi
 
-echo "==> Successfully installed:"
-echo "    - Executable: ${BIN_DIR}/hyprmusic"
-echo "    - Desktop File: ${APP_DIR}/hyprmusic.desktop"
+echo "==> Successfully installed hyprmusic to ${INSTALL_PREFIX}"
+
 
