@@ -17,6 +17,12 @@ The make.sh after installing, automatially updates mime-lists and .desktop file 
 ## No duplicate state
 Only single state of the player is allowed.
 
+## Theming 
+We want consistency and less headache while setting theme, so, like other hypr-ecosystem apps e.g. hyprlauncher, our hyprmusic app follows the Hyprtoolkit theme definition. It is defined in the root/system already but user can customise it in ~/.config/hypr/hyprtoolkit.conf. Have a look at "https://wiki.hypr.land/Hypr-Ecosystem/hyprtoolkit/" in the Configuration section. We have utilised almost all of the definitions there. So, if you define background color there, same background color will be used in hyprmusic. Only thing we did not use is the IconPack becasue we wanted signature look and gurantee the icons to render theme specific colors. Moreover, we wanted our own icon set hence we created a font pack(actually it is icon pack) and embeded inside the app. 
+TL-DR: It inherits ~/.config/hypr/hyprtoolkit.conf definitions of color/font/etc. Except icon pack. If not defined, it uses system predefined hyprtoolkit.conf.
+
+**Interested in the look of the screenshots attached?**
+It was obtained by setting the background color to 50% transparent color in hyprtoolkit.conf and blur definition is in hyprland.lua. You are on arch hyprland, you are pro. You know what I am talking about.
 
 ## Important
 It is MPD front-end hence it will do nothing is MPD is not installed.
