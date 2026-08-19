@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.19)
 
-project(toplayer VERSION 1.0 DESCRIPTION "HyprMusic Player")
+project(hyprmusic VERSION 1.0 DESCRIPTION "HyprMusic Player")
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,7 +13,7 @@ endif()
 add_compile_options(-O3 -Wall -Wextra)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(DEPS REQUIRED IMPORTED_TARGET hyprtoolkit pixman-1 libdrm)
+pkg_check_modules(DEPS REQUIRED IMPORTED_TARGET hyprtoolkit pixman-1 libdrm fontconfig pangocairo)
 pkg_check_modules(HYPRUTILS REQUIRED IMPORTED_TARGET hyprutils)
 pkg_check_modules(MPDCLIENT REQUIRED IMPORTED_TARGET libmpdclient)
 
@@ -62,3 +62,10 @@ target_link_libraries(hyprmusic
     PkgConfig::HYPRUTILS
     PkgConfig::MPDCLIENT
 )
+
+include(GNUInstallDirs)
+install(TARGETS hyprmusic DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hyprmusic.desktop")
+    install(FILES hyprmusic.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+endif()
+

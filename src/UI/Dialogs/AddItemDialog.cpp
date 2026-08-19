@@ -1,8 +1,8 @@
 #include "AddItemDialog.hpp"
-#include "../Components/IconProvider.hpp"
 #include "../../MPDClient.hpp"
 #include "../../Utils/ClipboardUtils.hpp"
 #include "../../Utils/StreamUtils.hpp"
+#include "../Components/IconProvider.hpp"
 
 #include <hyprtoolkit/element/Button.hpp>
 #include <hyprtoolkit/element/ColumnLayout.hpp>
@@ -81,7 +81,8 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
   auto showDatabaseSelector = std::make_shared<std::function<void()>>();
   auto showQueueSelector = std::make_shared<std::function<void()>>();
   auto showPlaylistSelector = std::make_shared<std::function<void()>>();
-  auto showPlaylistTracks = std::make_shared<std::function<void(const std::string &)>>();
+  auto showPlaylistTracks =
+      std::make_shared<std::function<void(const std::string &)>>();
 
   *showMainOptions = [root, cardLayout, palette, fontFamily, popupWindow, ctx,
                       showAddStream, showDatabaseSelector, showQueueSelector,
@@ -95,9 +96,12 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
                                 CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
             ->commence();
 
-    std::string headerTitle = (ctx.targetType == AddItemTargetType::QUEUE)
-                                  ? Components::IconProvider::getIcon(Components::IconType::ADD) + " Add Item to Queue"
-                                  : Components::IconProvider::getIcon(Components::IconType::ADD) + " Add Item to Playlist";
+    std::string headerTitle =
+        (ctx.targetType == AddItemTargetType::QUEUE)
+            ? Components::IconProvider::getIcon(Components::IconType::ADD) +
+                  " Add Item to Queue"
+            : Components::IconProvider::getIcon(Components::IconType::ADD) +
+                  " Add Item to Playlist";
 
     auto headerText =
         CTextBuilder::begin()
@@ -117,16 +121,17 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
 
     auto addOption = [&](const std::string &iconTitle,
                          std::function<void()> onClick) {
-      auto optionCard =
-          CRectangleBuilder::begin()
-              ->color([palette] {
-                return palette ? palette->m_colors.alternateBase
-                               : CHyprColor(0.18, 0.18, 0.18, 1.0);
-              })
-              ->rounding(8)
-              ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                  CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 44.0F}))
-              ->commence();
+      auto optionCard = CRectangleBuilder::begin()
+                            ->color([palette] {
+                              return palette
+                                         ? palette->m_colors.alternateBase
+                                         : CHyprColor(0.18, 0.18, 0.18, 1.0);
+                            })
+                            ->rounding(8)
+                            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                                CDynamicSize::HT_SIZE_ABSOLUTE,
+                                                {1.0F, 44.0F}))
+                            ->commence();
 
       auto optionRow =
           CRowLayoutBuilder::begin()
@@ -164,19 +169,28 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
       cardLayout->addChild(optionCard);
     };
 
-    addOption(Components::IconProvider::getIcon(Components::IconType::STREAM) + " Add Stream", [showAddStream]() { (*showAddStream)(); });
+    addOption(Components::IconProvider::getIcon(Components::IconType::STREAM) +
+                  " Add Stream",
+              [showAddStream]() { (*showAddStream)(); });
 
-    addOption(Components::IconProvider::getIcon(Components::IconType::MUSIC_NOTE) + " Add from Database",
-              [showDatabaseSelector]() { (*showDatabaseSelector)(); });
+    addOption(
+        Components::IconProvider::getIcon(Components::IconType::MUSIC_NOTE) +
+            " Add from Database",
+        [showDatabaseSelector]() { (*showDatabaseSelector)(); });
 
     if (ctx.targetType == AddItemTargetType::PLAYLIST) {
-      addOption(Components::IconProvider::getIcon(Components::IconType::NAV_QUEUE) + " Add from Queue",
-                [showQueueSelector]() { (*showQueueSelector)(); });
+      addOption(
+          Components::IconProvider::getIcon(Components::IconType::NAV_QUEUE) +
+              " Add from Queue",
+          [showQueueSelector]() { (*showQueueSelector)(); });
     }
 
-    std::string plTitle = (ctx.targetType == AddItemTargetType::QUEUE)
-                              ? Components::IconProvider::getIcon(Components::IconType::FOLDER) + " Add from Playlist"
-                              : Components::IconProvider::getIcon(Components::IconType::FOLDER) + " Add from Another Playlist";
+    std::string plTitle =
+        (ctx.targetType == AddItemTargetType::QUEUE)
+            ? Components::IconProvider::getIcon(Components::IconType::FOLDER) +
+                  " Add from Playlist"
+            : Components::IconProvider::getIcon(Components::IconType::FOLDER) +
+                  " Add from Another Playlist";
     addOption(plTitle, [showPlaylistSelector]() { (*showPlaylistSelector)(); });
 
     auto cancelBtn =
@@ -207,7 +221,8 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
     root->forceReposition();
   };
 
-  *showAddStream = [root, cardLayout, palette, fontFamily, ctx, showMainOptions, popupWindow]() {
+  *showAddStream = [root, cardLayout, palette, fontFamily, ctx, showMainOptions,
+                    popupWindow]() {
     cardLayout->clearChildren();
 
     auto headerRow =
@@ -270,12 +285,12 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
     headerRow->addChild(titleText);
     cardLayout->addChild(headerRow);
 
-    auto inputRow = CRowLayoutBuilder::begin()
-                        ->gap(8)
-                        ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                            CDynamicSize::HT_SIZE_ABSOLUTE,
-                                            {1.0F, 36.0F}))
-                        ->commence();
+    auto inputRow =
+        CRowLayoutBuilder::begin()
+            ->gap(8)
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 36.0F}))
+            ->commence();
 
     auto urlInputPtr = std::make_shared<std::string>("");
     auto urlInput =
@@ -290,39 +305,43 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
     urlInput->setGrow(true);
     inputRow->addChild(urlInput);
 
-    auto pasteBtn = CButtonBuilder::begin()
-                        ->label(Components::IconProvider::getIcon(Components::IconType::PASTE))
-                        ->alignText(HT_FONT_ALIGN_CENTER)
-                        ->fontFamily(std::string(fontFamily))
-                        ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                        ->onMainClick([urlInput, urlInputPtr](CSharedPointer<CButtonElement>) {
-                          std::string pasted = Utils::readFromClipboard();
-                          if (!pasted.empty()) {
-                            urlInput->rebuild()->defaultText(std::string(pasted))->commence();
-                            *urlInputPtr = pasted;
-                          }
-                        })
-                        ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                            CDynamicSize::HT_SIZE_ABSOLUTE,
-                                            {36.0F, 36.0F}))
+    auto pasteBtn =
+        CButtonBuilder::begin()
+            ->label(
+                Components::IconProvider::getIcon(Components::IconType::PASTE))
+            ->alignText(HT_FONT_ALIGN_CENTER)
+            ->fontFamily(std::string(fontFamily))
+            ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+            ->onMainClick(
+                [urlInput, urlInputPtr](CSharedPointer<CButtonElement>) {
+                  std::string pasted = Utils::readFromClipboard();
+                  if (!pasted.empty()) {
+                    urlInput->rebuild()
+                        ->defaultText(std::string(pasted))
                         ->commence();
+                    *urlInputPtr = pasted;
+                  }
+                })
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {36.0F, 36.0F}))
+            ->commence();
     pasteBtn->setGrow(false);
     inputRow->addChild(pasteBtn);
 
-    auto addBtn = CTextBuilder::begin()
-                      ->text(Components::IconProvider::getIcon(Components::IconType::ADD))
-                      ->color([palette] {
-                        return palette ? palette->m_colors.text
-                                       : CHyprColor(1.0, 1.0, 1.0, 1.0);
-                      })
-                      ->fontFamily(std::string(fontFamily))
-                      ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
-                      ->interactable(true)
-                      ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                          CDynamicSize::HT_SIZE_ABSOLUTE,
-                                          {32.0F, 36.0F}))
-                      ->align(HT_FONT_ALIGN_CENTER)
-                      ->commence();
+    auto addBtn =
+        CTextBuilder::begin()
+            ->text(Components::IconProvider::getIcon(Components::IconType::ADD))
+            ->color([palette] {
+              return palette ? palette->m_colors.text
+                             : CHyprColor(1.0, 1.0, 1.0, 1.0);
+            })
+            ->fontFamily(std::string(fontFamily))
+            ->fontSize(CFontSize(CFontSize::HT_FONT_H3))
+            ->interactable(true)
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {32.0F, 36.0F}))
+            ->align(HT_FONT_ALIGN_CENTER)
+            ->commence();
 
     auto doAddStream = [ctx, urlInputPtr, addBtn]() {
       std::string url = *urlInputPtr;
@@ -513,41 +532,42 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
       listLayout->addChild(emptyText);
     } else {
       for (const auto &song : songs) {
-        auto songRow =
-            CRectangleBuilder::begin()
-                ->color([palette] {
-                  return palette ? palette->m_colors.alternateBase
-                                 : CHyprColor(0.18, 0.18, 0.18, 1.0);
-                })
-                ->rounding(6)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {1.0F, 34.0F}))
-                ->commence();
+        auto songRow = CRectangleBuilder::begin()
+                           ->color([palette] {
+                             return palette ? palette->m_colors.alternateBase
+                                            : CHyprColor(0.18, 0.18, 0.18, 1.0);
+                           })
+                           ->rounding(6)
+                           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                               CDynamicSize::HT_SIZE_ABSOLUTE,
+                                               {1.0F, 34.0F}))
+                           ->commence();
 
-        auto innerRow =
-            CRowLayoutBuilder::begin()
-                ->gap(8)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-                ->commence();
+        auto innerRow = CRowLayoutBuilder::begin()
+                            ->gap(8)
+                            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                                CDynamicSize::HT_SIZE_PERCENT,
+                                                {1.0F, 1.0F}))
+                            ->commence();
         innerRow->setMargin(4);
 
         std::string labelStr = song.title.empty() ? song.artist : song.title;
-        auto songText =
-            CTextBuilder::begin()
-                ->text(Components::IconProvider::getIcon(Components::IconType::MUSIC_NOTE) + " " + labelStr)
-                ->color([palette] {
-                  return palette ? palette->m_colors.text
-                                 : CHyprColor(1.0, 1.0, 1.0, 1.0);
-                })
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-                ->align(HT_FONT_ALIGN_LEFT)
-                ->noEllipsize(false)
-                ->commence();
+        auto songText = CTextBuilder::begin()
+                            ->text(Components::IconProvider::getIcon(
+                                       Components::IconType::MUSIC_NOTE) +
+                                   " " + labelStr)
+                            ->color([palette] {
+                              return palette ? palette->m_colors.text
+                                             : CHyprColor(1.0, 1.0, 1.0, 1.0);
+                            })
+                            ->fontFamily(std::string(fontFamily))
+                            ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                                CDynamicSize::HT_SIZE_PERCENT,
+                                                {1.0F, 1.0F}))
+                            ->align(HT_FONT_ALIGN_LEFT)
+                            ->noEllipsize(false)
+                            ->commence();
 
         auto textContainer =
             CRowLayoutBuilder::begin()
@@ -560,20 +580,20 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
         textContainer->addChild(songText);
         innerRow->addChild(textContainer);
 
-        auto addBtn =
-            CTextBuilder::begin()
-                ->text(Components::IconProvider::getIcon(Components::IconType::ADD))
-                ->color([palette] {
-                  return palette ? palette->m_colors.text
-                                 : CHyprColor(1.0, 1.0, 1.0, 1.0);
-                })
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->interactable(true)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {20.0F, 24.0F}))
-                ->commence();
+        auto addBtn = CTextBuilder::begin()
+                          ->text(Components::IconProvider::getIcon(
+                              Components::IconType::ADD))
+                          ->color([palette] {
+                            return palette ? palette->m_colors.text
+                                           : CHyprColor(1.0, 1.0, 1.0, 1.0);
+                          })
+                          ->fontFamily(std::string(fontFamily))
+                          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                          ->interactable(true)
+                          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                              CDynamicSize::HT_SIZE_ABSOLUTE,
+                                              {20.0F, 24.0F}))
+                          ->commence();
 
         auto doAddTrack = [ctx, song, addBtn]() {
           if (song.uri.empty())
@@ -587,7 +607,8 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
             }
           } else if (ctx.targetType == AddItemTargetType::PLAYLIST) {
             if (ctx.runMpdCommand) {
-              ctx.runMpdCommand([ctx, song, addBtn](struct mpd_connection *conn) {
+              ctx.runMpdCommand([ctx, song,
+                                 addBtn](struct mpd_connection *conn) {
                 if (!conn)
                   return;
 
@@ -770,41 +791,42 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
       listLayout->addChild(emptyText);
     } else {
       for (const auto &song : songs) {
-        auto songRow =
-            CRectangleBuilder::begin()
-                ->color([palette] {
-                  return palette ? palette->m_colors.alternateBase
-                                 : CHyprColor(0.18, 0.18, 0.18, 1.0);
-                })
-                ->rounding(6)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {1.0F, 34.0F}))
-                ->commence();
+        auto songRow = CRectangleBuilder::begin()
+                           ->color([palette] {
+                             return palette ? palette->m_colors.alternateBase
+                                            : CHyprColor(0.18, 0.18, 0.18, 1.0);
+                           })
+                           ->rounding(6)
+                           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                               CDynamicSize::HT_SIZE_ABSOLUTE,
+                                               {1.0F, 34.0F}))
+                           ->commence();
 
-        auto innerRow =
-            CRowLayoutBuilder::begin()
-                ->gap(8)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-                ->commence();
+        auto innerRow = CRowLayoutBuilder::begin()
+                            ->gap(8)
+                            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                                CDynamicSize::HT_SIZE_PERCENT,
+                                                {1.0F, 1.0F}))
+                            ->commence();
         innerRow->setMargin(4);
 
         std::string labelStr = song.title.empty() ? song.artist : song.title;
-        auto songText =
-            CTextBuilder::begin()
-                ->text(Components::IconProvider::getIcon(Components::IconType::MUSIC_NOTE) + " " + labelStr)
-                ->color([palette] {
-                  return palette ? palette->m_colors.text
-                                 : CHyprColor(1.0, 1.0, 1.0, 1.0);
-                })
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-                ->align(HT_FONT_ALIGN_LEFT)
-                ->noEllipsize(false)
-                ->commence();
+        auto songText = CTextBuilder::begin()
+                            ->text(Components::IconProvider::getIcon(
+                                       Components::IconType::MUSIC_NOTE) +
+                                   " " + labelStr)
+                            ->color([palette] {
+                              return palette ? palette->m_colors.text
+                                             : CHyprColor(1.0, 1.0, 1.0, 1.0);
+                            })
+                            ->fontFamily(std::string(fontFamily))
+                            ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                                CDynamicSize::HT_SIZE_PERCENT,
+                                                {1.0F, 1.0F}))
+                            ->align(HT_FONT_ALIGN_LEFT)
+                            ->noEllipsize(false)
+                            ->commence();
 
         auto textContainer =
             CRowLayoutBuilder::begin()
@@ -817,26 +839,27 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
         textContainer->addChild(songText);
         innerRow->addChild(textContainer);
 
-        auto addBtn =
-            CTextBuilder::begin()
-                ->text(Components::IconProvider::getIcon(Components::IconType::ADD))
-                ->color([palette] {
-                  return palette ? palette->m_colors.text
-                                 : CHyprColor(1.0, 1.0, 1.0, 1.0);
-                })
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->interactable(true)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {20.0F, 24.0F}))
-                ->commence();
+        auto addBtn = CTextBuilder::begin()
+                          ->text(Components::IconProvider::getIcon(
+                              Components::IconType::ADD))
+                          ->color([palette] {
+                            return palette ? palette->m_colors.text
+                                           : CHyprColor(1.0, 1.0, 1.0, 1.0);
+                          })
+                          ->fontFamily(std::string(fontFamily))
+                          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                          ->interactable(true)
+                          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                              CDynamicSize::HT_SIZE_ABSOLUTE,
+                                              {20.0F, 24.0F}))
+                          ->commence();
 
         auto doAddTrack = [ctx, song, addBtn]() {
           if (song.uri.empty())
             return;
 
-          if (ctx.targetType == AddItemTargetType::PLAYLIST && ctx.runMpdCommand) {
+          if (ctx.targetType == AddItemTargetType::PLAYLIST &&
+              ctx.runMpdCommand) {
             ctx.runMpdCommand([ctx, song, addBtn](struct mpd_connection *conn) {
               if (!conn)
                 return;
@@ -1014,40 +1037,41 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
           continue;
         }
 
-        auto plRow =
-            CRectangleBuilder::begin()
-                ->color([palette] {
-                  return palette ? palette->m_colors.alternateBase
-                                 : CHyprColor(0.18, 0.18, 0.18, 1.0);
-                })
-                ->rounding(6)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {1.0F, 34.0F}))
-                ->commence();
+        auto plRow = CRectangleBuilder::begin()
+                         ->color([palette] {
+                           return palette ? palette->m_colors.alternateBase
+                                          : CHyprColor(0.18, 0.18, 0.18, 1.0);
+                         })
+                         ->rounding(6)
+                         ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                             CDynamicSize::HT_SIZE_ABSOLUTE,
+                                             {1.0F, 34.0F}))
+                         ->commence();
 
-        auto innerRow =
-            CRowLayoutBuilder::begin()
-                ->gap(8)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-                ->commence();
+        auto innerRow = CRowLayoutBuilder::begin()
+                            ->gap(8)
+                            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                                CDynamicSize::HT_SIZE_PERCENT,
+                                                {1.0F, 1.0F}))
+                            ->commence();
         innerRow->setMargin(4);
 
-        auto plText =
-            CTextBuilder::begin()
-                ->text(Components::IconProvider::getIcon(Components::IconType::FOLDER) + " " + plName)
-                ->color([palette] {
-                  return palette ? palette->m_colors.text
-                                 : CHyprColor(1.0, 1.0, 1.0, 1.0);
-                })
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-                ->align(HT_FONT_ALIGN_LEFT)
-                ->noEllipsize(false)
-                ->commence();
+        auto plText = CTextBuilder::begin()
+                          ->text(Components::IconProvider::getIcon(
+                                     Components::IconType::FOLDER) +
+                                 " " + plName)
+                          ->color([palette] {
+                            return palette ? palette->m_colors.text
+                                           : CHyprColor(1.0, 1.0, 1.0, 1.0);
+                          })
+                          ->fontFamily(std::string(fontFamily))
+                          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                              CDynamicSize::HT_SIZE_PERCENT,
+                                              {1.0F, 1.0F}))
+                          ->align(HT_FONT_ALIGN_LEFT)
+                          ->noEllipsize(false)
+                          ->commence();
 
         auto textContainer =
             CRowLayoutBuilder::begin()
@@ -1060,20 +1084,20 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
         textContainer->addChild(plText);
         innerRow->addChild(textContainer);
 
-        auto addBtn =
-            CTextBuilder::begin()
-                ->text(Components::IconProvider::getIcon(Components::IconType::ADD))
-                ->color([palette] {
-                  return palette ? palette->m_colors.text
-                                 : CHyprColor(1.0, 1.0, 1.0, 1.0);
-                })
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->interactable(true)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {20.0F, 24.0F}))
-                ->commence();
+        auto addBtn = CTextBuilder::begin()
+                          ->text(Components::IconProvider::getIcon(
+                              Components::IconType::ADD))
+                          ->color([palette] {
+                            return palette ? palette->m_colors.text
+                                           : CHyprColor(1.0, 1.0, 1.0, 1.0);
+                          })
+                          ->fontFamily(std::string(fontFamily))
+                          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                          ->interactable(true)
+                          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                              CDynamicSize::HT_SIZE_ABSOLUTE,
+                                              {20.0F, 24.0F}))
+                          ->commence();
 
         auto doAddPlaylist = [ctx, plName, addBtn]() {
           if (!ctx.runMpdCommand)
@@ -1101,10 +1125,9 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
 
               if (ctx.showNotification) {
                 if (addedCount > 0 && skippedCount > 0) {
-                  ctx.showNotification("Added " + std::to_string(addedCount) +
-                                       " songs (" +
-                                       std::to_string(skippedCount) +
-                                       " already in que)");
+                  ctx.showNotification(
+                      "Added " + std::to_string(addedCount) + " songs (" +
+                      std::to_string(skippedCount) + " already in que)");
                 } else if (addedCount > 0) {
                   ctx.showNotification("Added " + std::to_string(addedCount) +
                                        " songs to queue");
@@ -1167,12 +1190,12 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
         };
 
         plRow->setReceivesMouse(true);
-        plRow->setMouseButton(
-            [showPlaylistTracks, plName](Input::eMouseButton button, bool down) {
-              if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-                (*showPlaylistTracks)(plName);
-              }
-            });
+        plRow->setMouseButton([showPlaylistTracks,
+                               plName](Input::eMouseButton button, bool down) {
+          if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+            (*showPlaylistTracks)(plName);
+          }
+        });
         plRow->setMouseAxis([scrollArea](Input::eAxisAxis axis, float delta) {
           if (axis == Input::AXIS_AXIS_VERTICAL && scrollArea) {
             auto cur = scrollArea->getCurrentScroll();
@@ -1325,41 +1348,42 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
       listLayout->addChild(emptyText);
     } else {
       for (const auto &song : tracks) {
-        auto songRow =
-            CRectangleBuilder::begin()
-                ->color([palette] {
-                  return palette ? palette->m_colors.alternateBase
-                                 : CHyprColor(0.18, 0.18, 0.18, 1.0);
-                })
-                ->rounding(6)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {1.0F, 34.0F}))
-                ->commence();
+        auto songRow = CRectangleBuilder::begin()
+                           ->color([palette] {
+                             return palette ? palette->m_colors.alternateBase
+                                            : CHyprColor(0.18, 0.18, 0.18, 1.0);
+                           })
+                           ->rounding(6)
+                           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                               CDynamicSize::HT_SIZE_ABSOLUTE,
+                                               {1.0F, 34.0F}))
+                           ->commence();
 
-        auto innerRow =
-            CRowLayoutBuilder::begin()
-                ->gap(8)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-                ->commence();
+        auto innerRow = CRowLayoutBuilder::begin()
+                            ->gap(8)
+                            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                                CDynamicSize::HT_SIZE_PERCENT,
+                                                {1.0F, 1.0F}))
+                            ->commence();
         innerRow->setMargin(4);
 
         std::string labelStr = song.title.empty() ? song.artist : song.title;
-        auto songText =
-            CTextBuilder::begin()
-                ->text(Components::IconProvider::getIcon(Components::IconType::MUSIC_NOTE) + " " + labelStr)
-                ->color([palette] {
-                  return palette ? palette->m_colors.text
-                                 : CHyprColor(1.0, 1.0, 1.0, 1.0);
-                })
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                    CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-                ->align(HT_FONT_ALIGN_LEFT)
-                ->noEllipsize(false)
-                ->commence();
+        auto songText = CTextBuilder::begin()
+                            ->text(Components::IconProvider::getIcon(
+                                       Components::IconType::MUSIC_NOTE) +
+                                   " " + labelStr)
+                            ->color([palette] {
+                              return palette ? palette->m_colors.text
+                                             : CHyprColor(1.0, 1.0, 1.0, 1.0);
+                            })
+                            ->fontFamily(std::string(fontFamily))
+                            ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                                                CDynamicSize::HT_SIZE_PERCENT,
+                                                {1.0F, 1.0F}))
+                            ->align(HT_FONT_ALIGN_LEFT)
+                            ->noEllipsize(false)
+                            ->commence();
 
         auto textContainer =
             CRowLayoutBuilder::begin()
@@ -1372,20 +1396,20 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
         textContainer->addChild(songText);
         innerRow->addChild(textContainer);
 
-        auto addBtn =
-            CTextBuilder::begin()
-                ->text(Components::IconProvider::getIcon(Components::IconType::ADD))
-                ->color([palette] {
-                  return palette ? palette->m_colors.text
-                                 : CHyprColor(1.0, 1.0, 1.0, 1.0);
-                })
-                ->fontFamily(std::string(fontFamily))
-                ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-                ->interactable(true)
-                ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    CDynamicSize::HT_SIZE_ABSOLUTE,
-                                    {20.0F, 24.0F}))
-                ->commence();
+        auto addBtn = CTextBuilder::begin()
+                          ->text(Components::IconProvider::getIcon(
+                              Components::IconType::ADD))
+                          ->color([palette] {
+                            return palette ? palette->m_colors.text
+                                           : CHyprColor(1.0, 1.0, 1.0, 1.0);
+                          })
+                          ->fontFamily(std::string(fontFamily))
+                          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+                          ->interactable(true)
+                          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                                              CDynamicSize::HT_SIZE_ABSOLUTE,
+                                              {20.0F, 24.0F}))
+                          ->commence();
 
         auto doAddTrack = [ctx, song, addBtn]() {
           if (song.uri.empty())
@@ -1399,7 +1423,8 @@ void showAddItemDialog(const AddItemDialogContext &ctx) {
             }
           } else if (ctx.targetType == AddItemTargetType::PLAYLIST) {
             if (ctx.runMpdCommand) {
-              ctx.runMpdCommand([ctx, song, addBtn](struct mpd_connection *conn) {
+              ctx.runMpdCommand([ctx, song,
+                                 addBtn](struct mpd_connection *conn) {
                 if (!conn)
                   return;
 

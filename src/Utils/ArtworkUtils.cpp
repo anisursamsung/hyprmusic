@@ -73,6 +73,13 @@ std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &
   if (!cached.empty())
     return cached;
 
+  // Immediate guard: Stream URLs cannot have embedded/folder album art extracted via MPD or filesystem
+  if (songUri.rfind("http://", 0) == 0 || songUri.rfind("https://", 0) == 0 ||
+      songUri.find("googlevideo.com") != std::string::npos ||
+      songUri.find("youtube.com") != std::string::npos) {
+    return getDefaultArtworkPath();
+  }
+
   std::vector<uint8_t> imgBytes;
   char buffer[16384];
 

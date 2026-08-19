@@ -1,4 +1,5 @@
 #include "ActionMenuDialog.hpp"
+#include "../Components/IconProvider.hpp"
 #include "../Components/UIFactory.hpp"
 #include <hyprtoolkit/element/Button.hpp>
 #include <hyprtoolkit/element/ColumnLayout.hpp>
@@ -129,11 +130,16 @@ void showActionMenuDialog(const ActionMenuContext &ctx) {
     std::string optName = ctx.options[i];
     size_t optIdx = i;
 
+    std::string targetFont = fontFamily;
+    if (Components::IconProvider::isCustomFontIcon(optName)) {
+      targetFont = Components::IconProvider::getCustomFontFamily();
+    }
+
     auto optBtn =
         CButtonBuilder::begin()
             ->label(std::string(optName))
             ->alignText(HT_FONT_ALIGN_LEFT)
-            ->fontFamily(std::string(fontFamily))
+            ->fontFamily(std::string(targetFont))
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
             ->onMainClick([ctx, optIdx, optName, closeMenuWindow](CSharedPointer<CButtonElement>) {
               if (ctx.backend) {

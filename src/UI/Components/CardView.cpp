@@ -140,12 +140,15 @@ CSharedPointer<CRectangleElement> CardView::build() {
 }
 
 void CardView::updateImage(const std::string &imagePath) {
-    m_cfg.imagePath = imagePath;
+    std::string newArtPath = imagePath.empty() ? Utils::getDefaultArtworkPath() : imagePath;
+    if (m_cfg.imagePath == newArtPath && m_albumArt) {
+        return;
+    }
+    m_cfg.imagePath = newArtPath;
     if (m_artContainer) {
         m_artContainer->clearChildren();
-        std::string artPath = imagePath.empty() ? Utils::getDefaultArtworkPath() : imagePath;
         m_albumArt = CImageBuilder::begin()
-            ->path(std::string(artPath))
+            ->path(std::string(newArtPath))
             ->fitMode(IMAGE_FIT_MODE_COVER)
             ->rounding(8)
             ->sync(true)

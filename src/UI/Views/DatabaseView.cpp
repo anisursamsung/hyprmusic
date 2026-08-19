@@ -103,14 +103,14 @@ void DatabaseView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto dbActionsBtn =
         CButtonBuilder::begin()
-            ->label("⋮")
+            ->label(Components::IconProvider::getIcon(Components::IconType::MENU))
             ->alignText(HT_FONT_ALIGN_CENTER)
-            ->fontFamily(std::string(fontFamily))
+            ->fontFamily(Components::IconProvider::getCustomFontFamily())
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
             ->onMainClick([this](CSharedPointer<CButtonElement>) {
               Dialogs::showActionMenuDialog({
                   .options = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play All",
-                              Components::IconProvider::getIcon(Components::IconType::ADD) + " Add All to Queue",
+                              Components::IconProvider::getIcon(Components::IconType::ADD_TO_QUEUE) + " Add All to Queue",
                               Components::IconProvider::getIcon(Components::IconType::UPDATE_DB) + " Update Database",
                               Components::IconProvider::getIcon(Components::IconType::RESCAN_DB) + " Rescan Database"},
                   .onSelect =
@@ -362,7 +362,7 @@ void DatabaseView::populateDatabaseSongs(struct mpd_connection *conn) {
             .onActionClick = [this, songUri] {
               Dialogs::showActionMenuDialog({
                   .options  = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play",
-                               Components::IconProvider::getIcon(Components::IconType::ADD) + " Add to Queue",
+                               Components::IconProvider::getIcon(Components::IconType::ADD_TO_QUEUE) + " Add to Queue",
                                Components::IconProvider::getIcon(Components::IconType::FOLDER) + " Add to Playlist"},
                   .onSelect =
                       [this, songUri](size_t idx, const std::string &) {

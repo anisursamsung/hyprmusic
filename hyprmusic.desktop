@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=HyprMusic
+GenericName=Music Player
+Comment=Hyprland frontend for the Media Player Daemon (MPD)
+Exec=hyprmusic
+Icon=multimedia-audio-player
+Terminal=false
+Categories=Audio;Music;Player;AudioVideo;
+Keywords=music;player;mpd;audio;hyprland;

@@ -98,7 +98,7 @@ void PlayerView::rebuildUI(CSharedPointer<CRectangleElement> wrapper, struct mpd
             return palette ? palette->m_colors.text
                            : CHyprColor(1.0F, 1.0F, 1.0F, 1.0F);
           })
-          ->fontFamily(std::string(fontFamily))
+          ->fontFamily(Components::IconProvider::getCustomFontFamily())
           ->fontSize(CFontSize(CFontSize::HT_FONT_H2))
           ->align(HT_FONT_ALIGN_CENTER)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
@@ -254,7 +254,10 @@ void PlayerView::setDetailsCardVisible(bool visible) {
   if (m_infoIconText) {
     std::string iconStr = Components::IconProvider::getIcon(
         m_detailsVisible ? Components::IconType::CHEVRON_UP : Components::IconType::CHEVRON_DOWN);
-    m_infoIconText->rebuild()->text(std::string(iconStr))->commence();
+    m_infoIconText->rebuild()
+        ->text(std::string(iconStr))
+        ->fontFamily(Components::IconProvider::getCustomFontFamily())
+        ->commence();
   }
   if (!m_tabContentWrapper || !m_detailsCard)
     return;

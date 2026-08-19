@@ -1,8 +1,8 @@
 #include "QueueView.hpp"
+#include "../../Utils/ArtworkUtils.hpp"
 #include "../Components/IconProvider.hpp"
 #include "../Components/SongCard.hpp"
 #include "../Dialogs/ActionMenuDialog.hpp"
-#include "../../Utils/ArtworkUtils.hpp"
 #include <algorithm>
 #include <cstring>
 #include <hyprtoolkit/element/Button.hpp>
@@ -111,7 +111,9 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto addItemBtn =
         CButtonBuilder::begin()
-            ->label(Components::IconProvider::getIcon(Components::IconType::ADD) + " Add Item")
+            ->label(
+                Components::IconProvider::getIcon(Components::IconType::ADD) +
+                " Add Item")
             ->alignText(HT_FONT_ALIGN_CENTER)
             ->fontFamily(std::string(fontFamily))
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -127,15 +129,22 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto queueActionsBtn =
         CButtonBuilder::begin()
-            ->label("⋮")
+            ->label(
+                Components::IconProvider::getIcon(Components::IconType::MENU))
             ->alignText(HT_FONT_ALIGN_CENTER)
-            ->fontFamily(std::string(fontFamily))
+            ->fontFamily(Components::IconProvider::getCustomFontFamily())
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
             ->onMainClick([this](CSharedPointer<CButtonElement>) {
               Dialogs::showActionMenuDialog(
-                  {.options = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play All",
-                               Components::IconProvider::getIcon(Components::IconType::SHUFFLE) + " Shuffle Queue",
-                               Components::IconProvider::getIcon(Components::IconType::REMOVE) + " Clear Queue"},
+                  {.options = {Components::IconProvider::getIcon(
+                                   Components::IconType::PLAY) +
+                                   " Play All",
+                               Components::IconProvider::getIcon(
+                                   Components::IconType::SHUFFLE) +
+                                   " Shuffle Queue",
+                               Components::IconProvider::getIcon(
+                                   Components::IconType::CLEAR_ALL) +
+                                   " Clear Queue"},
                    .onSelect =
                        [this](size_t idx, const std::string &) {
                          if (idx == 0) { // ▶ Play All
@@ -205,7 +214,9 @@ void QueueView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
   auto loadingText =
       CTextBuilder::begin()
-          ->text(Components::IconProvider::getIcon(Components::IconType::LOADING) + " Loading Queue...")
+          ->text(
+              Components::IconProvider::getIcon(Components::IconType::LOADING) +
+              " Loading Queue...")
           ->color([palette] {
             return palette ? palette->m_colors.text
                            : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -278,40 +289,44 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
     unsigned songPos = mpd_song_get_pos(s);
 
     const char *artist = mpd_song_get_tag(s, MPD_TAG_ARTIST, 0);
-    const char *title  = mpd_song_get_tag(s, MPD_TAG_TITLE, 0);
-    const char *uri    = mpd_song_get_uri(s);
+    const char *title = mpd_song_get_tag(s, MPD_TAG_TITLE, 0);
+    const char *uri = mpd_song_get_uri(s);
 
     std::string displayTitle;
     std::string displayArtist;
 
     std::string storedTitle, storedUploader;
     if (title && strlen(title) > 0) {
-      displayTitle  = std::string(title);
+      displayTitle = std::string(title);
       displayArtist = artist ? artist : "Unavailable";
     } else if (uri && m_ctx.ytDlpService &&
-               m_ctx.ytDlpService->getUrlTitle(uri, storedTitle, storedUploader)) {
-      displayTitle  = "Stream (" + storedTitle + ")";
+               m_ctx.ytDlpService->getUrlTitle(uri, storedTitle,
+                                               storedUploader)) {
+      displayTitle = "Stream (" + storedTitle + ")";
       displayArtist = storedUploader.empty() ? "Unavailable" : storedUploader;
     } else if (uri) {
       std::string uriStr(uri);
       if (uriStr.find("googlevideo.com") != std::string::npos ||
           uriStr.find("http://") == 0 || uriStr.find("https://") == 0) {
         displayTitle = uriStr.length() > 50
-                           ? Components::IconProvider::getIcon(Components::IconType::STREAM) + " Stream (" + uriStr.substr(0, 35) + "...)"
+                           ? Components::IconProvider::getIcon(
+                                 Components::IconType::STREAM) +
+                                 " Stream (" + uriStr.substr(0, 35) + "...)"
                            : uriStr;
       } else {
         displayTitle = uriStr;
       }
       displayArtist = "Unavailable";
     } else {
-      displayTitle  = "Unknown Track";
+      displayTitle = "Unknown Track";
       displayArtist = "Unavailable";
     }
 
     if (!m_searchQuery.empty()) {
-      std::string query        = m_searchQuery;
+      std::string query = m_searchQuery;
       std::string searchTarget = displayTitle + " " + displayArtist;
-      std::transform(searchTarget.begin(), searchTarget.end(), searchTarget.begin(), ::tolower);
+      std::transform(searchTarget.begin(), searchTarget.end(),
+                     searchTarget.begin(), ::tolower);
       std::transform(query.begin(), query.end(), query.begin(), ::tolower);
       if (searchTarget.find(query) == std::string::npos) {
         mpd_song_free(s);
@@ -319,7 +334,8 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
       }
     }
 
-    queueSongs.push_back({songId, songPos, uri ? uri : "", displayTitle, displayArtist});
+    queueSongs.push_back(
+        {songId, songPos, uri ? uri : "", displayTitle, displayArtist});
     mpd_song_free(s);
   }
   mpd_response_finish(conn);
@@ -329,94 +345,114 @@ void QueueView::populateQueueSongs(struct mpd_connection *conn,
   for (const auto &item : queueSongs) {
     foundAny = true;
     int songId = item.songId;
-    std::string indexStr   = std::to_string(item.songPos + 1) + ". ";
+    std::string indexStr = std::to_string(item.songPos + 1) + ". ";
     std::string songUriStr = item.uri;
     bool isActive = (activeSongId >= 0 && songId == activeSongId);
 
     std::string cachedArt = Utils::getCachedTrackArtwork(songUriStr);
-    std::string artPath = cachedArt.empty() ? Utils::getDefaultArtworkPath() : cachedArt;
+    std::string artPath =
+        cachedArt.empty() ? Utils::getDefaultArtworkPath() : cachedArt;
 
-    if (cachedArt.empty() && !songUriStr.empty()) {
+    bool isStreamUrl =
+        (songUriStr.rfind("http://", 0) == 0 ||
+         songUriStr.rfind("https://", 0) == 0 ||
+         songUriStr.find("googlevideo.com") != std::string::npos ||
+         songUriStr.find("youtube.com") != std::string::npos);
+
+    if (cachedArt.empty() && !songUriStr.empty() && !isStreamUrl) {
       uncachedSongs.push_back(item);
     }
 
     auto card = std::make_shared<UI::Components::SongCard>(
         UI::Components::SongCardConfig{
-            .palette    = palette,
+            .palette = palette,
             .fontFamily = fontFamily,
-            .rounding   = rounding,
+            .rounding = rounding,
             .cardHeight = 70.0f,
-            .title      = indexStr + item.title,
-            .subtitle   = item.artist,
-            .imagePath  = artPath,
-            .isActive   = isActive,
-            .onCardBodyClick = [this, songId] {
-              setActiveSongId(songId);
-              if (m_ctx.playMpdSongId)
-                m_ctx.playMpdSongId(songId);
-            },
-            .onActionClick = [this, songId, songUriStr, displayTitle = item.title] {
-              Dialogs::showActionMenuDialog(
-                  {.options  = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play",
-                                Components::IconProvider::getIcon(Components::IconType::REMOVE) + " Remove from Queue",
-                                Components::IconProvider::getIcon(Components::IconType::FOLDER) + " Add to Playlist"},
-                   .onSelect =
-                       [this, songId, songUriStr](size_t idx,
-                                                  const std::string &) {
-                         if (idx == 0) {
-                           setActiveSongId(songId);
-                           if (m_ctx.playMpdSongId)
-                             m_ctx.playMpdSongId(songId);
-                         } else if (idx == 1) {
-                           if (m_ctx.removeSongFromQueue)
-                             m_ctx.removeSongFromQueue(songId);
-                         } else if (idx == 2) {
-                           if (!songUriStr.empty() &&
-                               m_ctx.showPlaylistSelectionDialog)
-                             m_ctx.showPlaylistSelectionDialog(songUriStr);
-                         }
-                       },
-                   .parentWindow = m_ctx.window,
-                   .backend      = m_ctx.backend,
-                   .palette      = m_ctx.palette,
-                   .fontFamily   = m_ctx.fontFamily});
-            }});
+            .title = indexStr + item.title,
+            .subtitle = item.artist,
+            .imagePath = artPath,
+            .isActive = isActive,
+            .onCardBodyClick =
+                [this, songId] {
+                  setActiveSongId(songId);
+                  if (m_ctx.playMpdSongId)
+                    m_ctx.playMpdSongId(songId);
+                },
+            .onActionClick =
+                [this, songId, songUriStr, displayTitle = item.title] {
+                  Dialogs::showActionMenuDialog(
+                      {.options = {Components::IconProvider::getIcon(
+                                       Components::IconType::PLAY) +
+                                       " Play",
+                                   Components::IconProvider::getIcon(
+                                       Components::IconType::REMOVE) +
+                                       " Remove from Queue",
+                                   Components::IconProvider::getIcon(
+                                       Components::IconType::FOLDER) +
+                                       " Add to Playlist"},
+                       .onSelect =
+                           [this, songId, songUriStr](size_t idx,
+                                                      const std::string &) {
+                             if (idx == 0) {
+                               setActiveSongId(songId);
+                               if (m_ctx.playMpdSongId)
+                                 m_ctx.playMpdSongId(songId);
+                             } else if (idx == 1) {
+                               if (m_ctx.removeSongFromQueue)
+                                 m_ctx.removeSongFromQueue(songId);
+                             } else if (idx == 2) {
+                               if (!songUriStr.empty() &&
+                                   m_ctx.showPlaylistSelectionDialog)
+                                 m_ctx.showPlaylistSelectionDialog(songUriStr);
+                             }
+                           },
+                       .parentWindow = m_ctx.window,
+                       .backend = m_ctx.backend,
+                       .palette = m_ctx.palette,
+                       .fontFamily = m_ctx.fontFamily});
+                }});
 
     m_queueSongCards[songId] = card;
     m_queueContentLayout->addChild(card->build());
   }
 
-  // Non-blocking progressive micro-batched artwork resolution (2 tracks per 15ms batch for uncached items only)
+  // Non-blocking progressive micro-batched artwork resolution (2 tracks per
+  // 15ms batch for uncached items only)
   if (m_ctx.backend && m_ctx.runMpdCommand && !uncachedSongs.empty()) {
     auto stepState = std::make_shared<size_t>(0);
-    auto processNextChunk = [this, uncachedSongs, stepState](auto self) -> void {
+    auto processNextChunk = [this, uncachedSongs,
+                             stepState](auto self) -> void {
       if (*stepState >= uncachedSongs.size())
         return;
-      m_ctx.runMpdCommand([this, uncachedSongs, stepState, self](struct mpd_connection *conn) {
-        size_t limit = std::min(*stepState + 2, uncachedSongs.size());
-        for (size_t i = *stepState; i < limit; ++i) {
-          const auto &item = uncachedSongs[i];
-          std::string resolved = Utils::resolveTrackArtwork(conn, item.uri);
-          if (!resolved.empty()) {
-            auto it = m_queueSongCards.find(item.songId);
-            if (it != m_queueSongCards.end() && it->second) {
-              it->second->setImagePath(resolved);
+      m_ctx.runMpdCommand(
+          [this, uncachedSongs, stepState, self](struct mpd_connection *conn) {
+            size_t limit = std::min(*stepState + 2, uncachedSongs.size());
+            for (size_t i = *stepState; i < limit; ++i) {
+              const auto &item = uncachedSongs[i];
+              std::string resolved = Utils::resolveTrackArtwork(conn, item.uri);
+              if (!resolved.empty()) {
+                auto it = m_queueSongCards.find(item.songId);
+                if (it != m_queueSongCards.end() && it->second) {
+                  it->second->setImagePath(resolved);
+                }
+              }
             }
-          }
-        }
-        *stepState = limit;
-        if (*stepState < uncachedSongs.size()) {
-          m_ctx.backend->addTimer(
-              std::chrono::milliseconds(15),
-              [self](CAtomicSharedPointer<CTimer>, void *) { self(self); },
-              nullptr);
-        }
-      });
+            *stepState = limit;
+            if (*stepState < uncachedSongs.size()) {
+              m_ctx.backend->addTimer(
+                  std::chrono::milliseconds(15),
+                  [self](CAtomicSharedPointer<CTimer>, void *) { self(self); },
+                  nullptr);
+            }
+          });
     };
 
     m_ctx.backend->addTimer(
         std::chrono::milliseconds(5),
-        [processNextChunk](CAtomicSharedPointer<CTimer>, void *) { processNextChunk(processNextChunk); },
+        [processNextChunk](CAtomicSharedPointer<CTimer>, void *) {
+          processNextChunk(processNextChunk);
+        },
         nullptr);
   }
 

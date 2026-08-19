@@ -270,13 +270,13 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
   topSearchRow->addChild(countInput);
 
   auto submitBtn = CButtonBuilder::begin()
-                       ->label(Components::IconProvider::getIcon(Components::IconType::SEARCH) + " Search")
+                       ->label("Go")
                        ->alignText(HT_FONT_ALIGN_CENTER)
                        ->fontFamily(std::string(fontFamily))
                        ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
                        ->onMainClick([this](CSharedPointer<CButtonElement>) { triggerSearch(); })
                        ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                           CDynamicSize::HT_SIZE_ABSOLUTE, {100.0F, 40.0F}))
+                                           CDynamicSize::HT_SIZE_ABSOLUTE, {60.0F, 40.0F}))
                        ->commence();
   submitBtn->setGrow(false);
   topSearchRow->addChild(submitBtn);
@@ -397,7 +397,7 @@ void YtDlpView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
                                     triggerPlayStream] {
                   Dialogs::showActionMenuDialog({
                       .options  = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play Stream",
-                                   Components::IconProvider::getIcon(Components::IconType::ADD) + " Add Stream to Queue",
+                                   Components::IconProvider::getIcon(Components::IconType::ADD_TO_QUEUE) + " Add Stream to Queue",
                                    Components::IconProvider::getIcon(Components::IconType::FOLDER) + " Add Stream to Playlist",
                                    Components::IconProvider::getIcon(Components::IconType::COPY) + " Copy Link",
                                    Components::IconProvider::getIcon(Components::IconType::DOWNLOAD) + " Download to Database"},

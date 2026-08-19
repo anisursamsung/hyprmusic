@@ -1,15 +1,15 @@
 #include "PlaylistsView.hpp"
+#include "../../Utils/ArtworkUtils.hpp"
 #include "../Components/IconProvider.hpp"
 #include "../Components/SongCard.hpp"
 #include "../Components/UIFactory.hpp"
 #include "../Dialogs/ActionMenuDialog.hpp"
-#include "../../Utils/ArtworkUtils.hpp"
-#include <hyprtoolkit/element/Button.hpp>
-#include <hyprtoolkit/element/ScrollArea.hpp>
-#include <hyprtoolkit/element/Textbox.hpp>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <hyprtoolkit/element/Button.hpp>
+#include <hyprtoolkit/element/ScrollArea.hpp>
+#include <hyprtoolkit/element/Textbox.hpp>
 #include <iostream>
 #include <unordered_set>
 
@@ -173,58 +173,70 @@ void PlaylistsView::layoutPlaylists() {
 
       auto actionBtn =
           CButtonBuilder::begin()
-              ->label("⋮")
+              ->label(
+                  Components::IconProvider::getIcon(Components::IconType::MENU))
               ->alignText(HT_FONT_ALIGN_CENTER)
-              ->fontFamily(std::string(fontFamily))
+              ->fontFamily(Components::IconProvider::getCustomFontFamily())
               ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
               ->onMainClick([this, plName](CSharedPointer<CButtonElement>) {
-                Dialogs::showActionMenuDialog({
-                    .options = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play",
-                                Components::IconProvider::getIcon(Components::IconType::ADD) + " Add to Queue",
-                                Components::IconProvider::getIcon(Components::IconType::EDIT) + " Rename",
-                                Components::IconProvider::getIcon(Components::IconType::REMOVE) + " Delete"},
-                    .onSelect =
-                        [this, plName](size_t idx, const std::string &) {
-                          if (idx == 0) { // ▶ Play
-                            m_ctx.runMpdCommand([plName](struct mpd_connection *conn) {
-                              mpd_run_clear(conn);
-                              mpd_run_load(conn, plName.c_str());
-                              mpd_run_play(conn);
-                            });
-                            if (m_ctx.showNotification)
-                              m_ctx.showNotification("Playing " + plName);
-                            if (m_ctx.updateStatus)
-                              m_ctx.updateStatus();
-                          } else if (idx == 1) { // ➕ Add to Queue
-                            addPlaylistToQueue(plName);
-                          } else if (idx == 2) { // ✏️ Rename
-                            if (m_ctx.showRenameDialog)
-                              m_ctx.showRenameDialog(plName);
-                          } else if (idx == 3) { // 🗑️ Delete
-                            m_ctx.runMpdCommand([plName](struct mpd_connection *conn) {
-                              mpd_run_playlist_clear(conn, plName.c_str());
-                              mpd_run_rm(conn, plName.c_str());
-                            });
-                            if (m_selectedPlaylist == plName) {
-                              m_selectedPlaylist = "";
-                              m_detailedView = false;
-                            }
-                            if (m_ctx.showNotification)
-                              m_ctx.showNotification("Deleted " + plName);
-                            m_ctx.backend->addTimer(
-                                std::chrono::milliseconds(100),
-                                [this](CAtomicSharedPointer<CTimer>, void *) {
-                                  m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
-                                    rebuildUI(m_tabContentWrapper, conn);
-                                  });
-                                },
-                                nullptr);
-                          }
-                        },
-                    .parentWindow = m_ctx.window,
-                    .backend = m_ctx.backend,
-                    .palette = m_ctx.palette,
-                    .fontFamily = m_ctx.fontFamily});
+                Dialogs::showActionMenuDialog(
+                    {.options = {Components::IconProvider::getIcon(
+                                     Components::IconType::PLAY) +
+                                     " Play",
+                                 Components::IconProvider::getIcon(
+                                     Components::IconType::ADD_TO_QUEUE) +
+                                     " Add to Queue",
+                                 Components::IconProvider::getIcon(
+                                     Components::IconType::EDIT) +
+                                     " Rename",
+                                 Components::IconProvider::getIcon(
+                                     Components::IconType::DELETE) +
+                                     " Delete"},
+                     .onSelect =
+                         [this, plName](size_t idx, const std::string &) {
+                           if (idx == 0) { // ▶ Play
+                             m_ctx.runMpdCommand(
+                                 [plName](struct mpd_connection *conn) {
+                                   mpd_run_clear(conn);
+                                   mpd_run_load(conn, plName.c_str());
+                                   mpd_run_play(conn);
+                                 });
+                             if (m_ctx.showNotification)
+                               m_ctx.showNotification("Playing " + plName);
+                             if (m_ctx.updateStatus)
+                               m_ctx.updateStatus();
+                           } else if (idx == 1) { // ➕ Add to Queue
+                             addPlaylistToQueue(plName);
+                           } else if (idx == 2) { // ✏️ Rename
+                             if (m_ctx.showRenameDialog)
+                               m_ctx.showRenameDialog(plName);
+                           } else if (idx == 3) { // 🗑️ Delete
+                             m_ctx.runMpdCommand(
+                                 [plName](struct mpd_connection *conn) {
+                                   mpd_run_playlist_clear(conn, plName.c_str());
+                                   mpd_run_rm(conn, plName.c_str());
+                                 });
+                             if (m_selectedPlaylist == plName) {
+                               m_selectedPlaylist = "";
+                               m_detailedView = false;
+                             }
+                             if (m_ctx.showNotification)
+                               m_ctx.showNotification("Deleted " + plName);
+                             m_ctx.backend->addTimer(
+                                 std::chrono::milliseconds(100),
+                                 [this](CAtomicSharedPointer<CTimer>, void *) {
+                                   m_ctx.runMpdCommand(
+                                       [this](struct mpd_connection *conn) {
+                                         rebuildUI(m_tabContentWrapper, conn);
+                                       });
+                                 },
+                                 nullptr);
+                           }
+                         },
+                     .parentWindow = m_ctx.window,
+                     .backend = m_ctx.backend,
+                     .palette = m_ctx.palette,
+                     .fontFamily = m_ctx.fontFamily});
               })
               ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
                                   CDynamicSize::HT_SIZE_ABSOLUTE,
@@ -260,7 +272,8 @@ void PlaylistsView::rebuildLeftItems(struct mpd_connection *conn) {
         if (!m_searchQuery.empty()) {
           std::string query = m_searchQuery;
           std::string plLower = sName;
-          std::transform(plLower.begin(), plLower.end(), plLower.begin(), ::tolower);
+          std::transform(plLower.begin(), plLower.end(), plLower.begin(),
+                         ::tolower);
           std::transform(query.begin(), query.end(), query.begin(), ::tolower);
           if (plLower.find(query) == std::string::npos) {
             mpd_playlist_free(pl);
@@ -344,29 +357,32 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
       std::string storedTitle, storedUploader;
 
       if (title && strlen(title) > 0) {
-        displayTitle  = std::string(title);
+        displayTitle = std::string(title);
         displayArtist = artist ? std::string(artist) : "Unknown Artist";
       } else if (uri && m_ctx.ytDlpService &&
-                 m_ctx.ytDlpService->getUrlTitle(uri, storedTitle, storedUploader)) {
-        displayTitle  = "Stream (" + storedTitle + ")";
+                 m_ctx.ytDlpService->getUrlTitle(uri, storedTitle,
+                                                 storedUploader)) {
+        displayTitle = "Stream (" + storedTitle + ")";
         displayArtist = storedUploader.empty() ? "Unavailable" : storedUploader;
       } else if (uri) {
         std::string uriStr(uri);
         if (uriStr.find("googlevideo.com") != std::string::npos ||
             uriStr.find("http://") == 0 || uriStr.find("https://") == 0) {
-          displayTitle = uriStr.length() > 50
-                             ? "\U0001f310 Stream (" + uriStr.substr(0, 35) + "...)"
-                             : uriStr;
+          displayTitle =
+              uriStr.length() > 50
+                  ? "\U0001f310 Stream (" + uriStr.substr(0, 35) + "...)"
+                  : uriStr;
         } else {
           displayTitle = uriStr;
         }
         displayArtist = "Unavailable";
       } else {
-        displayTitle  = "Unknown Track";
+        displayTitle = "Unknown Track";
         displayArtist = "Unavailable";
       }
 
-      playlistSongs.push_back({songPos++, uri ? uri : "", displayTitle, displayArtist});
+      playlistSongs.push_back(
+          {songPos++, uri ? uri : "", displayTitle, displayArtist});
       mpd_song_free(s);
     }
     mpd_response_finish(conn);
@@ -377,11 +393,12 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
     for (const auto &item : playlistSongs) {
       foundAny = true;
       std::string songUriStr = item.uri;
-      std::string indexStr  = std::to_string(item.songPos + 1) + ". ";
-      int currentPos        = item.songPos;
+      std::string indexStr = std::to_string(item.songPos + 1) + ". ";
+      int currentPos = item.songPos;
 
       std::string cachedArt = Utils::getCachedTrackArtwork(songUriStr);
-      std::string artPath = cachedArt.empty() ? Utils::getDefaultArtworkPath() : cachedArt;
+      std::string artPath =
+          cachedArt.empty() ? Utils::getDefaultArtworkPath() : cachedArt;
 
       if (cachedArt.empty() && !songUriStr.empty()) {
         uncachedSongs.push_back(item);
@@ -390,79 +407,99 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
       // ── Build card via reusable SongCard component ────────────────────────
       auto card = std::make_shared<UI::Components::SongCard>(
           UI::Components::SongCardConfig{
-              .palette    = palette,
+              .palette = palette,
               .fontFamily = fontFamily,
-              .rounding   = rounding,
+              .rounding = rounding,
               .cardHeight = 70.0f,
-              .title      = indexStr + item.title,
-              .subtitle   = item.artist,
-              .imagePath  = artPath,
-              .isActive   = false,
-              .onCardBodyClick = [this, songUriStr] {
-                if (!songUriStr.empty() && m_ctx.playSongFromUri)
-                  m_ctx.playSongFromUri(songUriStr);
-              },
-              .onActionClick = [this, plName, currentPos, songUriStr] {
-                Dialogs::showActionMenuDialog({
-                    .options  = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play",
-                                 Components::IconProvider::getIcon(Components::IconType::ADD) + " Add to Queue",
-                                 Components::IconProvider::getIcon(Components::IconType::COPY) + " Copy to Playlist",
-                                 Components::IconProvider::getIcon(Components::IconType::MOVE) + " Move to Playlist",
-                                 Components::IconProvider::getIcon(Components::IconType::REMOVE) + " Remove"},
-                    .onSelect =
-                        [this, plName, currentPos,
-                         songUriStr](size_t idx, const std::string &) {
-                          if (idx == 0) {
-                            if (!songUriStr.empty() && m_ctx.playSongFromUri)
-                              m_ctx.playSongFromUri(songUriStr);
-                          } else if (idx == 1) {
-                            if (!songUriStr.empty() && m_ctx.addSongToQueue)
-                              m_ctx.addSongToQueue(songUriStr);
-                          } else if (idx == 2) {
-                            if (!songUriStr.empty() &&
-                                m_ctx.showPlaylistSelectionDialog)
-                              m_ctx.showPlaylistSelectionDialog(songUriStr, -1);
-                          } else if (idx == 3) {
-                            if (!songUriStr.empty() &&
-                                m_ctx.showPlaylistSelectionDialog)
-                              m_ctx.showPlaylistSelectionDialog(songUriStr,
-                                                                currentPos);
-                          } else if (idx == 4) {
-                            m_ctx.runMpdCommand(
-                                [plName,
-                                 currentPos](struct mpd_connection *conn) {
-                                  mpd_run_playlist_delete(
-                                      conn, plName.c_str(), currentPos);
-                                });
-                            if (m_ctx.showNotification)
-                              m_ctx.showNotification("Removed from " + plName);
-                            m_ctx.backend->addTimer(
-                                std::chrono::milliseconds(100),
-                                [this](CAtomicSharedPointer<CTimer>, void *) {
-                                  m_ctx.runMpdCommand(
-                                      [this](struct mpd_connection *conn) {
-                                        rebuildRightItems(conn);
-                                      });
-                                },
-                                nullptr);
-                          }
-                        },
-                    .parentWindow = m_ctx.window,
-                    .backend      = m_ctx.backend,
-                    .palette      = m_ctx.palette,
-                    .fontFamily   = m_ctx.fontFamily});
-              }});
+              .title = indexStr + item.title,
+              .subtitle = item.artist,
+              .imagePath = artPath,
+              .isActive = false,
+              .onCardBodyClick =
+                  [this, songUriStr] {
+                    if (!songUriStr.empty() && m_ctx.playSongFromUri)
+                      m_ctx.playSongFromUri(songUriStr);
+                  },
+              .onActionClick =
+                  [this, plName, currentPos, songUriStr] {
+                    Dialogs::showActionMenuDialog(
+                        {.options = {Components::IconProvider::getIcon(
+                                         Components::IconType::PLAY) +
+                                         " Play",
+                                     Components::IconProvider::getIcon(
+                                         Components::IconType::ADD_TO_QUEUE) +
+                                         " Add to Queue",
+                                     Components::IconProvider::getIcon(
+                                         Components::IconType::COPY) +
+                                         " Copy to Playlist",
+                                     Components::IconProvider::getIcon(
+                                         Components::IconType::MOVE) +
+                                         " Move to Playlist",
+                                     Components::IconProvider::getIcon(
+                                         Components::IconType::REMOVE) +
+                                         " Remove"},
+                         .onSelect =
+                             [this, plName, currentPos,
+                              songUriStr](size_t idx, const std::string &) {
+                               if (idx == 0) {
+                                 if (!songUriStr.empty() &&
+                                     m_ctx.playSongFromUri)
+                                   m_ctx.playSongFromUri(songUriStr);
+                               } else if (idx == 1) {
+                                 if (!songUriStr.empty() &&
+                                     m_ctx.addSongToQueue)
+                                   m_ctx.addSongToQueue(songUriStr);
+                               } else if (idx == 2) {
+                                 if (!songUriStr.empty() &&
+                                     m_ctx.showPlaylistSelectionDialog)
+                                   m_ctx.showPlaylistSelectionDialog(songUriStr,
+                                                                     -1);
+                               } else if (idx == 3) {
+                                 if (!songUriStr.empty() &&
+                                     m_ctx.showPlaylistSelectionDialog)
+                                   m_ctx.showPlaylistSelectionDialog(
+                                       songUriStr, currentPos);
+                               } else if (idx == 4) {
+                                 m_ctx.runMpdCommand(
+                                     [plName,
+                                      currentPos](struct mpd_connection *conn) {
+                                       mpd_run_playlist_delete(
+                                           conn, plName.c_str(), currentPos);
+                                     });
+                                 if (m_ctx.showNotification)
+                                   m_ctx.showNotification("Removed from " +
+                                                          plName);
+                                 m_ctx.backend->addTimer(
+                                     std::chrono::milliseconds(100),
+                                     [this](CAtomicSharedPointer<CTimer>,
+                                            void *) {
+                                       m_ctx.runMpdCommand(
+                                           [this](struct mpd_connection *conn) {
+                                             rebuildRightItems(conn);
+                                           });
+                                     },
+                                     nullptr);
+                               }
+                             },
+                         .parentWindow = m_ctx.window,
+                         .backend = m_ctx.backend,
+                         .palette = m_ctx.palette,
+                         .fontFamily = m_ctx.fontFamily});
+                  }});
       m_playlistSongCards[currentPos] = card;
       m_rightItemsLayout->addChild(card->build());
     }
 
-    // Non-blocking progressive micro-batched artwork resolution (2 tracks per 15ms batch for uncached items only)
+    // Non-blocking progressive micro-batched artwork resolution (2 tracks per
+    // 15ms batch for uncached items only)
     if (m_ctx.backend && m_ctx.runMpdCommand && !uncachedSongs.empty()) {
       auto stepState = std::make_shared<size_t>(0);
-      auto processNextChunk = [this, uncachedSongs, stepState](auto self) -> void {
+      auto processNextChunk = [this, uncachedSongs,
+                               stepState](auto self) -> void {
         if (*stepState >= uncachedSongs.size())
           return;
-        m_ctx.runMpdCommand([this, uncachedSongs, stepState, self](struct mpd_connection *conn) {
+        m_ctx.runMpdCommand([this, uncachedSongs, stepState,
+                             self](struct mpd_connection *conn) {
           size_t limit = std::min(*stepState + 2, uncachedSongs.size());
           for (size_t i = *stepState; i < limit; ++i) {
             const auto &item = uncachedSongs[i];
@@ -486,7 +523,9 @@ void PlaylistsView::rebuildRightItems(struct mpd_connection *conn) {
 
       m_ctx.backend->addTimer(
           std::chrono::milliseconds(5),
-          [processNextChunk](CAtomicSharedPointer<CTimer>, void *) { processNextChunk(processNextChunk); },
+          [processNextChunk](CAtomicSharedPointer<CTimer>, void *) {
+            processNextChunk(processNextChunk);
+          },
           nullptr);
     }
   }
@@ -598,7 +637,9 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto createPlBtn =
         CButtonBuilder::begin()
-            ->label(Components::IconProvider::getIcon(Components::IconType::ADD) + " Create Playlist")
+            ->label(
+                Components::IconProvider::getIcon(Components::IconType::ADD) +
+                " Create Playlist")
             ->alignText(HT_FONT_ALIGN_CENTER)
             ->fontFamily(std::string(fontFamily))
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -667,7 +708,7 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto backBtn =
         CButtonBuilder::begin()
-            ->label("◀ Back")
+            ->label("Back")
             ->alignText(HT_FONT_ALIGN_CENTER)
             ->fontFamily(std::string(fontFamily))
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -686,7 +727,7 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto plTitle =
         CTextBuilder::begin()
-            ->text(std::string(Components::IconProvider::getIcon(Components::IconType::FOLDER) + " " + plName))
+            ->text(std::string(plName))
             ->color([palette] {
               return palette ? palette->m_colors.text
                              : CHyprColor(1.0, 1.0, 1.0, 1.0);
@@ -702,7 +743,9 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto addTrackBtn =
         CButtonBuilder::begin()
-            ->label(Components::IconProvider::getIcon(Components::IconType::ADD) + " Add Item")
+            ->label(
+                Components::IconProvider::getIcon(Components::IconType::ADD) +
+                " Add Item")
             ->alignText(HT_FONT_ALIGN_CENTER)
             ->fontFamily(std::string(fontFamily))
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
@@ -718,60 +761,71 @@ void PlaylistsView::rebuildUI(CSharedPointer<CRectangleElement> wrapper,
 
     auto actionBtn =
         CButtonBuilder::begin()
-            ->label("⋮")
+            ->label(
+                Components::IconProvider::getIcon(Components::IconType::MENU))
             ->alignText(HT_FONT_ALIGN_CENTER)
-            ->fontFamily(std::string(fontFamily))
+            ->fontFamily(Components::IconProvider::getCustomFontFamily())
             ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
             ->onMainClick([this, plName](CSharedPointer<CButtonElement>) {
-              Dialogs::showActionMenuDialog({
-                  .options = {Components::IconProvider::getIcon(Components::IconType::PLAY) + " Play",
-                              Components::IconProvider::getIcon(Components::IconType::ADD) + " Add to Queue",
-                              Components::IconProvider::getIcon(Components::IconType::EDIT) + " Rename",
-                              Components::IconProvider::getIcon(Components::IconType::REMOVE) + " Delete"},
-                  .onSelect =
-                      [this, plName](size_t idx, const std::string &) {
-                        if (idx == 0) { // ▶ Play
-                          m_ctx.runMpdCommand([plName](struct mpd_connection *conn) {
-                            mpd_run_clear(conn);
-                            mpd_run_load(conn, plName.c_str());
-                            mpd_run_play(conn);
-                          });
-                          if (m_ctx.showNotification)
-                            m_ctx.showNotification("Playing " + plName);
-                          if (m_ctx.updateStatus)
-                            m_ctx.updateStatus();
-                        } else if (idx == 1) { // ➕ Add to Queue
-                          addPlaylistToQueue(plName);
-                        } else if (idx == 2) { // ✏️ Rename
-                          if (m_ctx.showRenameDialog)
-                            m_ctx.showRenameDialog(plName);
-                        } else if (idx == 3) { // 🗑️ Delete
-                          m_ctx.runMpdCommand([plName](struct mpd_connection *conn) {
-                            mpd_run_playlist_clear(conn, plName.c_str());
-                            mpd_run_rm(conn, plName.c_str());
-                          });
-                          m_selectedPlaylist = "";
-                          m_detailedView = false;
-                          if (m_ctx.showNotification)
-                            m_ctx.showNotification("Deleted " + plName);
-                          m_ctx.backend->addTimer(
-                              std::chrono::milliseconds(100),
-                              [this](CAtomicSharedPointer<CTimer>, void *) {
-                                m_ctx.runMpdCommand([this](struct mpd_connection *conn) {
-                                  rebuildUI(m_tabContentWrapper, conn);
-                                });
-                              },
-                              nullptr);
-                        }
-                      },
-                  .parentWindow = m_ctx.window,
-                  .backend = m_ctx.backend,
-                  .palette = m_ctx.palette,
-                  .fontFamily = m_ctx.fontFamily});
+              Dialogs::showActionMenuDialog(
+                  {.options = {Components::IconProvider::getIcon(
+                                   Components::IconType::PLAY) +
+                                   " Play",
+                               Components::IconProvider::getIcon(
+                                   Components::IconType::ADD_TO_QUEUE) +
+                                   " Add to Queue",
+                               Components::IconProvider::getIcon(
+                                   Components::IconType::EDIT) +
+                                   " Rename",
+                               Components::IconProvider::getIcon(
+                                   Components::IconType::DELETE) +
+                                   " Delete"},
+                   .onSelect =
+                       [this, plName](size_t idx, const std::string &) {
+                         if (idx == 0) { // ▶ Play
+                           m_ctx.runMpdCommand(
+                               [plName](struct mpd_connection *conn) {
+                                 mpd_run_clear(conn);
+                                 mpd_run_load(conn, plName.c_str());
+                                 mpd_run_play(conn);
+                               });
+                           if (m_ctx.showNotification)
+                             m_ctx.showNotification("Playing " + plName);
+                           if (m_ctx.updateStatus)
+                             m_ctx.updateStatus();
+                         } else if (idx == 1) { // ➕ Add to Queue
+                           addPlaylistToQueue(plName);
+                         } else if (idx == 2) { // ✏️ Rename
+                           if (m_ctx.showRenameDialog)
+                             m_ctx.showRenameDialog(plName);
+                         } else if (idx == 3) { // 🗑️ Delete
+                           m_ctx.runMpdCommand(
+                               [plName](struct mpd_connection *conn) {
+                                 mpd_run_playlist_clear(conn, plName.c_str());
+                                 mpd_run_rm(conn, plName.c_str());
+                               });
+                           m_selectedPlaylist = "";
+                           m_detailedView = false;
+                           if (m_ctx.showNotification)
+                             m_ctx.showNotification("Deleted " + plName);
+                           m_ctx.backend->addTimer(
+                               std::chrono::milliseconds(100),
+                               [this](CAtomicSharedPointer<CTimer>, void *) {
+                                 m_ctx.runMpdCommand(
+                                     [this](struct mpd_connection *conn) {
+                                       rebuildUI(m_tabContentWrapper, conn);
+                                     });
+                               },
+                               nullptr);
+                         }
+                       },
+                   .parentWindow = m_ctx.window,
+                   .backend = m_ctx.backend,
+                   .palette = m_ctx.palette,
+                   .fontFamily = m_ctx.fontFamily});
             })
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                CDynamicSize::HT_SIZE_ABSOLUTE,
-                                {32.0F, 32.0F}))
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {32.0F, 32.0F}))
             ->commence();
     actionBtn->setGrow(false);
     plTitleRow->addChild(actionBtn);
@@ -854,16 +908,15 @@ void PlaylistsView::addPlaylistToQueue(const std::string &plName) {
 
     if (m_ctx.showNotification) {
       if (addedCount > 0 && skippedCount > 0) {
-        m_ctx.showNotification("Added " + std::to_string(addedCount) +
-                                " tracks from " + plName + " (" +
-                                std::to_string(skippedCount) +
-                                " skipped as duplicates)");
+        m_ctx.showNotification(
+            "Added " + std::to_string(addedCount) + " tracks from " + plName +
+            " (" + std::to_string(skippedCount) + " skipped as duplicates)");
       } else if (addedCount > 0) {
         m_ctx.showNotification("Added " + std::to_string(addedCount) +
-                                " tracks from " + plName + " to queue");
+                               " tracks from " + plName + " to queue");
       } else if (skippedCount > 0) {
         m_ctx.showNotification("All tracks from " + plName +
-                                " already in queue");
+                               " already in queue");
       } else {
         m_ctx.showNotification("Playlist " + plName + " is empty");
       }

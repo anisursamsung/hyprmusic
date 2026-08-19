@@ -50,24 +50,30 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
       navCallback(Core::eViewMode::VIEW_VISUALIZER);
     }
   };
+  auto onSettingsNavClick = [navCallback](Input::eMouseButton button,
+                                          bool down) {
+    if (navCallback && button == Input::MOUSE_BUTTON_LEFT && !down) {
+      navCallback(Core::eViewMode::VIEW_SETTINGS);
+    }
+  };
 
-  // Outer Playback Section container (20% of parentColumn)
+  // Outer Playback Section container (AUTO height of parentColumn)
   auto playbackSection =
       CRowLayoutBuilder::begin()
           ->gap(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.2F}))
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
           ->commence();
 
-  auto leftLayout =
+  auto cardViewSection =
       CRectangleBuilder::begin()
           ->color([] { return CHyprColor(0, 0, 0, 0); })
           ->rounding(8)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {0.2F, 1.0F}))
+                              CDynamicSize::HT_SIZE_AUTO, {0.2F, 1.0F}))
           ->commence();
 
-  leftLayout->setMargin(8);
+  cardViewSection->setMargin(8);
 
   CardViewConfig cardCfg{.palette = palette,
                          .fontFamily = fontFamily,
@@ -79,69 +85,176 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
                            onPlayerNavClick(Input::MOUSE_BUTTON_LEFT, false);
                          }};
   m_cardView = std::make_unique<CardView>(cardCfg);
-  leftLayout->addChild(m_cardView->build());
+  cardViewSection->addChild(m_cardView->build());
 
-  auto rightLayout =
+  auto mainControlsSection =
       CColumnLayoutBuilder::begin()
           ->gap(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {0.8F, 1.0F}))
+                              CDynamicSize::HT_SIZE_AUTO, {0.8F, 1.0F}))
           ->commence();
+  mainControlsSection->setMargin(6);
 
-  playbackSection->addChild(leftLayout);
-  playbackSection->addChild(rightLayout);
+  playbackSection->addChild(mainControlsSection);
+  playbackSection->addChild(cardViewSection);
 
-  // 1. Navigation bar section (100% width, 30% height of PlaybackSection)
+  // 1. Navigation bar section (AUTO height)
   m_navigationBar =
       CRectangleBuilder::begin()
           ->color([] { return CHyprColor(0, 0, 0, 0); })
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.30F}))
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
           ->commence();
 
   // Horizontal Row Layout for navigation tabs
   auto navRow =
       CRowLayoutBuilder::begin()
-          ->gap(5)
+          ->gap(0)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
           ->commence();
+  navRow->setMargin(6);
 
   m_navTabs.clear();
 
   auto addNavTab =
-      [&](const std::string &fallbackLabel, Core::eViewMode mode,
+      [&](IconType iconType, Core::eViewMode mode,
           std::function<void(Input::eMouseButton, bool)> &&onClick) {
-        auto res =
-            createTabCell(fallbackLabel, 0.18F, std::move(onClick),
-                          1.0f, CFontSize::HT_FONT_TEXT, true);
+        auto res = createTabCell(IconProvider::getIcon(iconType), 0.20F,
+                                 std::move(onClick), 20.0f,
+                                 CFontSize::HT_FONT_ABSOLUTE, true);
         navRow->addChild(res.container);
-        m_navTabs.push_back({mode, res.container, res.textLabel, res.bottomIndicator});
+        m_navTabs.push_back(
+            {mode, res.container, res.textLabel, res.bottomIndicator});
       };
 
-  // 1. Queue / List Icon
-  addNavTab("Queue", Core::eViewMode::VIEW_QUEUE, std::move(onQueueNavClick));
+  // 1. Queue Icon
+  addNavTab(IconType::NAV_QUEUE, Core::eViewMode::VIEW_QUEUE,
+            std::move(onQueueNavClick));
 
-  // 2. Database / Library Icon
-  addNavTab("Database", Core::eViewMode::VIEW_DATABASE, std::move(onDatabaseNavClick));
+  // 2. Database Icon
+  addNavTab(IconType::NAV_DATABASE, Core::eViewMode::VIEW_DATABASE,
+            std::move(onDatabaseNavClick));
 
   // 3. Playlist Icon
-  addNavTab("Playlist", Core::eViewMode::VIEW_PLAYLISTS,
+  addNavTab(IconType::NAV_PLAYLIST, Core::eViewMode::VIEW_PLAYLISTS,
             std::move(onPlaylistNavClick));
 
   // 4. YT-DLP Icon
-  addNavTab("YTDLP", Core::eViewMode::VIEW_YTDLP,
+  addNavTab(IconType::NAV_YTDLP, Core::eViewMode::VIEW_YTDLP,
             std::move(onYtdlpNavClick));
 
-  // 5. Mini Visualizer Container
+  // 5. Settings Icon
+  addNavTab(IconType::SETTINGS, Core::eViewMode::VIEW_SETTINGS,
+            std::move(onSettingsNavClick));
+
+  updateNavTabStates();
+
+  m_navigationBar->addChild(navRow);
+  mainControlsSection->addChild(m_navigationBar);
+
+  // 2. Seek bar section (AUTO height)
+  auto seekBarSection =
+      CRectangleBuilder::begin()
+          ->color([] { return CHyprColor(0.0F, 0.0F, 0.0F, 0.0F); })
+
+          ->rounding(0)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+          ->commence();
+
+  auto seekBarRow =
+      CRowLayoutBuilder::begin()
+          ->gap(12)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+          ->commence();
+  seekBarRow->setMargin(6);
+
+  m_timeText =
+      CTextBuilder::begin()
+          ->text(std::string("0:00 / 0:00"))
+          ->color([palette] {
+            return palette ? palette->m_colors.text
+                           : CHyprColor(0.8, 0.8, 0.8, 1.0);
+          })
+          ->fontFamily(std::string(fontFamily))
+          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
+          ->align(HT_FONT_ALIGN_LEFT)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+          ->commence();
+  m_timeText->setGrow(false);
+
+  // Custom Seekbar Initialization
+  CustomSeekBar::Context seekCtx{
+      .window = m_ctx.window,
+      .palette = palette,
+      .onSeek =
+          [this](float pct) {
+            m_ctx.runMpdCommand([pct](struct mpd_connection *conn) {
+              struct mpd_status *status = mpd_run_status(conn);
+              if (status) {
+                unsigned total = mpd_status_get_total_time(status);
+                if (total > 0) {
+                  float seconds = pct * static_cast<float>(total);
+                  mpd_run_seek_current(conn, seconds, false);
+                }
+                mpd_status_free(status);
+              }
+            });
+          },
+      .size = CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                           CDynamicSize::HT_SIZE_ABSOLUTE, {0.0F, 40.0F})};
+
+  m_customSeekBar = std::make_unique<CustomSeekBar>(seekCtx);
+  auto seekBarElem = m_customSeekBar->build();
+  seekBarElem->setGrow(
+      true); // Now stretches properly since width type is absolute
+
+  seekBarRow->addChild(seekBarElem);
+  seekBarRow->addChild(m_timeText);
+  seekBarSection->addChild(seekBarRow);
+  mainControlsSection->addChild(seekBarSection);
+
+  // 3. Controls section (AUTO height)
+  auto iconFactory = m_ctx.backend ? m_ctx.backend->systemIcons() : nullptr;
+
+  auto controlsSection =
+      CRectangleBuilder::begin()
+          ->color([] { return CHyprColor(0.0F, 0.0F, 0.0F, 0.0F); })
+
+          ->rounding(0)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+          ->commence();
+
+  auto controlsLayout =
+      CRowLayoutBuilder::begin()
+          ->gap(0)
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
+          ->commence();
+  controlsLayout->setMargin(6);
+
+  // 1. Mini Visualizer Icon (Cell 1/5 - 20% width)
+  auto miniVisWrapper =
+      CRectangleBuilder::begin()
+          ->color([] { return CHyprColor(0, 0, 0, 0); })
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {0.20F, 40.0F}))
+          ->commence();
+
   auto miniVisContainer =
       CRectangleBuilder::begin()
           ->color([] { return CHyprColor(0.0F, 0.0F, 0.0F, 0.0F); })
           ->rounding(palette ? palette->m_vars.smallRounding : 5)
           ->borderThickness(0)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {0.18F, 1.0F}))
+          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {40.0F, 40.0F}))
           ->commence();
+  miniVisContainer->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
+  miniVisContainer->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
 
   auto miniVisIndicator =
       CRectangleBuilder::begin()
@@ -157,7 +270,7 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
       CRowLayoutBuilder::begin()
           ->gap(3)
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.60F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 40.0F}))
           ->commence();
   miniVisRow->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
   miniVisRow->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
@@ -185,163 +298,34 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
   miniVisContainer->addChild(miniVisRow);
   miniVisContainer->setReceivesMouse(true);
   miniVisContainer->setMouseButton(onVisNavClick);
-  navRow->addChild(miniVisContainer);
-  m_navTabs.push_back({Core::eViewMode::VIEW_VISUALIZER, miniVisContainer, nullptr, miniVisIndicator});
 
-  updateNavTabStates();
+  miniVisWrapper->addChild(miniVisContainer);
+  m_navTabs.push_back({Core::eViewMode::VIEW_VISUALIZER, miniVisContainer,
+                       nullptr, miniVisIndicator});
+  controlsLayout->addChild(miniVisWrapper);
 
-  m_navigationBar->addChild(navRow);
-  rightLayout->addChild(m_navigationBar);
-
-  // 2. Seek bar section (30% of PlaybackSection)
-  auto seekBarSection =
-      CRectangleBuilder::begin()
-          ->color([] { return CHyprColor(0.0F, 0.0F, 0.0F, 0.0F); })
-
-          ->rounding(0)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.30F}))
-          ->commence();
-
-  auto seekBarRow =
-      CRowLayoutBuilder::begin()
-          ->gap(12)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-          ->commence();
-  seekBarRow->setMargin(10);
-
-  m_timeText =
-      CTextBuilder::begin()
-          ->text(std::string("0:00 / 0:00"))
-          ->color([palette] {
-            return palette ? palette->m_colors.text
-                           : CHyprColor(0.8, 0.8, 0.8, 1.0);
-          })
-          ->fontFamily(std::string(fontFamily))
-          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
-          ->align(HT_FONT_ALIGN_LEFT)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-          ->commence();
-  m_timeText->setGrow(false);
-
-  // Custom Seekbar Initialization
-  CustomSeekBar::Context seekCtx{
-      .window = m_ctx.window,
-      .palette = palette,
-      .onSeek =
-          [this](float pct) {
-            m_ctx.runMpdCommand([pct](struct mpd_connection *conn) {
-              struct mpd_status *status = mpd_run_status(conn);
-              if (status) {
-                unsigned total = mpd_status_get_total_time(status);
-                if (total > 0) {
-                  float seconds = pct * static_cast<float>(total);
-                  mpd_run_seek_current(conn, seconds, false);
-                }
-                mpd_status_free(status);
-              }
-            });
-          },
-      .size = CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                           CDynamicSize::HT_SIZE_ABSOLUTE, {0.0F, 36.0F})};
-
-  m_customSeekBar = std::make_unique<CustomSeekBar>(seekCtx);
-  auto seekBarElem = m_customSeekBar->build();
-  seekBarElem->setGrow(
-      true); // Now stretches properly since width type is absolute
-
-  seekBarRow->addChild(seekBarElem);
-  seekBarRow->addChild(m_timeText);
-  seekBarSection->addChild(seekBarRow);
-  rightLayout->addChild(seekBarSection);
-
-  // 3. Controls section (40% of PlaybackSection)
-  auto iconFactory = m_ctx.backend ? m_ctx.backend->systemIcons() : nullptr;
-
-  auto controlsSection =
-      CRectangleBuilder::begin()
-          ->color([] { return CHyprColor(0.0F, 0.0F, 0.0F, 0.0F); })
-
-          ->rounding(0)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 0.40F}))
-          ->commence();
-
-  auto controlsLayout =
-      CRowLayoutBuilder::begin()
-          ->gap(12)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-          ->commence();
-  controlsLayout->setMargin(8);
-
-  auto mainControlsRow =
-      CRowLayoutBuilder::begin()
-          ->gap(0)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-          ->commence();
-  mainControlsRow->setGrow(true);
-
-  auto addMediaControlCell =
-      [&](const std::string &label, float fontScale,
-          std::function<void(Input::eMouseButton, bool)> &&onClick) {
-        auto res = createTabCell(label, 0.25F, std::move(onClick), fontScale);
-        mainControlsRow->addChild(res.container);
-        return res.textLabel;
-      };
-
-  // 1. Skip Backward
-  addMediaControlCell(IconProvider::getIcon(IconType::PREV_TRACK), 1.5f,
-                      [this](Input::eMouseButton button, bool down) {
-                        if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-                          if (m_ctx.prevTrack)
-                            m_ctx.prevTrack();
-                        }
-                      });
-
-  // 2. Play / Pause
-  m_pauseBtn = addMediaControlCell(
-      IconProvider::getIcon(IconType::PLAY),
-      1.9f, [this](Input::eMouseButton button, bool down) {
-        if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-          if (m_ctx.togglePlayPause)
-            m_ctx.togglePlayPause();
-        }
-      });
-
-  // 3. Skip Forward
-  addMediaControlCell(IconProvider::getIcon(IconType::NEXT_TRACK), 1.5f,
-                      [this](Input::eMouseButton button, bool down) {
-                        if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-                          if (m_ctx.nextTrack)
-                            m_ctx.nextTrack();
-                        }
-                      });
-
-  // 4. Volume Column
+  // 2. Volume Section (Cell 2/5 - 20% width)
   {
     auto volCol =
         CRectangleBuilder::begin()
             ->color([] { return CHyprColor(0, 0, 0, 0); })
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                CDynamicSize::HT_SIZE_PERCENT, {0.25F, 1.0F}))
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {0.20F, 40.0F}))
             ->commence();
+    volCol->setGrow(false);
 
     auto volRow =
         CRowLayoutBuilder::begin()
             ->gap(8)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                CDynamicSize::HT_SIZE_PERCENT, {0.85F, 1.0F}))
+                                CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
             ->commence();
     auto volIconBg =
         CRectangleBuilder::begin()
             ->color([] { return CHyprColor(0, 0, 0, 0); })
             ->borderThickness(0)
             ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                                CDynamicSize::HT_SIZE_ABSOLUTE, {32.0F, 32.0F}))
+                                CDynamicSize::HT_SIZE_ABSOLUTE, {40.0F, 40.0F}))
             ->commence();
 
     m_volIcon =
@@ -352,11 +336,11 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
               return palette ? palette->m_colors.text
                              : CHyprColor(1.0, 1.0, 1.0, 1.0);
             })
-            ->fontFamily(std::string(fontFamily))
-            ->fontSize(CFontSize(CFontSize::HT_FONT_H1, 1.3f))
+            ->fontFamily(IconProvider::getCustomFontFamily())
+            ->fontSize(CFontSize(CFontSize::HT_FONT_ABSOLUTE, 20.0f))
             ->align(HT_FONT_ALIGN_CENTER)
-            ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
+            ->size(CDynamicSize(CDynamicSize::HT_SIZE_AUTO,
+                                CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
             ->commence();
 
     m_volIcon->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
@@ -415,61 +399,47 @@ void PlaybackBar::build(CSharedPointer<CColumnLayoutElement> parentColumn) {
     volRow->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
 
     volCol->addChild(volRow);
-    mainControlsRow->addChild(volCol);
+    controlsLayout->addChild(volCol);
   }
 
-  controlsLayout->addChild(mainControlsRow);
+  // 3. Skip Backward / Back Cell (Cell 3/5 - 20% width)
+  auto prevRes = createTabCell(
+      IconProvider::getIcon(IconType::PREV_TRACK), 0.20F,
+      [this](Input::eMouseButton button, bool down) {
+        if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+          if (m_ctx.prevTrack)
+            m_ctx.prevTrack();
+        }
+      },
+      20.0f, CFontSize::HT_FONT_ABSOLUTE, false);
+  controlsLayout->addChild(prevRes.container);
 
-  // Settings Icon Wrapper
-  auto settingsWrapper =
-      CRectangleBuilder::begin()
-          ->color([] { return CHyprColor(0, 0, 0, 0); })
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                              CDynamicSize::HT_SIZE_PERCENT, {48.0F, 1.0F}))
-          ->commence();
+  // 4. Play / Pause Cell (Cell 4/5 - 20% width)
+  auto pauseRes = createTabCell(
+      IconProvider::getIcon(IconType::PLAY), 0.20F,
+      [this](Input::eMouseButton button, bool down) {
+        if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+          if (m_ctx.togglePlayPause)
+            m_ctx.togglePlayPause();
+        }
+      },
+      22.0f, CFontSize::HT_FONT_ABSOLUTE, false);
+  m_pauseBtn = pauseRes.textLabel;
+  controlsLayout->addChild(pauseRes.container);
 
-  auto settingsBg =
-      CRectangleBuilder::begin()
-          ->color([] { return CHyprColor(0.0F, 0.0F, 0.0F, 0.0F); })
-          ->borderThickness(0)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_ABSOLUTE,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {32.0F, 32.0F}))
-          ->commence();
-  settingsBg->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-  settingsBg->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-
-  CSharedPointer<IElement> settingsIconBtn =
-      CTextBuilder::begin()
-          ->text(IconProvider::getIcon(IconType::SETTINGS))
-          ->color([palette] {
-            return palette ? palette->m_colors.text
-                           : CHyprColor(1.0, 1.0, 1.0, 1.0);
-          })
-          ->fontFamily(std::string(fontFamily))
-          ->fontSize(CFontSize(CFontSize::HT_FONT_H1, 1.3f))
-          ->align(HT_FONT_ALIGN_CENTER)
-          ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_PERCENT, {1.0F, 1.0F}))
-          ->commence();
-  settingsIconBtn->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
-  settingsIconBtn->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
-
-  settingsBg->addChild(settingsIconBtn);
-  settingsWrapper->addChild(settingsBg);
-
-  auto settingsClick = [this](Input::eMouseButton button, bool down) {
-    if (button == Input::MOUSE_BUTTON_LEFT && !down) {
-      if (m_ctx.onNavigationClick)
-        m_ctx.onNavigationClick(Core::eViewMode::VIEW_SETTINGS);
-    }
-  };
-
-  settingsBg->setReceivesMouse(true);
-  settingsBg->setMouseButton(std::move(settingsClick));
-
-  controlsLayout->addChild(settingsWrapper);
+  // 5. Skip Forward / Next Cell (Cell 5/5 - 20% width)
+  auto nextRes = createTabCell(
+      IconProvider::getIcon(IconType::NEXT_TRACK), 0.20F,
+      [this](Input::eMouseButton button, bool down) {
+        if (button == Input::MOUSE_BUTTON_LEFT && !down) {
+          if (m_ctx.nextTrack)
+            m_ctx.nextTrack();
+        }
+      },
+      20.0f, CFontSize::HT_FONT_ABSOLUTE, false);
+  controlsLayout->addChild(nextRes.container);
   controlsSection->addChild(controlsLayout);
-  rightLayout->addChild(controlsSection);
+  mainControlsSection->addChild(controlsSection);
   parentColumn->addChild(playbackSection);
 }
 
@@ -511,6 +481,7 @@ void PlaybackBar::updateVolumeIconState(bool muted, int vol) {
   if (textBtn) {
     textBtn->rebuild()
         ->text(getVolumeFallbackEmoji(muted, effectiveVol))
+        ->fontFamily(IconProvider::getCustomFontFamily())
         ->commence();
   }
 }
@@ -555,6 +526,7 @@ void PlaybackBar::updatePlayPauseState(const std::string &stateText) {
     textBtn->rebuild()
         ->text(IconProvider::getIcon(m_isPlaying ? IconType::PAUSE
                                                  : IconType::PLAY))
+        ->fontFamily(IconProvider::getCustomFontFamily())
         ->commence();
   }
 }
@@ -567,14 +539,17 @@ void PlaybackBar::applyAlbumArt(const std::string &artPath) {
 
 void PlaybackBar::updateAlbumArt(const std::string &songUri) {
   if (songUri.empty()) {
-    m_lastSongUri = "";
-    m_currentArtPath = Utils::getDefaultArtworkPath();
-    applyAlbumArt(m_currentArtPath);
+    if (m_lastSongUri != "" ||
+        m_currentArtPath != Utils::getDefaultArtworkPath()) {
+      m_lastSongUri = "";
+      m_currentArtPath = Utils::getDefaultArtworkPath();
+      applyAlbumArt(m_currentArtPath);
+    }
     return;
   }
 
-  // Check if track changed OR if currently shown artwork is the default fallback
-  if (m_lastSongUri != songUri || m_currentArtPath.empty() || m_currentArtPath == Utils::getDefaultArtworkPath()) {
+  // Only resolve artwork when the track actually changes
+  if (m_lastSongUri != songUri) {
     m_lastSongUri = songUri;
 
     m_ctx.runMpdCommand([this, songUri](struct mpd_connection *conn) {
@@ -607,7 +582,13 @@ void PlaybackBar::updateNavTabStates() {
     bool isActive = (m_activeViewMode == tab.mode);
 
     tab.container->rebuild()
-        ->color([] { return CHyprColor(0.0F, 0.0F, 0.0F, 0.0F); })
+        ->color([palette, isActive] {
+          if (isActive) {
+            return palette ? palette->m_colors.alternateBase
+                           : CHyprColor(0.25F, 0.25F, 0.30F, 1.0F);
+          }
+          return CHyprColor(0.0F, 0.0F, 0.0F, 0.0F);
+        })
         ->rounding(smallRounding)
         ->borderThickness(0)
         ->commence();
@@ -620,7 +601,7 @@ void PlaybackBar::updateNavTabStates() {
                                    palette->m_colors.alternateBase, 0.4F)
                              : CHyprColor(0.6F, 0.6F, 0.6F, 1.0F);
             }
-            return palette ? palette->m_colors.text
+            return palette ? palette->m_colors.brightText
                            : CHyprColor(1.0F, 1.0F, 1.0F, 1.0F);
           })
           ->commence();
@@ -628,15 +609,9 @@ void PlaybackBar::updateNavTabStates() {
 
     if (tab.bottomIndicator) {
       tab.bottomIndicator->rebuild()
-          ->color([palette, isActive] {
-            if (isActive) {
-              return palette ? palette->m_colors.text
-                             : CHyprColor(1.0F, 1.0F, 1.0F, 1.0F);
-            }
-            return CHyprColor(0.0F, 0.0F, 0.0F, 0.0F);
-          })
+          ->color([] { return CHyprColor(0.0F, 0.0F, 0.0F, 0.0F); })
           ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 1.0F}))
+                              CDynamicSize::HT_SIZE_ABSOLUTE, {1.0F, 0.0F}))
           ->commence();
     }
   }
@@ -649,13 +624,14 @@ PlaybackBar::TabCellResult PlaybackBar::createTabCell(
 
   auto palette = m_ctx.palette;
   std::string fontFamily = m_ctx.fontFamily;
-  std::string boldFont = fontFamily.empty() ? "Sans Serif Bold" : (fontFamily + " Bold");
+  std::string boldFont =
+      fontFamily.empty() ? "Sans Serif Bold" : (fontFamily + " Bold");
 
   auto builder = CRectangleBuilder::begin()
                      ->color([] { return CHyprColor(0.0F, 0.0F, 0.0F, 0.0F); })
                      ->size(CDynamicSize(CDynamicSize::HT_SIZE_PERCENT,
-                                         CDynamicSize::HT_SIZE_PERCENT,
-                                         {containerWidthPct, 1.0F}));
+                                         CDynamicSize::HT_SIZE_ABSOLUTE,
+                                         {containerWidthPct, 40.0F}));
 
   CSharedPointer<CRectangleElement> bottomIndicator = nullptr;
 
@@ -668,11 +644,17 @@ PlaybackBar::TabCellResult PlaybackBar::createTabCell(
             ->commence();
     bottomIndicator->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
     bottomIndicator->setPositionFlag(IElement::HT_POSITION_FLAG_BOTTOM, true);
+    bottomIndicator->setReceivesMouse(false);
   }
 
   auto btnContainer = builder->commence();
   if (bottomIndicator) {
     btnContainer->addChild(bottomIndicator);
+  }
+
+  std::string targetFont = boldFont;
+  if (IconProvider::isCustomFontIcon(fallbackLabel)) {
+    targetFont = IconProvider::getCustomFontFamily();
   }
 
   auto textLabelElem =
@@ -682,7 +664,7 @@ PlaybackBar::TabCellResult PlaybackBar::createTabCell(
             return palette ? palette->m_colors.text
                            : CHyprColor(1.0F, 1.0F, 1.0F, 1.0F);
           })
-          ->fontFamily(std::string(boldFont))
+          ->fontFamily(std::string(targetFont))
           ->fontSize(CFontSize(fontBase, fontScale))
           ->align(HT_FONT_ALIGN_CENTER)
           ->noEllipsize(false)
@@ -690,12 +672,23 @@ PlaybackBar::TabCellResult PlaybackBar::createTabCell(
                               CDynamicSize::HT_SIZE_AUTO, {1.0F, 1.0F}))
           ->commence();
 
+  auto clickCb = onClick;
   textLabelElem->setPositionMode(IElement::HT_POSITION_ABSOLUTE);
   textLabelElem->setPositionFlag(IElement::HT_POSITION_FLAG_CENTER, true);
+  textLabelElem->setReceivesMouse(true);
+  textLabelElem->setMouseButton(
+      [clickCb](Input::eMouseButton button, bool down) {
+        if (clickCb)
+          clickCb(button, down);
+      });
   btnContainer->addChild(textLabelElem);
 
   btnContainer->setReceivesMouse(true);
-  btnContainer->setMouseButton(std::move(onClick));
+  btnContainer->setMouseButton(
+      [clickCb](Input::eMouseButton button, bool down) {
+        if (clickCb)
+          clickCb(button, down);
+      });
 
   return {btnContainer, textLabelElem, textLabelElem, bottomIndicator};
 }
@@ -713,7 +706,8 @@ void PlaybackBar::updateMiniVisBars() {
     for (size_t i = 0; i < 4; ++i) {
       float val =
           std::abs(std::sin(m_miniVisAnimPhase + phases[i])) * multipliers[i];
-      float heightPct = 0.15f + val * 0.35f; // Height range: 15% to 50% of container height
+      float heightPct =
+          0.15f + val * 0.35f; // Height range: 15% to 50% of container height
       m_miniVisBars[i]
           ->rebuild()
           ->color([palette] {

@@ -1,4 +1,5 @@
 #include "SongCard.hpp"
+#include "IconProvider.hpp"
 #include "../../Utils/ArtworkUtils.hpp"
 #include <hyprtoolkit/core/Input.hpp>
 
@@ -173,10 +174,10 @@ CSharedPointer<CRectangleElement> SongCard::build() {
   auto actionCb = m_cfg.onActionClick;
   auto actionBtn =
       CButtonBuilder::begin()
-          ->label("⌄")
+          ->label(IconProvider::getIcon(IconType::CHEVRON_DOWN))
           ->alignText(HT_FONT_ALIGN_CENTER)
-          ->fontFamily(std::string(fontFamily))
-          ->fontSize(CFontSize(CFontSize::HT_FONT_H2))
+          ->fontFamily(IconProvider::getCustomFontFamily())
+          ->fontSize(CFontSize(CFontSize::HT_FONT_TEXT))
           ->noBg(true)
           ->noBorder(true)
           ->onMainClick([actionCb](CSharedPointer<CButtonElement>) {

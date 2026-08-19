@@ -64,8 +64,8 @@ private:
   TabCellResult
   createTabCell(const std::string &fallbackLabel, float containerWidthPct,
                 std::function<void(Input::eMouseButton, bool)> onClick,
-                float fontScale = 1.4f,
-                CFontSize::eSizingBase fontBase = CFontSize::HT_FONT_H1,
+                float fontScale = 20.0f,
+                CFontSize::eSizingBase fontBase = CFontSize::HT_FONT_ABSOLUTE,
                 bool withBorder = false);
 
   void updateNavTabStates();
