@@ -5,8 +5,10 @@
 #include <hyprtoolkit/palette/Palette.hpp>
 #include <hyprtoolkit/window/Window.hpp>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "ViewMode.hpp"
 #include "../Services/MPDManager.hpp"
@@ -28,7 +30,8 @@ using namespace Hyprutils::Memory;
 
 class HyprMusicApp {
 public:
-  HyprMusicApp();
+  HyprMusicApp(int argc = 0, char *argv[] = nullptr);
+  ~HyprMusicApp();
   void run();
 
 private:
@@ -36,6 +39,13 @@ private:
   void createUI();
   void setupEventHandlers();
   void setupTimer();
+  void processCommandLineArgs();
+  void processUriArgs(const std::vector<std::string> &uris);
+  std::string resolveToMpdUri(const std::string &pathOrUri) const;
+
+  // Single-instance IPC socket
+  void setupIpcSocket();
+  void pollIpcSocket();
 
   void switchViewMode(eViewMode mode);
   void updateStatus();
@@ -78,6 +88,11 @@ private:
   int m_lastActiveSongId = -2;
   bool m_playlistLoaded = false;
   bool m_isPlaying = false;
+  std::vector<std::string> m_cmdArgs;
+
+  // Single-instance IPC
+  int m_ipcSocket = -1;
+  std::string m_ipcSocketPath;
 };
 
 } // namespace Core

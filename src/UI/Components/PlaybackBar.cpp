@@ -548,8 +548,8 @@ void PlaybackBar::updateAlbumArt(const std::string &songUri) {
     return;
   }
 
-  // Only resolve artwork when the track actually changes
-  if (m_lastSongUri != songUri) {
+  // Only resolve artwork when the track actually changes or if currently showing default artwork
+  if (m_lastSongUri != songUri || m_currentArtPath == Utils::getDefaultArtworkPath()) {
     m_lastSongUri = songUri;
 
     m_ctx.runMpdCommand([this, songUri](struct mpd_connection *conn) {
@@ -564,6 +564,16 @@ void PlaybackBar::updateAlbumArt(const std::string &songUri) {
       applyAlbumArt(artPath);
     });
   }
+}
+
+void PlaybackBar::forceUpdateAlbumArt(const std::string &songUri) {
+  // Reset guards so artwork is always resolved fresh, regardless of race conditions
+  // or state from a previous empty/default status update. Used when we know the
+  // exact URI being played (e.g. from command-line file opening) and don't want
+  // to wait for MPD status polling to catch up.
+  m_lastSongUri = "__FORCE_REFRESH__";
+  m_currentArtPath = "";
+  updateAlbumArt(songUri);
 }
 
 void PlaybackBar::setActiveViewMode(Core::eViewMode mode) {

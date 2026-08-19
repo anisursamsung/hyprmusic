@@ -5,21 +5,36 @@
 #include "../UI/Dialogs/RenamePlaylistDialog.hpp"
 #include "../Utils/StreamUtils.hpp"
 #include <cstring>
+#include <fcntl.h>
+#include <filesystem>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#include <unordered_set>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
 namespace Core {
 
-HyprMusicApp::HyprMusicApp() {
+HyprMusicApp::HyprMusicApp(int argc, char *argv[]) {
   m_backend = IBackend::create();
   if (!m_backend) {
     throw std::runtime_error("Failed to create backend");
+  }
+  if (argc > 1 && argv != nullptr) {
+    for (int i = 1; i < argc; ++i) {
+      if (argv[i] && strlen(argv[i]) > 0) {
+        m_cmdArgs.push_back(argv[i]);
+      }
+    }
   }
 }
 
 void HyprMusicApp::run() {
   Services::MPDManager::ensureMpdRunningAndConfigured(m_mpdSettings);
+  setupIpcSocket();
   createWindow();
   createUI();
   setupEventHandlers();
@@ -27,7 +42,18 @@ void HyprMusicApp::run() {
   m_window->open();
   updateStatus();
   setupTimer();
+  processCommandLineArgs();
   m_backend->enterLoop();
+}
+
+HyprMusicApp::~HyprMusicApp() {
+  if (m_ipcSocket >= 0) {
+    ::close(m_ipcSocket);
+    m_ipcSocket = -1;
+  }
+  if (!m_ipcSocketPath.empty()) {
+    ::unlink(m_ipcSocketPath.c_str());
+  }
 }
 
 void HyprMusicApp::createWindow() {
@@ -623,9 +649,92 @@ void HyprMusicApp::setupTimer() {
       std::chrono::seconds(1),
       [this](CAtomicSharedPointer<CTimer>, void *) {
         updateStatus();
+        pollIpcSocket();
         setupTimer();
       },
       nullptr);
+}
+
+void HyprMusicApp::setupIpcSocket() {
+  m_ipcSocketPath = "/tmp/hyprmusic-" + std::to_string(::getuid()) + ".sock";
+
+  // Remove any stale socket from a previous crash
+  ::unlink(m_ipcSocketPath.c_str());
+
+  m_ipcSocket = ::socket(AF_UNIX, SOCK_STREAM, 0);
+  if (m_ipcSocket < 0) {
+    std::cerr << "IPC: Failed to create socket: " << strerror(errno) << std::endl;
+    return;
+  }
+
+  // Make the listening socket non-blocking so pollIpcSocket never stalls
+  int flags = ::fcntl(m_ipcSocket, F_GETFL, 0);
+  ::fcntl(m_ipcSocket, F_SETFL, flags | O_NONBLOCK);
+
+  struct sockaddr_un addr{};
+  addr.sun_family = AF_UNIX;
+  ::strncpy(addr.sun_path, m_ipcSocketPath.c_str(), sizeof(addr.sun_path) - 1);
+
+  if (::bind(m_ipcSocket, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    std::cerr << "IPC: Failed to bind socket: " << strerror(errno) << std::endl;
+    ::close(m_ipcSocket);
+    m_ipcSocket = -1;
+    return;
+  }
+
+  if (::listen(m_ipcSocket, 5) < 0) {
+    std::cerr << "IPC: Failed to listen: " << strerror(errno) << std::endl;
+    ::close(m_ipcSocket);
+    m_ipcSocket = -1;
+    return;
+  }
+
+  std::cout << "IPC: Listening on " << m_ipcSocketPath << std::endl;
+}
+
+void HyprMusicApp::pollIpcSocket() {
+  if (m_ipcSocket < 0)
+    return;
+
+  // Non-blocking accept — returns immediately if no client is waiting
+  int clientFd = ::accept(m_ipcSocket, nullptr, nullptr);
+  if (clientFd < 0)
+    return;
+
+  // Make client fd non-blocking too
+  int flags = ::fcntl(clientFd, F_GETFL, 0);
+  ::fcntl(clientFd, F_SETFL, flags | O_NONBLOCK);
+
+  // Read all data sent by the client
+  std::string received;
+  char buf[4096];
+  ssize_t n;
+  while ((n = ::recv(clientFd, buf, sizeof(buf), 0)) > 0) {
+    received.append(buf, n);
+  }
+  ::close(clientFd);
+
+  if (received.empty())
+    return;
+
+  // Protocol: newline-separated URIs, terminated by empty line (double newline)
+  std::vector<std::string> uris;
+  std::istringstream iss(received);
+  std::string line;
+  while (std::getline(iss, line)) {
+    if (line.empty())
+      break; // empty line = end of message
+    // Strip any trailing \r
+    if (!line.empty() && line.back() == '\r')
+      line.pop_back();
+    if (!line.empty())
+      uris.push_back(line);
+  }
+
+  if (!uris.empty()) {
+    std::cout << "IPC: Received " << uris.size() << " URI(s) from client" << std::endl;
+    processUriArgs(uris);
+  }
 }
 
 std::string HyprMusicApp::getMusicDirectory() const {
@@ -636,4 +745,156 @@ std::string HyprMusicApp::getMusicDirectory() const {
   return getUserHomeDir() + "/Music";
 }
 
+std::string HyprMusicApp::resolveToMpdUri(const std::string &pathOrUri) const {
+  if (pathOrUri.empty())
+    return "";
+
+  if (pathOrUri.rfind("http://", 0) == 0 ||
+      pathOrUri.rfind("https://", 0) == 0) {
+    return pathOrUri;
+  }
+
+  std::string filePath = pathOrUri;
+  if (filePath.rfind("file://", 0) == 0) {
+    filePath = filePath.substr(7);
+  }
+
+  std::filesystem::path p(filePath);
+  std::error_code ec;
+  std::filesystem::path absP = std::filesystem::absolute(p, ec);
+  if (ec) {
+    absP = p;
+  }
+
+  std::string musicDir = getMusicDirectory();
+  std::filesystem::path musicDirP(musicDir);
+
+  std::filesystem::path relP = absP.lexically_relative(musicDirP);
+  if (!relP.empty() && relP.native().rfind("..", 0) != 0 && relP.is_relative()) {
+    return relP.string();
+  }
+
+  return "file://" + absP.string();
+}
+
+void HyprMusicApp::processCommandLineArgs() {
+  if (m_cmdArgs.empty())
+    return;
+  processUriArgs(m_cmdArgs);
+}
+
+void HyprMusicApp::processUriArgs(const std::vector<std::string> &args) {
+  if (args.empty())
+    return;
+
+  // Resolve and deduplicate
+  std::vector<std::string> targetUris;
+  std::unordered_set<std::string> seen;
+  for (const auto &arg : args) {
+    if (arg.empty())
+      continue;
+    std::string uri = resolveToMpdUri(arg);
+    if (!uri.empty() && seen.find(uri) == seen.end()) {
+      seen.insert(uri);
+      targetUris.push_back(uri);
+    }
+  }
+
+  if (targetUris.empty())
+    return;
+
+  if (targetUris.size() == 1) {
+    const std::string uri = targetUris[0];
+    Services::MPDManager::playSongFromUri(
+        uri,
+        [this](const std::string &msg) { showNotification(msg); },
+        nullptr); // no onUpdateStatus here - we call in correct order below
+    switchViewMode(eViewMode::VIEW_QUEUE);
+    // Call updateStatus() FIRST (updates queue view, but may reset artwork to
+    // default if MPD hasn't started playing yet), THEN force artwork so nothing
+    // overwrites it before the next 1s timer tick.
+    updateStatus();
+    m_playbackBar->forceUpdateAlbumArt(uri);
+    return;
+  }
+
+  Services::MPDManager::runMpdCommand(
+      [this, targetUris](struct mpd_connection *conn) {
+        if (!conn)
+          return;
+
+        std::unordered_set<std::string> queueUris;
+        std::unordered_map<std::string, int> queueSongIds;
+
+        if (mpd_send_list_queue_meta(conn)) {
+          struct mpd_song *s;
+          while ((s = mpd_recv_song(conn)) != NULL) {
+            const char *qUri = mpd_song_get_uri(s);
+            int sId = mpd_song_get_id(s);
+            if (qUri) {
+              queueUris.insert(qUri);
+              queueSongIds[qUri] = sId;
+            }
+            mpd_song_free(s);
+          }
+          mpd_response_finish(conn);
+        }
+
+        int addedCount = 0;
+        int skippedCount = 0;
+        int firstPlayId = -1;
+
+        const std::string &firstUri = targetUris[0];
+        auto it = queueSongIds.find(firstUri);
+        if (it != queueSongIds.end()) {
+          firstPlayId = it->second;
+          skippedCount++;
+        } else {
+          int newId = mpd_run_add_id(conn, firstUri.c_str());
+          if (newId >= 0) {
+            firstPlayId = newId;
+            addedCount++;
+            queueUris.insert(firstUri);
+          }
+        }
+
+        for (size_t i = 1; i < targetUris.size(); ++i) {
+          const std::string &uri = targetUris[i];
+          if (queueUris.find(uri) != queueUris.end()) {
+            skippedCount++;
+          } else {
+            if (mpd_run_add(conn, uri.c_str())) {
+              addedCount++;
+              queueUris.insert(uri);
+            }
+          }
+        }
+
+        if (firstPlayId >= 0) {
+          mpd_run_play_id(conn, firstPlayId);
+        }
+
+        if (addedCount > 0 && skippedCount > 0) {
+          showNotification("Added " + std::to_string(addedCount) + " tracks (" +
+                           std::to_string(skippedCount) +
+                           " skipped as duplicates), playing 1st track");
+        } else if (addedCount > 0) {
+          showNotification("Added " + std::to_string(addedCount) +
+                           " tracks to queue, playing 1st track");
+        } else if (skippedCount > 0) {
+          showNotification("All tracks already in queue, playing 1st track");
+        }
+      });
+
+  switchViewMode(eViewMode::VIEW_QUEUE);
+  // Call updateStatus() FIRST (updates queue view, but may reset artwork if
+  // MPD hasn't reported the playing state yet), THEN force artwork last so
+  // nothing overwrites it before the next 1s timer tick.
+  updateStatus();
+  if (!targetUris.empty()) {
+    m_playbackBar->forceUpdateAlbumArt(targetUris[0]);
+  }
+}
+
 } // namespace Core
+

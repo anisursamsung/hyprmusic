@@ -44,6 +44,7 @@ public:
   void updateVolume(int currentVolume);
   void updatePlayPauseState(const std::string &stateText);
   void updateAlbumArt(const std::string &songUri);
+  void forceUpdateAlbumArt(const std::string &songUri);
   void setActiveViewMode(Core::eViewMode mode);
 
 private:

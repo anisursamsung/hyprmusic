@@ -80,6 +80,11 @@ std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &
     return getDefaultArtworkPath();
   }
 
+  std::string cleanUri = songUri;
+  if (cleanUri.rfind("file://", 0) == 0) {
+    cleanUri = cleanUri.substr(7);
+  }
+
   std::vector<uint8_t> imgBytes;
   char buffer[16384];
 
@@ -88,26 +93,40 @@ std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &
       mpd_connection_clear_error(conn);
     }
 
-    // 1. Try mpd_run_readpicture for embedded cover art in track metadata
-    unsigned offset = 0;
-    int r = 0;
-    while ((r = mpd_run_readpicture(conn, songUri.c_str(), offset, buffer, sizeof(buffer))) > 0) {
-      imgBytes.insert(imgBytes.end(), buffer, buffer + r);
-      offset += r;
-    }
-    if (mpd_connection_get_error(conn) != MPD_ERROR_SUCCESS) {
-      mpd_connection_clear_error(conn);
+    std::vector<std::string> uriAttempts = {songUri};
+    if (cleanUri != songUri) {
+      uriAttempts.push_back(cleanUri);
     }
 
-    // 2. Try mpd_run_albumart for directory album art (cover.jpg/folder.jpg)
-    if (imgBytes.empty()) {
-      offset = 0;
-      while ((r = mpd_run_albumart(conn, songUri.c_str(), offset, buffer, sizeof(buffer))) > 0) {
+    // 1. Try mpd_run_readpicture for embedded cover art in track metadata
+    for (const auto &u : uriAttempts) {
+      unsigned offset = 0;
+      int r = 0;
+      while ((r = mpd_run_readpicture(conn, u.c_str(), offset, buffer, sizeof(buffer))) > 0) {
         imgBytes.insert(imgBytes.end(), buffer, buffer + r);
         offset += r;
       }
       if (mpd_connection_get_error(conn) != MPD_ERROR_SUCCESS) {
         mpd_connection_clear_error(conn);
+      }
+      if (!imgBytes.empty())
+        break;
+    }
+
+    // 2. Try mpd_run_albumart for directory album art (cover.jpg/folder.jpg)
+    if (imgBytes.empty()) {
+      for (const auto &u : uriAttempts) {
+        unsigned offset = 0;
+        int r = 0;
+        while ((r = mpd_run_albumart(conn, u.c_str(), offset, buffer, sizeof(buffer))) > 0) {
+          imgBytes.insert(imgBytes.end(), buffer, buffer + r);
+          offset += r;
+        }
+        if (mpd_connection_get_error(conn) != MPD_ERROR_SUCCESS) {
+          mpd_connection_clear_error(conn);
+        }
+        if (!imgBytes.empty())
+          break;
       }
     }
   }
@@ -137,12 +156,12 @@ std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &
   // 3. Fallback: check local directory near song file
   if (rawPath.empty()) {
     try {
-      std::filesystem::path songPath(songUri);
+      std::filesystem::path songPath(cleanUri);
       std::vector<std::filesystem::path> candidates;
       candidates.push_back(songPath);
       const char *home = std::getenv("HOME");
       if (home) {
-        candidates.push_back(std::filesystem::path(home) / "Music" / songUri);
+        candidates.push_back(std::filesystem::path(home) / "Music" / cleanUri);
       }
 
       for (const auto &p : candidates) {
