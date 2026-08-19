@@ -28,7 +28,7 @@ using namespace Hyprutils::Memory;
 
 class HyprMusicApp {
 public:
-  HyprMusicApp();
+  explicit HyprMusicApp(const std::vector<std::string> &initialFiles = {});
   void run();
 
 private:
@@ -78,6 +78,7 @@ private:
   int m_lastActiveSongId = -2;
   bool m_playlistLoaded = false;
   bool m_isPlaying = false;
+  std::vector<std::string> m_initialFiles;
 };
 
 } // namespace Core
