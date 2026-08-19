@@ -11,8 +11,7 @@
 
 namespace Core {
 
-HyprMusicApp::HyprMusicApp(const std::vector<std::string> &initialFiles)
-    : m_initialFiles(initialFiles) {
+HyprMusicApp::HyprMusicApp() {
   m_backend = IBackend::create();
   if (!m_backend) {
     throw std::runtime_error("Failed to create backend");
@@ -27,22 +26,6 @@ void HyprMusicApp::run() {
   std::cout << "Starting HyprMusic..." << std::endl;
   m_window->open();
   updateStatus();
-
-  if (!m_initialFiles.empty()) {
-    for (size_t i = 0; i < m_initialFiles.size(); ++i) {
-      std::string fileUri = m_initialFiles[i];
-      if (fileUri.rfind("file://", 0) == 0) {
-        fileUri = fileUri.substr(7);
-      }
-      if (i == 0) {
-        Services::MPDManager::playSongFromUri(fileUri, nullptr, nullptr);
-      } else {
-        Services::MPDManager::addSongToQueue(fileUri, nullptr, nullptr);
-      }
-    }
-    updateStatus();
-  }
-
   setupTimer();
   m_backend->enterLoop();
 }
