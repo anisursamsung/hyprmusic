@@ -2,49 +2,31 @@
 
 A dedicated Hyprland frontend for the Media Player Daemon (MPD) on Linux, built with C++ and the Hyprtoolkit API.
 
----
 
-## Key Features and Interface
+## Features
+We have Tabs for Player View, Current Queue, Database, Playlists, YT-DLP and Settings.
+Bottom contains all the controls along with tab navigation bar.
+Songs can easily be moved around from Databse to Que to Playlist to Que etc.
+YT-DLP offers to download to database or direct add to que and stream.
+Visualizers are there. On click switches to next visualizations.
+IconPack is embeded into the binary. No need of installation of any icon pack. We made it deliberate.
 
-### 1. Queue Tab
-* **Current Playback:** Monitor all tracks currently in the MPD playback queue.
-* **Track Controls:** Play, pause, remove, or jump directly to any specific track.
-* **Search Filter:** Instantly filter the queue by track title, artist, or album.
-* **Queue Management:** Seamlessly add items from the queue to a playlist, or remove them entirely.
-* **Versatile Additions:** Add items to the queue from various sources, including your database, existing playlists, or direct stream links.
+## File Browser Integration:
+The make.sh after installing, automatially updates mime-lists and .desktop file has mime type set. So, once installed, it will automatically be offered as "Open With" option in any File Manager. And we can easily play it from File Browser.
 
-### 2. Database Tab
-* **Library Overview:** View all tracks stored in your database. This reflects all files within the music directory specified in your `mpd.conf` file (defaults to `~/Music`).
-* **Seamless Integration:** Quickly append any item from the database to your active queue or a saved playlist.
-* **Database Rescan:** Trigger database updates or full rescans from the interface.
+## No duplicate state
+Only single state of the player is allowed.
 
-### 3. Playlists Tab
-* **Playlist Management:** Access and view all saved MPD playlists within your library.
-* **Creation, Renaming & Deletion:** Generate new empty playlists, rename playlists, or delete existing ones.
-* **Track Inspection:** Expand individual playlists to review their contents, move tracks between playlists, and load them into the active playback queue.
 
-### 4. YT-DLP Online Search Tab
-* **Online Search:** Search YouTube audio tracks online using `yt-dlp`.
-* **Direct Streaming:** Stream YouTube audio directly into MPD or import entire YouTube playlists.
-* **Playlist Saving:** Save YouTube stream URLs into local MPD playlists.
+## Important
+It is MPD front-end hence it will do nothing is MPD is not installed.
 
-### 5. Settings Tab
-* **Configuration Access:** View and modify MPD settings (directories, network bind/port, auto-update, PipeWire Pulse audio output, FIFO visualizer) configured within `~/.config/mpd/mpd.conf`.
+## Installation
+Clone and run the make.sh script. It will compile, put the .desktop file into /home/user/.local/share/applications so that it appears in your launcher/rofi/etc. The binary is copied to /home/user/.local/bin. So, ensure /home/user/.local/bin is in your env path in the bashrc. If you want system install, you can specify the path to put the bin e.g. "sudo make.sh /usr/bin", sudo is needed because we are going into root directory. For .desktop file, you can copy to system, but not recommended. Only binary placing into system is enough. Any launcher scan /home/user/.local/share/applications anyways.
 
-### 6. Help Tab
-* **Built-in Documentation:** Access user guide and feature overview directly in the app.
 
----
-
-## Playback and Control Bar
-
-* **Persistent Control Bar:** The bottom bar provides quick access to essential track information and controls. It includes the current track title and artist, elapsed and total playback time, an interactive seek bar, a play/pause toggle, previous/next track controls, and a volume slider.
-* **Background Execution:** Powered by the MPD backend, audio playback continues uninterrupted in the background even if the graphical user interface is closed.
-
----
 
 ## Screenshots
-
 ![screenshot1](assets/Screenshot1.png)
 ![screenshot2](assets/Screenshot2.png)
 ![screenshot3](assets/Screenshot3.png)
