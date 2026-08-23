@@ -15,6 +15,5 @@ std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &
 std::string getCachedTrackArtwork(const std::string &songUri);
 
 std::string getDefaultArtworkPath();
-std::string getBackgroundImagePath();
 
 } // namespace Utils

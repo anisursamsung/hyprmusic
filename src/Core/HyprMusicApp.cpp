@@ -1,20 +1,10 @@
 #include "HyprMusicApp.hpp"
-#include "../UI/Dialogs/AddItemDialog.hpp"
-#include "../UI/Dialogs/CreatePlaylistDialog.hpp"
-#include "../UI/Dialogs/PlaylistSelectionDialog.hpp"
-#include "../UI/Dialogs/RenamePlaylistDialog.hpp"
-#include "../Utils/StreamUtils.hpp"
+#include "Utils/StreamUtils.hpp"
 #include <cstring>
-#include <fcntl.h>
 #include <filesystem>
 #include <iostream>
-#include <sstream>
 #include <stdexcept>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
 #include <unordered_set>
-#include <xkbcommon/xkbcommon-keysyms.h>
 
 namespace Core {
 
@@ -32,9 +22,13 @@ HyprMusicApp::HyprMusicApp(int argc, char *argv[]) {
   }
 }
 
+HyprMusicApp::~HyprMusicApp() {}
+
 void HyprMusicApp::run() {
   Services::MPDManager::ensureMpdRunningAndConfigured(m_mpdSettings);
-  setupIpcSocket();
+  m_ipcService.init([this](const std::vector<std::string> &uris) {
+    processUriArgs(uris);
+  });
   createWindow();
   createUI();
   setupEventHandlers();
@@ -44,16 +38,6 @@ void HyprMusicApp::run() {
   setupTimer();
   processCommandLineArgs();
   m_backend->enterLoop();
-}
-
-HyprMusicApp::~HyprMusicApp() {
-  if (m_ipcSocket >= 0) {
-    ::close(m_ipcSocket);
-    m_ipcSocket = -1;
-  }
-  if (!m_ipcSocketPath.empty()) {
-    ::unlink(m_ipcSocketPath.c_str());
-  }
 }
 
 void HyprMusicApp::createWindow() {
@@ -105,7 +89,7 @@ void HyprMusicApp::createUI() {
           ->commence();
   mainBg->addChild(mainColumn);
 
-  // Top Layout (contains Sidebar and Content Section)
+  // Top Layout
   auto topLayout =
       CRowLayoutBuilder::begin()
           ->gap(0)
@@ -115,7 +99,7 @@ void HyprMusicApp::createUI() {
   topLayout->setGrow(true);
   mainColumn->addChild(topLayout);
 
-  // Content Area Section (100% width)
+  // Content Area Section
   auto contentSection =
       CRectangleBuilder::begin()
           ->color([] { return CHyprColor(0, 0, 0, 0); })
@@ -141,7 +125,24 @@ void HyprMusicApp::createUI() {
   contentLayout->addChild(m_tabContentWrapper);
   topLayout->addChild(contentSection);
 
-  // Playback Control Bar
+  // Dialog Coordinator Init
+  UI::Dialogs::DialogCoordinatorContext diagCtx{
+      .parentWindow = m_window,
+      .backend = m_backend,
+      .palette = palette,
+      .fontFamily = fontFamily,
+      .ytDlpService = &m_ytDlpService,
+      .runMpdCommand =
+          [](const std::function<void(struct mpd_connection *)> &cmd) {
+            Services::MPDManager::runMpdCommand(cmd);
+          },
+      .showNotification =
+          [this](const std::string &msg) { showNotification(msg); },
+      .updateStatus = [this] { updateStatus(); }};
+  m_dialogCoordinator =
+      std::make_unique<UI::Dialogs::DialogCoordinator>(diagCtx);
+
+  // Playback Control Bar Init
   UI::Components::PlaybackBarContext pCtx{
       .window = m_window,
       .backend = m_backend,
@@ -163,13 +164,49 @@ void HyprMusicApp::createUI() {
           [this] {
             Services::MPDManager::nextTrack([this] { updateStatus(); });
           },
-      .onNavigationClick = [this](eViewMode mode) { switchViewMode(mode); }};
+      .onNavigationClick = [this](eViewMode mode) { switchViewMode(mode); },
+      .onRepeatModeChange =
+          [this](bool repeat, bool single) {
+            Services::MPDManager::runMpdCommand(
+                [repeat, single](struct mpd_connection *conn) {
+                  if (conn) {
+                    mpd_run_repeat(conn, repeat);
+                    mpd_run_single(conn, single);
+                  }
+                });
+            if (repeat && single) {
+              showNotification("Repeat Track is turned on");
+            } else if (repeat) {
+              showNotification("Repeat Queue is turned on");
+            } else {
+              showNotification("Repeat is turned off");
+            }
+          },
+      .onRandomModeChange =
+          [this](bool random) {
+            Services::MPDManager::runMpdCommand(
+                [random](struct mpd_connection *conn) {
+                  if (conn) {
+                    mpd_run_random(conn, random);
+                  }
+                });
+            showNotification(random ? "Shuffle is turned on"
+                                    : "Shuffle is turned off");
+          },
+      .onConsumeModeChange =
+          [this](bool consume) {
+            Services::MPDManager::runMpdCommand(
+                [consume](struct mpd_connection *conn) {
+                  if (conn) {
+                    mpd_run_consume(conn, consume);
+                  }
+                });
+            showNotification(consume ? "Consume is turned on"
+                                     : "Consume is turned off");
+          }};
   m_playbackBar = std::make_unique<UI::Components::PlaybackBar>(pCtx);
   m_playbackBar->setActiveViewMode(m_viewMode);
   m_playbackBar->build(mainColumn);
-
-  // Notification Manager Init
-  m_notificationManager.init(root, m_window, m_backend, palette, fontFamily);
 
   // Views Init
   UI::Views::QueueViewContext qCtx{
@@ -177,6 +214,7 @@ void HyprMusicApp::createUI() {
       .backend = m_backend,
       .palette = palette,
       .fontFamily = fontFamily,
+      .dialogCoordinator = m_dialogCoordinator.get(),
       .ytDlpService = &m_ytDlpService,
       .runMpdCommand =
           [](const std::function<void(struct mpd_connection *)> &cmd) {
@@ -193,8 +231,16 @@ void HyprMusicApp::createUI() {
                 songId, [this] { updateStatus(); });
           },
       .showPlaylistSelectionDialog =
-          [this](const std::string &uri) { showPlaylistSelectionDialog(uri); },
-      .showQueueAddItemDialog = [this] { showQueueAddItemDialog(); }};
+          [this](const std::string &uri) {
+            m_dialogCoordinator->showPlaylistSelectionDialog(
+                uri, m_playlistsView->getSelectedPlaylist());
+          },
+      .showQueueAddItemDialog =
+          [this] { m_dialogCoordinator->showQueueAddItemDialog(); },
+      .showClearQueueDialog =
+          [this](std::function<void()> onCleared) {
+            m_dialogCoordinator->showClearQueueDialog(onCleared);
+          }};
   m_queueView = std::make_unique<UI::Views::QueueView>(qCtx);
 
   UI::Views::DatabaseViewContext dbCtx{
@@ -202,6 +248,7 @@ void HyprMusicApp::createUI() {
       .backend = m_backend,
       .palette = palette,
       .fontFamily = fontFamily,
+      .dialogCoordinator = m_dialogCoordinator.get(),
       .runMpdCommand =
           [](const std::function<void(struct mpd_connection *)> &cmd) {
             Services::MPDManager::runMpdCommand(cmd);
@@ -219,7 +266,10 @@ void HyprMusicApp::createUI() {
                 [this] { updateStatus(); });
           },
       .showPlaylistSelectionDialog =
-          [this](const std::string &uri) { showPlaylistSelectionDialog(uri); },
+          [this](const std::string &uri) {
+            m_dialogCoordinator->showPlaylistSelectionDialog(
+                uri, m_playlistsView->getSelectedPlaylist());
+          },
       .showNotification =
           [this](const std::string &msg) { showNotification(msg); }};
   m_dbView = std::make_unique<UI::Views::DatabaseView>(dbCtx);
@@ -229,6 +279,7 @@ void HyprMusicApp::createUI() {
       .backend = m_backend,
       .palette = palette,
       .fontFamily = fontFamily,
+      .dialogCoordinator = m_dialogCoordinator.get(),
       .ytDlpService = &m_ytDlpService,
       .runMpdCommand =
           [](const std::function<void(struct mpd_connection *)> &cmd) {
@@ -247,15 +298,72 @@ void HyprMusicApp::createUI() {
                 [this] { updateStatus(); });
           },
       .showRenameDialog =
-          [this](const std::string &oldName) { showRenameDialog(oldName); },
-      .showCreatePlaylistDialog = [this] { showCreatePlaylistDialog(); },
+          [this](const std::string &oldName) {
+            m_dialogCoordinator->showRenameDialog(
+                oldName, [this](const std::string &oldPl,
+                                const std::string &newPl) {
+                  if (m_playlistsView->getSelectedPlaylist() == oldPl) {
+                    m_playlistsView->setSelectedPlaylist(newPl);
+                  }
+                  m_backend->addTimer(
+                      std::chrono::milliseconds(100),
+                      [this](CAtomicSharedPointer<CTimer>, void *) {
+                        Services::MPDManager::runMpdCommand(
+                            [this](struct mpd_connection *conn) {
+                              m_playlistsView->rebuildLeftItems(conn);
+                              m_playlistsView->rebuildRightItems(conn);
+                            });
+                      },
+                      nullptr);
+                });
+          },
+      .showCreatePlaylistDialog =
+          [this] {
+            m_dialogCoordinator->showCreatePlaylistDialog(
+                [this](const std::string &plName) {
+                  m_playlistsView->setSelectedPlaylist(plName);
+                  m_playlistsView->setDetailedView(true);
+                  m_playlistLoaded = false;
+                  m_backend->addTimer(
+                      std::chrono::milliseconds(100),
+                      [this, plName](CAtomicSharedPointer<CTimer>, void *) {
+                        showNotification("Created " + plName);
+                        updateStatus();
+                      },
+                      nullptr);
+                });
+          },
+      .showDeletePlaylistDialog =
+          [this](const std::string &plName, std::function<void()> onDeleted) {
+            m_dialogCoordinator->showDeletePlaylistDialog(plName, onDeleted);
+          },
       .showPlaylistAddItemDialog =
           [this](const std::string &plName) {
-            showPlaylistAddItemDialog(plName);
+            m_dialogCoordinator->showPlaylistAddItemDialog(
+                plName, [this] {
+                  Services::MPDManager::runMpdCommand(
+                      [this](struct mpd_connection *conn) {
+                        m_playlistsView->rebuildRightItems(conn);
+                      });
+                });
           },
       .showPlaylistSelectionDialog =
           [this](const std::string &uri, int pos) {
-            showPlaylistSelectionDialog(uri, pos);
+            m_dialogCoordinator->showPlaylistSelectionDialog(
+                uri, m_playlistsView->getSelectedPlaylist(), pos, [this] {
+                  m_backend->addTimer(
+                      std::chrono::milliseconds(100),
+                      [this](CAtomicSharedPointer<CTimer>, void *) {
+                        updateStatus();
+                        if (m_viewMode == eViewMode::VIEW_PLAYLISTS) {
+                          Services::MPDManager::runMpdCommand(
+                              [this](struct mpd_connection *conn) {
+                                m_playlistsView->rebuildRightItems(conn);
+                              });
+                        }
+                      },
+                      nullptr);
+                });
           },
       .showNotification =
           [this](const std::string &msg) { showNotification(msg); },
@@ -267,6 +375,7 @@ void HyprMusicApp::createUI() {
       .backend = m_backend,
       .palette = palette,
       .fontFamily = fontFamily,
+      .dialogCoordinator = m_dialogCoordinator.get(),
       .ytDlpService = &m_ytDlpService,
       .runMpdCommand =
           [](const std::function<void(struct mpd_connection *)> &cmd) {
@@ -285,7 +394,10 @@ void HyprMusicApp::createUI() {
                 [this] { updateStatus(); });
           },
       .showPlaylistSelectionDialog =
-          [this](const std::string &uri) { showPlaylistSelectionDialog(uri); },
+          [this](const std::string &uri) {
+            m_dialogCoordinator->showPlaylistSelectionDialog(
+                uri, m_playlistsView->getSelectedPlaylist());
+          },
       .showNotification =
           [this](const std::string &msg) { showNotification(msg); },
       .updateStatus = [this] { updateStatus(); },
@@ -337,6 +449,9 @@ void HyprMusicApp::setupEventHandlers() {
 void HyprMusicApp::switchViewMode(eViewMode mode) {
   if (m_viewMode == mode)
     return;
+  if (m_dialogCoordinator) {
+    m_dialogCoordinator->closeActiveDialog();
+  }
   if (m_viewMode == eViewMode::VIEW_VISUALIZER) {
     m_visualizerView->destroyVisualizer();
   }
@@ -356,150 +471,6 @@ void HyprMusicApp::switchViewMode(eViewMode mode) {
 
 void HyprMusicApp::showNotification(const std::string &msg) {
   m_notificationManager.showNotification(msg);
-}
-
-void HyprMusicApp::showRenameDialog(const std::string &oldName) {
-  UI::Dialogs::RenamePlaylistContext ctx{
-      .oldName = oldName,
-      .parentWindow = m_window,
-      .backend = m_backend,
-      .palette = m_palette,
-      .fontFamily = m_fontFamily,
-      .runMpdCommand =
-          [](const std::function<void(struct mpd_connection *)> &cmd) {
-            Services::MPDManager::runMpdCommand(cmd);
-          },
-      .onRenamed =
-          [this](const std::string &oldPl, const std::string &newPl) {
-            if (m_playlistsView->getSelectedPlaylist() == oldPl) {
-              m_playlistsView->setSelectedPlaylist(newPl);
-            }
-            m_backend->addTimer(
-                std::chrono::milliseconds(100),
-                [this](CAtomicSharedPointer<CTimer>, void *) {
-                  Services::MPDManager::runMpdCommand(
-                      [this](struct mpd_connection *conn) {
-                        m_playlistsView->rebuildLeftItems(conn);
-                        m_playlistsView->rebuildRightItems(conn);
-                      });
-                },
-                nullptr);
-          }};
-  UI::Dialogs::showRenamePlaylistDialog(ctx);
-}
-
-void HyprMusicApp::showCreatePlaylistDialog() {
-  UI::Dialogs::CreatePlaylistContext ctx{
-      .parentWindow = m_window,
-      .backend = m_backend,
-      .palette = m_palette,
-      .fontFamily = m_fontFamily,
-      .runMpdCommand =
-          [](const std::function<void(struct mpd_connection *)> &cmd) {
-            Services::MPDManager::runMpdCommand(cmd);
-          },
-      .showNotification =
-          [this](const std::string &msg) { showNotification(msg); },
-      .onCreated =
-          [this](const std::string &plName) {
-            m_playlistsView->setSelectedPlaylist(plName);
-            m_playlistsView->setDetailedView(true);
-            m_playlistLoaded = false;
-            m_backend->addTimer(
-                std::chrono::milliseconds(100),
-                [this, plName](CAtomicSharedPointer<CTimer>, void *) {
-                  showNotification("Created " + plName);
-                  updateStatus();
-                },
-                nullptr);
-          }};
-  UI::Dialogs::showCreatePlaylistDialog(ctx);
-}
-
-void HyprMusicApp::showPlaylistSelectionDialog(const std::string &songUri,
-                                               int moveFromSongPos) {
-  UI::Dialogs::PlaylistSelectionContext ctx{
-      .songUri = songUri,
-      .moveFromSongPos = moveFromSongPos,
-      .currentSelectedPlaylist = m_playlistsView->getSelectedPlaylist(),
-      .parentWindow = m_window,
-      .backend = m_backend,
-      .palette = m_palette,
-      .fontFamily = m_fontFamily,
-      .ytDlpService = &m_ytDlpService,
-      .runMpdCommand =
-          [](const std::function<void(struct mpd_connection *)> &cmd) {
-            Services::MPDManager::runMpdCommand(cmd);
-          },
-      .showNotification =
-          [this](const std::string &msg) { showNotification(msg); },
-      .onPlaylistUpdated =
-          [this] {
-            m_backend->addTimer(
-                std::chrono::milliseconds(100),
-                [this](CAtomicSharedPointer<CTimer>, void *) {
-                  updateStatus();
-                  if (m_viewMode == eViewMode::VIEW_PLAYLISTS) {
-                    Services::MPDManager::runMpdCommand(
-                        [this](struct mpd_connection *conn) {
-                          m_playlistsView->rebuildRightItems(conn);
-                        });
-                  }
-                },
-                nullptr);
-          }};
-  UI::Dialogs::showPlaylistSelectionDialog(ctx);
-}
-
-void HyprMusicApp::showQueueAddItemDialog() {
-  UI::Dialogs::AddItemDialogContext ctx;
-  ctx.targetType = UI::Dialogs::AddItemTargetType::QUEUE;
-  ctx.window = m_window;
-  ctx.backend = m_backend;
-  ctx.palette = m_palette;
-  ctx.fontFamily = m_fontFamily;
-  ctx.runMpdCommand =
-      [](const std::function<void(struct mpd_connection *)> &cmd) {
-        Services::MPDManager::runMpdCommand(cmd);
-      };
-  ctx.showNotification = [this](const std::string &msg) {
-    showNotification(msg);
-  };
-  ctx.addSongToQueue = [this](const std::string &uri) {
-    Services::MPDManager::addSongToQueue(
-        uri, [this](const std::string &m) { showNotification(m); },
-        [this] { updateStatus(); });
-  };
-  ctx.refreshCallback = [this] { updateStatus(); };
-  UI::Dialogs::showAddItemDialog(ctx);
-}
-
-void HyprMusicApp::showPlaylistAddItemDialog(const std::string &playlistName) {
-  UI::Dialogs::AddItemDialogContext ctx;
-  ctx.targetType = UI::Dialogs::AddItemTargetType::PLAYLIST;
-  ctx.targetPlaylistName = playlistName;
-  ctx.window = m_window;
-  ctx.backend = m_backend;
-  ctx.palette = m_palette;
-  ctx.fontFamily = m_fontFamily;
-  ctx.runMpdCommand =
-      [](const std::function<void(struct mpd_connection *)> &cmd) {
-        Services::MPDManager::runMpdCommand(cmd);
-      };
-  ctx.showNotification = [this](const std::string &msg) {
-    showNotification(msg);
-  };
-  ctx.addSongToQueue = [this](const std::string &uri) {
-    Services::MPDManager::addSongToQueue(
-        uri, [this](const std::string &m) { showNotification(m); },
-        [this] { updateStatus(); });
-  };
-  ctx.refreshCallback = [this] {
-    Services::MPDManager::runMpdCommand([this](struct mpd_connection *conn) {
-      m_playlistsView->rebuildRightItems(conn);
-    });
-  };
-  UI::Dialogs::showAddItemDialog(ctx);
 }
 
 void HyprMusicApp::updateStatus() {
@@ -522,7 +493,10 @@ void HyprMusicApp::updateStatus() {
   unsigned elapsed = 0;
   unsigned total = 100;
   bool hasActiveTrack = false;
-  m_isPlaying = false;
+  bool isRepeat = false;
+  bool isSingle = false;
+  bool isRandom = false;
+  bool isConsume = false;
 
   struct mpd_status *status = mpd_run_status(conn);
   if (status) {
@@ -530,7 +504,10 @@ void HyprMusicApp::updateStatus() {
     activeSongId = mpd_status_get_song_id(status);
     currentQueueVersion = mpd_status_get_queue_version(status);
     currentVolume = mpd_status_get_volume(status);
-    m_isPlaying = (state == MPD_STATE_PLAY);
+    isRepeat = mpd_status_get_repeat(status);
+    isSingle = mpd_status_get_single(status);
+    isRandom = mpd_status_get_random(status);
+    isConsume = mpd_status_get_consume(status);
 
     if (state == MPD_STATE_PLAY || state == MPD_STATE_PAUSE) {
       stateText = (state == MPD_STATE_PLAY) ? "media-playback-pause-symbolic"
@@ -640,6 +617,9 @@ void HyprMusicApp::updateStatus() {
   m_playbackBar->updateTrackInfo(trackTitle, trackArtist, hasActiveTrack,
                                  elapsed, total);
   m_playbackBar->updatePlayPauseState(stateText);
+  m_playbackBar->updateRepeatState(isRepeat, isSingle);
+  m_playbackBar->updateRandomState(isRandom);
+  m_playbackBar->updateConsumeState(isConsume);
   m_playbackBar->updateVolume(currentVolume);
   m_playbackBar->updateAlbumArt(currentSongUri);
 }
@@ -649,92 +629,10 @@ void HyprMusicApp::setupTimer() {
       std::chrono::seconds(1),
       [this](CAtomicSharedPointer<CTimer>, void *) {
         updateStatus();
-        pollIpcSocket();
+        m_ipcService.poll();
         setupTimer();
       },
       nullptr);
-}
-
-void HyprMusicApp::setupIpcSocket() {
-  m_ipcSocketPath = "/tmp/hyprmusic-" + std::to_string(::getuid()) + ".sock";
-
-  // Remove any stale socket from a previous crash
-  ::unlink(m_ipcSocketPath.c_str());
-
-  m_ipcSocket = ::socket(AF_UNIX, SOCK_STREAM, 0);
-  if (m_ipcSocket < 0) {
-    std::cerr << "IPC: Failed to create socket: " << strerror(errno) << std::endl;
-    return;
-  }
-
-  // Make the listening socket non-blocking so pollIpcSocket never stalls
-  int flags = ::fcntl(m_ipcSocket, F_GETFL, 0);
-  ::fcntl(m_ipcSocket, F_SETFL, flags | O_NONBLOCK);
-
-  struct sockaddr_un addr{};
-  addr.sun_family = AF_UNIX;
-  ::strncpy(addr.sun_path, m_ipcSocketPath.c_str(), sizeof(addr.sun_path) - 1);
-
-  if (::bind(m_ipcSocket, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-    std::cerr << "IPC: Failed to bind socket: " << strerror(errno) << std::endl;
-    ::close(m_ipcSocket);
-    m_ipcSocket = -1;
-    return;
-  }
-
-  if (::listen(m_ipcSocket, 5) < 0) {
-    std::cerr << "IPC: Failed to listen: " << strerror(errno) << std::endl;
-    ::close(m_ipcSocket);
-    m_ipcSocket = -1;
-    return;
-  }
-
-  std::cout << "IPC: Listening on " << m_ipcSocketPath << std::endl;
-}
-
-void HyprMusicApp::pollIpcSocket() {
-  if (m_ipcSocket < 0)
-    return;
-
-  // Non-blocking accept — returns immediately if no client is waiting
-  int clientFd = ::accept(m_ipcSocket, nullptr, nullptr);
-  if (clientFd < 0)
-    return;
-
-  // Make client fd non-blocking too
-  int flags = ::fcntl(clientFd, F_GETFL, 0);
-  ::fcntl(clientFd, F_SETFL, flags | O_NONBLOCK);
-
-  // Read all data sent by the client
-  std::string received;
-  char buf[4096];
-  ssize_t n;
-  while ((n = ::recv(clientFd, buf, sizeof(buf), 0)) > 0) {
-    received.append(buf, n);
-  }
-  ::close(clientFd);
-
-  if (received.empty())
-    return;
-
-  // Protocol: newline-separated URIs, terminated by empty line (double newline)
-  std::vector<std::string> uris;
-  std::istringstream iss(received);
-  std::string line;
-  while (std::getline(iss, line)) {
-    if (line.empty())
-      break; // empty line = end of message
-    // Strip any trailing \r
-    if (!line.empty() && line.back() == '\r')
-      line.pop_back();
-    if (!line.empty())
-      uris.push_back(line);
-  }
-
-  if (!uris.empty()) {
-    std::cout << "IPC: Received " << uris.size() << " URI(s) from client" << std::endl;
-    processUriArgs(uris);
-  }
 }
 
 std::string HyprMusicApp::getMusicDirectory() const {
@@ -787,7 +685,6 @@ void HyprMusicApp::processUriArgs(const std::vector<std::string> &args) {
   if (args.empty())
     return;
 
-  // Resolve and deduplicate
   std::vector<std::string> targetUris;
   std::unordered_set<std::string> seen;
   for (const auto &arg : args) {
@@ -808,11 +705,8 @@ void HyprMusicApp::processUriArgs(const std::vector<std::string> &args) {
     Services::MPDManager::playSongFromUri(
         uri,
         [this](const std::string &msg) { showNotification(msg); },
-        nullptr); // no onUpdateStatus here - we call in correct order below
+        nullptr);
     switchViewMode(eViewMode::VIEW_QUEUE);
-    // Call updateStatus() FIRST (updates queue view, but may reset artwork to
-    // default if MPD hasn't started playing yet), THEN force artwork so nothing
-    // overwrites it before the next 1s timer tick.
     updateStatus();
     m_playbackBar->forceUpdateAlbumArt(uri);
     return;
@@ -887,9 +781,6 @@ void HyprMusicApp::processUriArgs(const std::vector<std::string> &args) {
       });
 
   switchViewMode(eViewMode::VIEW_QUEUE);
-  // Call updateStatus() FIRST (updates queue view, but may reset artwork if
-  // MPD hasn't reported the playing state yet), THEN force artwork last so
-  // nothing overwrites it before the next 1s timer tick.
   updateStatus();
   if (!targetUris.empty()) {
     m_playbackBar->forceUpdateAlbumArt(targetUris[0]);
@@ -897,4 +788,3 @@ void HyprMusicApp::processUriArgs(const std::vector<std::string> &args) {
 }
 
 } // namespace Core
-

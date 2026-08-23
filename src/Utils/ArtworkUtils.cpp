@@ -1,4 +1,5 @@
 #include "ArtworkUtils.hpp"
+#include "EmbeddedArtwork.hpp"
 #include <mpd/readpicture.h>
 #include <mpd/albumart.h>
 #include <mpd/connection.h>
@@ -8,49 +9,27 @@
 #include <cstdlib>
 #include <unordered_map>
 
-#include <iostream>
-
 namespace Utils {
-
-std::string getBackgroundImagePath() {
-  std::vector<std::string> candidates = {
-      "/home/anisur/git/hyprmusic/assets/background.jpeg",
-      "assets/background.jpeg"};
-  try {
-    candidates.push_back(
-        (std::filesystem::current_path() / "assets/background.jpeg")
-            .string());
-  } catch (...) {
-  }
-  for (const auto &p : candidates) {
-    if (!p.empty() && std::filesystem::exists(p)) {
-      return p;
-    }
-  }
-  return "";
-}
 
 std::string getDefaultArtworkPath() {
   static std::string s_defaultPath = "";
-  if (!s_defaultPath.empty())
+  if (!s_defaultPath.empty() && std::filesystem::exists(s_defaultPath))
     return s_defaultPath;
 
-  std::vector<std::string> candidates = {
-      "/home/anisur/git/hyprmusic/assets/default_album_art.png",
-      "assets/default_album_art.png"};
-  try {
-    candidates.push_back(
-        (std::filesystem::current_path() / "assets/default_album_art.png")
-            .string());
-  } catch (...) {
-  }
-  for (const auto &p : candidates) {
-    if (!p.empty() && std::filesystem::exists(p)) {
-      s_defaultPath = p;
-      return s_defaultPath;
+  std::filesystem::path tempDir = std::filesystem::temp_directory_path();
+  std::filesystem::path artPath = tempDir / "hyprmusic_default_album_art.png";
+
+  if (!std::filesystem::exists(artPath)) {
+    std::ofstream ofs(artPath, std::ios::binary);
+    if (ofs) {
+      ofs.write(reinterpret_cast<const char *>(g_defaultAlbumArtData),
+                g_defaultAlbumArtDataLen);
+      ofs.close();
     }
   }
-  return "";
+
+  s_defaultPath = artPath.string();
+  return s_defaultPath;
 }
 
 static std::unordered_map<std::string, std::string> s_artworkCache;
