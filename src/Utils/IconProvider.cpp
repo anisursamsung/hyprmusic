@@ -20,12 +20,12 @@ void IconProvider::registerCustomFont() {
   }
 
   std::filesystem::path fontPath =
-      std::filesystem::temp_directory_path() / "hyprmusic_embedded_font.ttf";
+      std::filesystem::temp_directory_path() / "hlmusic_embedded_font.ttf";
 
   std::ofstream ofs(fontPath, std::ios::binary);
   if (ofs) {
-    ofs.write(reinterpret_cast<const char *>(g_hyprmusicFontData),
-              g_hyprmusicFontDataLen);
+    ofs.write(reinterpret_cast<const char *>(g_hlmusicFontData),
+              g_hlmusicFontDataLen);
     ofs.close();
 
     std::string absPathStr = std::filesystem::absolute(fontPath).string();

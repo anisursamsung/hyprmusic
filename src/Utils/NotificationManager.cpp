@@ -18,7 +18,7 @@ void NotificationManager::showNotification(const std::string &msg) {
     }
   }
 
-  std::string cmd = "notify-send -a \"hyprMusic\" -i \"multimedia-audio-player\" \"hyprMusic\" '" + escapedMsg + "' &";
+  std::string cmd = "notify-send -a \"hlmusic\" -i \"multimedia-audio-player\" \"hlmusic\" '" + escapedMsg + "' &";
   ::system(cmd.c_str());
 }
 

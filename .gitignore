@@ -2,6 +2,7 @@
 build/
 
 # Compiled binary
+hlmusic
 hyprmusic
 
 # CMake user files

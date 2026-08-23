@@ -72,10 +72,10 @@ public:
   // Dynamic volume helper returning the icon string based on volume and mute state.
   static std::string getVolumeIcon(bool muted, int vol);
 
-  // Register embedded assets/fonts/hyprmusic.ttf with Fontconfig
+  // Register embedded assets/fonts/hlmusic.ttf with Fontconfig
   static void registerCustomFont();
 
-  // Custom font family name for hyprmusic custom glyphs
+  // Custom font family name for hlmusic custom glyphs
   static std::string getCustomFontFamily();
   static bool isCustomFontIcon(IconType type);
   static bool isCustomFontIcon(const std::string &iconStr);

@@ -1,4 +1,4 @@
-# HyprMusic
+# HlMusic
 
 A dedicated Hyprland frontend for the Media Player Daemon (MPD) on Linux, built with C++ and the Hyprtoolkit API.
 
@@ -39,5 +39,5 @@ A dedicated Hyprland frontend for the Media Player Daemon (MPD) on Linux, built 
 
 ## ⌨️ Playback & Control Bar
 
-* **Persistent Control Bar:** The bottom bar provides quick access to track information (title, artist, stream status), elapsed and total time, an interactive seek slider, play/pause toggle, previous/next controls, and volume slider.
+* **Persistent Control Bar:** The bottom bar provides quick access to track information (title, artist, stream status), elapsed and total time, an interactive seek slider, play/pause toggle, previous/next controls, volume slider, and playback modes (Shuffle, Repeat, Consume).
 * **Background Execution:** Powered by the MPD backend, audio playback continues uninterrupted in the background even if the graphical interface is closed.

@@ -1,4 +1,4 @@
-#include "Core/HyprMusicApp.hpp"
+#include "Core/HlMusicApp.hpp"
 #include <iostream>
 #include <exception>
 #include <string>
@@ -8,7 +8,7 @@
 #include <cstring>
 
 static std::string ipcSocketPath() {
-  return "/tmp/hyprmusic-" + std::to_string(::getuid()) + ".sock";
+  return "/tmp/hlmusic-" + std::to_string(::getuid()) + ".sock";
 }
 
 // Returns true if a running instance was found and the args were forwarded.
@@ -45,13 +45,13 @@ static bool trySendToExistingInstance(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
-  // If another hyprmusic is already running, forward any file args to it and exit.
+  // If another hlmusic is already running, forward any file args to it and exit.
   if (trySendToExistingInstance(argc, argv)) {
     return 0;
   }
 
   try {
-    Core::HyprMusicApp app(argc, argv);
+    Core::HlMusicApp app(argc, argv);
     app.run();
     return 0;
   } catch (const std::exception &e) {

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.19)
 
-project(hyprmusic VERSION 1.0 DESCRIPTION "HyprMusic Player")
+project(hlmusic VERSION 1.0 DESCRIPTION "HlMusic Player")
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,12 +25,12 @@ set(EMBEDDED_ARTWORK_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated/EmbeddedArtwork.
 add_custom_command(
     OUTPUT ${EMBEDDED_FONT_CPP}
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_asset.py
-            ${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/hyprmusic.ttf
+            ${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/hlmusic.ttf
             ${EMBEDDED_FONT_CPP}
-            UI::Components g_hyprmusicFontData
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/hyprmusic.ttf
+            UI::Components g_hlmusicFontData
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/hlmusic.ttf
             ${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_asset.py
-    COMMENT "Auto-generating EmbeddedFont.cpp from assets/fonts/hyprmusic.ttf"
+    COMMENT "Auto-generating EmbeddedFont.cpp from assets/fonts/hlmusic.ttf"
 )
 
 add_custom_command(
@@ -46,9 +46,9 @@ add_custom_command(
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-add_executable(hyprmusic 
+add_executable(hlmusic 
     src/main.cpp
-    src/Core/HyprMusicApp.cpp
+    src/Core/HlMusicApp.cpp
     src/Core/IpcService.cpp
 
     src/MPD/MPDClient.cpp
@@ -98,14 +98,14 @@ add_executable(hyprmusic
     ${EMBEDDED_ARTWORK_CPP}
 )
 
-target_link_libraries(hyprmusic 
+target_link_libraries(hlmusic 
     PkgConfig::DEPS
     PkgConfig::HYPRUTILS
     PkgConfig::MPDCLIENT
 )
 
 include(GNUInstallDirs)
-install(TARGETS hyprmusic DESTINATION ${CMAKE_INSTALL_BINDIR})
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hyprmusic.desktop")
-    install(FILES hyprmusic.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(TARGETS hlmusic DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hlmusic.desktop")
+    install(FILES hlmusic.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 endif()

@@ -1,4 +1,4 @@
-#include "HyprMusicApp.hpp"
+#include "HlMusicApp.hpp"
 #include "Utils/StreamUtils.hpp"
 #include <cstring>
 #include <filesystem>
@@ -8,7 +8,7 @@
 
 namespace Core {
 
-HyprMusicApp::HyprMusicApp(int argc, char *argv[]) {
+HlMusicApp::HlMusicApp(int argc, char *argv[]) {
   m_backend = IBackend::create();
   if (!m_backend) {
     throw std::runtime_error("Failed to create backend");
@@ -22,9 +22,9 @@ HyprMusicApp::HyprMusicApp(int argc, char *argv[]) {
   }
 }
 
-HyprMusicApp::~HyprMusicApp() {}
+HlMusicApp::~HlMusicApp() {}
 
-void HyprMusicApp::run() {
+void HlMusicApp::run() {
   Services::MPDManager::ensureMpdRunningAndConfigured(m_mpdSettings);
   m_ipcService.init([this](const std::vector<std::string> &uris) {
     processUriArgs(uris);
@@ -32,7 +32,7 @@ void HyprMusicApp::run() {
   createWindow();
   createUI();
   setupEventHandlers();
-  std::cout << "Starting HyprMusic..." << std::endl;
+  std::cout << "Starting HlMusic..." << std::endl;
   m_window->open();
   updateStatus();
   setupTimer();
@@ -40,11 +40,11 @@ void HyprMusicApp::run() {
   m_backend->enterLoop();
 }
 
-void HyprMusicApp::createWindow() {
+void HlMusicApp::createWindow() {
   m_window = CWindowBuilder::begin()
                  ->type(HT_WINDOW_TOPLEVEL)
-                 ->appTitle("HyprMusic")
-                 ->appClass("hyprmusic")
+                 ->appTitle("HlMusic")
+                 ->appClass("hlmusic")
                  ->preferredSize({0, 0})
                  ->minSize({600, 400})
                  ->commence();
@@ -53,7 +53,7 @@ void HyprMusicApp::createWindow() {
   }
 }
 
-void HyprMusicApp::createUI() {
+void HlMusicApp::createUI() {
   m_palette = CPalette::palette();
   m_fontFamily =
       m_palette ? std::string(m_palette->m_vars.fontFamily) : "Sans Serif";
@@ -438,7 +438,7 @@ void HyprMusicApp::createUI() {
   m_visualizerView = std::make_unique<UI::Views::VisualizerView>(visCtx);
 }
 
-void HyprMusicApp::setupEventHandlers() {
+void HlMusicApp::setupEventHandlers() {
   m_window->m_events.closeRequest.listenStatic([this] {
     if (m_backend) {
       m_backend->addIdle([this] { m_backend->destroy(); });
@@ -446,7 +446,7 @@ void HyprMusicApp::setupEventHandlers() {
   });
 }
 
-void HyprMusicApp::switchViewMode(eViewMode mode) {
+void HlMusicApp::switchViewMode(eViewMode mode) {
   if (m_viewMode == mode)
     return;
   if (m_dialogCoordinator) {
@@ -469,11 +469,11 @@ void HyprMusicApp::switchViewMode(eViewMode mode) {
   updateStatus();
 }
 
-void HyprMusicApp::showNotification(const std::string &msg) {
+void HlMusicApp::showNotification(const std::string &msg) {
   m_notificationManager.showNotification(msg);
 }
 
-void HyprMusicApp::updateStatus() {
+void HlMusicApp::updateStatus() {
   struct mpd_connection *conn = mpd_connection_new(NULL, 0, 0);
   if (!conn)
     return;
@@ -624,7 +624,7 @@ void HyprMusicApp::updateStatus() {
   m_playbackBar->updateAlbumArt(currentSongUri);
 }
 
-void HyprMusicApp::setupTimer() {
+void HlMusicApp::setupTimer() {
   m_backend->addTimer(
       std::chrono::seconds(1),
       [this](CAtomicSharedPointer<CTimer>, void *) {
@@ -635,7 +635,7 @@ void HyprMusicApp::setupTimer() {
       nullptr);
 }
 
-std::string HyprMusicApp::getMusicDirectory() const {
+std::string HlMusicApp::getMusicDirectory() const {
   auto it = m_mpdSettings.find("music_directory");
   if (it != m_mpdSettings.end() && !it->second.empty()) {
     return expandTilde(it->second);
@@ -643,7 +643,7 @@ std::string HyprMusicApp::getMusicDirectory() const {
   return getUserHomeDir() + "/Music";
 }
 
-std::string HyprMusicApp::resolveToMpdUri(const std::string &pathOrUri) const {
+std::string HlMusicApp::resolveToMpdUri(const std::string &pathOrUri) const {
   if (pathOrUri.empty())
     return "";
 
@@ -675,13 +675,13 @@ std::string HyprMusicApp::resolveToMpdUri(const std::string &pathOrUri) const {
   return "file://" + absP.string();
 }
 
-void HyprMusicApp::processCommandLineArgs() {
+void HlMusicApp::processCommandLineArgs() {
   if (m_cmdArgs.empty())
     return;
   processUriArgs(m_cmdArgs);
 }
 
-void HyprMusicApp::processUriArgs(const std::vector<std::string> &args) {
+void HlMusicApp::processUriArgs(const std::vector<std::string> &args) {
   if (args.empty())
     return;
 

@@ -24,7 +24,7 @@ IpcService::~IpcService() {
 void IpcService::init(
     std::function<void(const std::vector<std::string> &uris)> onUrisReceived) {
   m_onUrisReceived = onUrisReceived;
-  m_ipcSocketPath = "/tmp/hyprmusic-" + std::to_string(::getuid()) + ".sock";
+  m_ipcSocketPath = "/tmp/hlmusic-" + std::to_string(::getuid()) + ".sock";
 
   ::unlink(m_ipcSocketPath.c_str());
 

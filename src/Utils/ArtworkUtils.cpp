@@ -17,7 +17,7 @@ std::string getDefaultArtworkPath() {
     return s_defaultPath;
 
   std::filesystem::path tempDir = std::filesystem::temp_directory_path();
-  std::filesystem::path artPath = tempDir / "hyprmusic_default_album_art.png";
+  std::filesystem::path artPath = tempDir / "hlmusic_default_album_art.png";
 
   if (!std::filesystem::exists(artPath)) {
     std::ofstream ofs(artPath, std::ios::binary);
@@ -123,7 +123,7 @@ std::string resolveTrackArtwork(struct mpd_connection *conn, const std::string &
       }
     }
 
-    std::string tmpPath = "/tmp/hyprmusic_art_" + std::to_string(std::hash<std::string>{}(songUri)) + ext;
+    std::string tmpPath = "/tmp/hlmusic_art_" + std::to_string(std::hash<std::string>{}(songUri)) + ext;
     std::ofstream ofs(tmpPath, std::ios::binary);
     if (ofs) {
       ofs.write(reinterpret_cast<const char *>(imgBytes.data()), imgBytes.size());

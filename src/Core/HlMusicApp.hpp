@@ -30,10 +30,10 @@ namespace Core {
 using namespace Hyprtoolkit;
 using namespace Hyprutils::Memory;
 
-class HyprMusicApp {
+class HlMusicApp {
 public:
-  HyprMusicApp(int argc = 0, char *argv[] = nullptr);
-  ~HyprMusicApp();
+  HlMusicApp(int argc = 0, char *argv[] = nullptr);
+  ~HlMusicApp();
   void run();
 
 private:
