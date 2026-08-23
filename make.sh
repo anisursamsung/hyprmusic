@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INSTALL_PREFIX="${1:-${HOME}/.local}"
+INSTALL_PREFIX="${1:-${PREFIX:-${HOME}/.local}}"
+BUILD_TYPE="${BUILD_TYPE:-Release}"
+BUILD_DIR="${SCRIPT_DIR}/build"
 
-echo "==> Configuring hlmusic..."
-cmake -B "${SCRIPT_DIR}/build" -S "${SCRIPT_DIR}" \
-      -DCMAKE_BUILD_TYPE=Release \
+echo "==> Configuring hlmusic (${BUILD_TYPE}) with prefix: ${INSTALL_PREFIX}..."
+cmake -B "${BUILD_DIR}" -S "${SCRIPT_DIR}" \
+      -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
       -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}"
 
 echo "==> Building hlmusic..."
-cmake --build "${SCRIPT_DIR}/build" -j$(nproc 2>/dev/null || echo 1)
+cmake --build "${BUILD_DIR}" --parallel
 
 echo "==> Installing hlmusic to ${INSTALL_PREFIX}..."
-cmake --install "${SCRIPT_DIR}/build"
+cmake --install "${BUILD_DIR}"
 
 if command -v update-desktop-database &>/dev/null; then
     echo "==> Updating desktop MIME database..."

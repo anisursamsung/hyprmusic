@@ -28,7 +28,24 @@ It was obtained by setting the background color to 50% transparent color in hypr
 It is an MPD front-end hence it will do nothing if MPD is not installed.
 
 ## Installation
-Clone and run the make.sh script. It will compile, put the .desktop file into /home/user/.local/share/applications so that it appears in your launcher/rofi/etc. The binary is copied to /home/user/.local/bin. So, ensure /home/user/.local/bin is in your env path in the bashrc. If you want system install, you can specify the path to put the bin e.g. "sudo make.sh /usr/bin", sudo is needed because we are going into root directory. For .desktop file, you can copy to system, but not recommended. Only binary placing into system is enough. Any launcher scans /home/user/.local/share/applications anyways.
+
+```bash
+git clone https://github.com/anisursamsung/hlmusic.git
+cd hlmusic
+
+# User-space install (recommended, installs to ~/.local without root):
+./make.sh
+
+# Or system-wide install (all users):
+sudo ./make.sh /usr/local
+```
+
+`./make.sh` automatically configures CMake, builds with `--parallel`, and installs:
+- **Binary**: `<prefix>/bin/hlmusic` (`~/.local/bin/hlmusic` by default)
+- **Desktop Entry**: `<prefix>/share/applications/hlmusic.desktop`
+- Refreshes desktop MIME databases so `hlmusic` appears in your application launchers, Rofi, and file manager "Open With" menus.
+
+Ensure `~/.local/bin` is in your `$PATH`.
 
 ## Screenshots
 ![screenshot1](assets/Screenshot1.png)
